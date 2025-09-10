@@ -4,6 +4,20 @@ Welcome to your InvenioRDM instance.
 
 ## Getting started
 
+### Development Setup
+
+For development work, run the following commands to set up the environment:
+
+```console
+# Install dependencies and pre-commit hooks
+make install
+
+# Run code quality checks
+make linter
+```
+
+### Running the Application
+
 Run the following commands in order to start your new InvenioRDM instance:
 
 ```console

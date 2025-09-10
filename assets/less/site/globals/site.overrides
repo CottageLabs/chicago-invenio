@@ -1,0 +1,70 @@
+.outer-navbar {
+    position: relative;
+    height: 100%;
+    a {
+        text-transform: uppercase;
+    }
+    .item.logo {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%;);
+        height: 100%;
+        width: auto;
+        .logo-link {
+            display: block;
+            height: 100%;
+            img.ui.image {
+                height: 100%;
+                width: auto;
+                min-height: 100%;
+                &#logo-big {
+                    display: none;
+                }
+                &#logo-mobile {
+                    display: block;
+                } 
+            }
+            @media (min-width: @computerBreakpoint) {
+                img.ui.image#logo-big {
+                    display: block;
+                }
+                img.ui.image#logo-mobile {
+                    display: none;
+                }
+            }   
+        }
+    }
+}
+
+@media (max-width: 768px) {
+    .ui.container {
+        width: 75%;
+    }
+}
+
+#header-search-bar {
+    padding: .5em;
+    .ui.fluid.search {
+        border: @primaryColor solid 1px;
+        button.ui.icon.search {
+            border-left: @primaryColor solid 1px;
+            background-color: @white;
+            i.search.icon {
+                color: @primaryColor;
+            }
+        }
+        a.ui.icon.search:hover, 
+        a.ui.icon.search:focus {
+            background-color: @primaryColor;
+            transition: .5s ease-in-out;
+            i.search.icon {
+                color: @white;
+            }
+        }
+    }
+}
+
+.ui.small.horizontal.label {
+    font-weight: normal;
+}

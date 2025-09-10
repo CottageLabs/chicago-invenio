@@ -1,0 +1,54 @@
+#rdm-burger-menu-icon,
+#rdm-close-burger-menu-icon {
+  .navicon {
+    background: @white;
+    display: block;
+    height: 2px;
+    position: relative;
+    transition: background 0.2s ease-out;
+    width: 18px;
+
+    &:before,
+    &:after {
+      display: block;
+      background: @white;
+      content: "";
+      height: 100%;
+      position: absolute;
+      transition: all 0.2s ease-out;
+      width: 100%;
+    }
+  }
+}
+
+#invenio-nav.ui.menu {
+    .ui.menu .item {
+      a:not(.ui.button){
+        &:hover {
+          background-color: transparent;
+          color: @white;
+          text-decoration: underline dotted;
+        }
+      }
+    }
+    a.ui.button.auth-button,
+    a.ui.button.signup {
+        border: 1px solid @white;
+        border-radius: 0;
+        background: transparent;
+        color: white;
+        i.icon.auth-icon {
+            color: @white;
+        }
+    }
+    a.ui.button.auth-button:hover,
+    a.ui.button.signup:hover {
+        background: white;
+        border-radius: 0;
+        color: @primaryColor;
+        transition: .5s ease-in-out;
+        i.icon.auth-icon {
+            color: @primaryColor;
+        }
+    }
+}

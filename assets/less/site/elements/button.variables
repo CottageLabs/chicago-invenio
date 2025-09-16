@@ -3,3 +3,4 @@
 ***********************************************/
 
 @searchButtonColor: @white;
+@searchButtonColorTextColor: @darkGray;

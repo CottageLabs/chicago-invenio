@@ -18,53 +18,23 @@
                 height: 100%;
                 width: auto;
                 min-height: 100%;
-                &#logo-big {
-                    display: none;
-                }
-                &#logo-mobile {
-                    display: block;
-                } 
             }
-            @media (min-width: @computerBreakpoint) {
-                img.ui.image#logo-big {
-                    display: block;
-                }
-                img.ui.image#logo-mobile {
-                    display: none;
-                }
-            }   
         }
     }
 }
 
-@media (max-width: 768px) {
+@media (max-width: @tabletBreakpoint) {
     .ui.container {
         width: 75%;
     }
 }
 
-#header-search-bar {
-    padding: .5em;
-    .ui.fluid.search {
-        border: @primaryColor solid 1px;
-        button.ui.icon.search {
-            border-left: @primaryColor solid 1px;
-            background-color: @white;
-            i.search.icon {
-                color: @primaryColor;
-            }
-        }
-        a.ui.icon.search:hover, 
-        a.ui.icon.search:focus {
-            background-color: @primaryColor;
-            transition: .5s ease-in-out;
-            i.search.icon {
-                color: @white;
-            }
-        }
-    }
-}
-
 .ui.small.horizontal.label {
     font-weight: normal;
+}
+
+.mobile-hidden {
+    @media (max-width: @mobileBreakpoint) {
+        display: none;
+    }
 }

@@ -9,7 +9,7 @@ https://inveniordm.docs.cern.ch/reference/configuration/.
 
 from datetime import datetime
 from invenio_i18n import lazy_gettext as _
-
+import os
 
 def _(x):  # needed to avoid start time failure with lazy strings
     return x
@@ -28,13 +28,13 @@ SEND_FILE_MAX_AGE_DEFAULT = 300
 # SECURITY WARNING: keep the secret key used in production secret!
 # Do not commit it to a source code repository.
 # TODO: Set
-SECRET_KEY = "CHANGE_ME"
+SECRET_KEY = os.environ.get('INVENIO_SECRET_KEY', "CHANGE_ME")
 
 # Since HAProxy and Nginx route all requests no matter the host header
 # provided, the trusted hosts variable is set to localhost. In production it
 # should be set to the correct host and it is strongly recommended to only
 # route correct hosts to the application.
-TRUSTED_HOSTS = ['0.0.0.0', 'localhost', '127.0.0.1']
+TRUSTED_HOSTS = ['0.0.0.0', 'localhost', '127.0.0.1', 'uchicago.invenio.cottagelabs.com']
 
 
 # Flask-SQLAlchemy
@@ -147,9 +147,9 @@ APP_RDM_DEPOSIT_FORM_AUTOCOMPLETE_NAMES = 'search'  # "search_only" or "off"
 # See https://github.com/inveniosoftware/invenio-records-resources/blob/master/invenio_records_resources/config.py
 
 # TODO: Set with your own hostname when deploying to production
-SITE_UI_URL = "https://127.0.0.1"
+SITE_UI_URL = os.environ.get('INVENIO_SITE_UI_URL', "https://127.0.0.1")
 
-SITE_API_URL = "https://127.0.0.1/api"
+SITE_API_URL = SITE_UI_URL + "/api"
 
 # Invenio-RDM-Records
 # ===================

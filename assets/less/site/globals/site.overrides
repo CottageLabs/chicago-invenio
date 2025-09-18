@@ -1,0 +1,40 @@
+.outer-navbar {
+    position: relative;
+    height: 100%;
+    a {
+        text-transform: uppercase;
+    }
+    .item.logo {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%;);
+        height: 100%;
+        width: auto;
+        .logo-link {
+            display: block;
+            height: 100%;
+            img.ui.image {
+                height: 100%;
+                width: auto;
+                min-height: 100%;
+            }
+        }
+    }
+}
+
+@media (max-width: @tabletBreakpoint) {
+    .ui.container {
+        width: 75%;
+    }
+}
+
+.ui.small.horizontal.label {
+    font-weight: normal;
+}
+
+.mobile-hidden {
+    @media (max-width: @mobileBreakpoint) {
+        display: none;
+    }
+}

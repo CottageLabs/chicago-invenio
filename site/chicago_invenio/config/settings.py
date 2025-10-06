@@ -9,6 +9,26 @@ https://inveniordm.docs.cern.ch/reference/configuration/.
 
 from datetime import datetime
 from invenio_i18n import lazy_gettext as _
+from invenio_rdm_records.contrib.imprint import (
+    IMPRINT_CUSTOM_FIELDS,
+    IMPRINT_CUSTOM_FIELDS_UI,
+    IMPRINT_NAMESPACE,
+)
+from invenio_rdm_records.contrib.journal import (
+    JOURNAL_CUSTOM_FIELDS,
+    JOURNAL_CUSTOM_FIELDS_UI,
+    JOURNAL_NAMESPACE,
+)
+from invenio_rdm_records.contrib.thesis import (
+    THESIS_CUSTOM_FIELDS,
+    THESIS_CUSTOM_FIELDS_UI,
+    THESIS_NAMESPACE,
+)
+from invenio_rdm_records.contrib.meeting import (
+    MEETING_CUSTOM_FIELDS,
+    MEETING_CUSTOM_FIELDS_UI,
+    MEETING_NAMESPACE,
+)
 import os
 
 def _(x):  # needed to avoid start time failure with lazy strings
@@ -212,3 +232,37 @@ ADMINISTRATION_DISPLAY_VERSIONS = [
     ("invenio-app-rdm", f"v{__version__}"),
     ("chicago-invenio", "v1.0.0"),
 ]
+
+
+RDM_NAMESPACES = {
+    **JOURNAL_NAMESPACE,
+    **IMPRINT_NAMESPACE,
+    **THESIS_NAMESPACE,
+    **MEETING_NAMESPACE,
+}
+
+RDM_CUSTOM_FIELDS = [
+    *JOURNAL_CUSTOM_FIELDS,
+    *IMPRINT_CUSTOM_FIELDS,
+    *MEETING_CUSTOM_FIELDS,
+    *THESIS_CUSTOM_FIELDS,
+]
+
+RDM_CUSTOM_FIELDS_UI = [
+    {
+        "section": _("Publishing information"),
+        "hide_from_landing_page": True,
+        "fields": [
+            # journal
+            *JOURNAL_CUSTOM_FIELDS_UI["fields"],
+            # imprint
+            *IMPRINT_CUSTOM_FIELDS_UI["fields"],
+            # thesis
+            *THESIS_CUSTOM_FIELDS_UI["fields"],
+        ],
+    },
+    # meeting
+    MEETING_CUSTOM_FIELDS_UI,
+]
+
+MEETING_CUSTOM_FIELDS_UI["hide_from_landing_page"] = True

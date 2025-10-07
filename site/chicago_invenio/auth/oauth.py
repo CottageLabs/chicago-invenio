@@ -20,6 +20,9 @@ def info_handler(
     Requires the following claims to be present in the id_token: email,
     preferred_username, name and oid.
     """
+    current_app.logger.debug("Extracting user info from OIDC id_token:")
+    current_app.logger.debug(response_data)
+    current_app.logger.debug("--------"*10)
     oidc_config = requests.get(current_app.config["CHI_OAUTH_WELL_KNOWN_URL"]).json()
     signing_algos = oidc_config["id_token_signing_alg_values_supported"]
     jwks_client = jwt.PyJWKClient(oidc_config["jwks_uri"])

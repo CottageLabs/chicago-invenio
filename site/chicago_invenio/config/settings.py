@@ -205,6 +205,38 @@ from invenio_oauthclient.views.client import auto_redirect_login
 ACCOUNTS_LOGIN_VIEW_FUNCTION = auto_redirect_login  # autoredirect to external login if enabled
 OAUTHCLIENT_AUTO_REDIRECT_TO_EXTERNAL_LOGIN = False  # autoredirect to external login
 
+CHI_OAUTH_CLIENT_ID = os.getenv("CHI_OAUTH_CLIENT_ID")
+CHI_OAUTH_CLIENT_SECRET = os.getenv("CHI_OAUTH_CLIENT_SECRET")
+CHI_OAUTH_WELL_KNOWN_URL = "https://uchicago.okta.com/.well-known/openid-configuration"
+
+CHI_SSO_ENABLED = CHI_OAUTH_CLIENT_ID and CHI_OAUTH_CLIENT_SECRET
+
+if CHI_SSO_ENABLED:
+    OAUTHCLIENT_REMOTE_APPS["chi"] = dict(
+        title="University of Chicago Single Sign On",
+        description="Authentication via membership of the University of Chicago",
+        icon="",
+        params=dict(
+            request_token_params=dict(scope="openid profile"),
+            base_url="",
+            request_token_url=None,
+            access_token_url=f"https://uchicago.okta.com/oauth2/v1/token",
+            access_token_method="POST",
+            authorize_url=f"https://uchicago.okta.com/oauth2/v1/authorize",
+            app_key="CHI_APP_CREDENTIALS",
+        ),
+        authorized_handler="invenio_oauthclient.handlers:authorized_signup_handler",
+        disconnect_handler="invenio_oauthclient.handlers:disconnect_handler",
+        signup_handler=dict(
+            info="chicago_invenio.auth.oauth:info_handler",
+        ),
+        signup_options=dict(auto_confirm=True, send_register_msg=False),
+    )
+    CHI_APP_CREDENTIALS = {
+        "consumer_key": CHI_OAUTH_CLIENT_ID,
+        "consumer_secret": CHI_OAUTH_CLIENT_SECRET,
+    }
+
 # Invenio-UserProfiles
 # --------------------
 USERPROFILES_READ_ONLY = False  # allow users to change profile info (name, email, etc...)
@@ -266,3 +298,8 @@ RDM_CUSTOM_FIELDS_UI = [
 ]
 
 MEETING_CUSTOM_FIELDS_UI["hide_from_landing_page"] = True
+
+# Invenio-OAuthclient
+# -------------------
+# See:
+# https://github.com/inveniosoftware/invenio-oauthclient/blob/master/invenio_oauthclient/config.py

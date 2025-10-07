@@ -20,6 +20,8 @@ services:
       - "INVENIO_SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://chicago-invenio:chicago-invenio@db/chicago-invenio"
       - "INVENIO_WSGI_PROXIES=2"
       - "INVENIO_RATELIMIT_STORAGE_URL=redis://cache:6379/3"
+      - "CHI_OAUTH_CLIENT_ID=${CHI_OAUTH_CLIENT_ID}"
+      - "CHI_OAUTH_CLIENT_SECRET=${CHI_OAUTH_CLIENT_SECRET}"
   frontend:
     build: ./docker/nginx/
     image: chicago-invenio-frontend

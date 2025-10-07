@@ -1,0 +1,3 @@
+#header-search-bar .ui.input, #header-search-bar .ui.input>input {
+    height: 48px !important;
+}

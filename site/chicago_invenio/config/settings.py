@@ -130,8 +130,10 @@ THEME_SITENAME = "Chicago Invenio"
 # Frontpage title
 THEME_FRONTPAGE_TITLE = "Chicago Invenio"
 # Header logo
-THEME_LOGO = 'images/invenio-rdm.svg'
+THEME_LOGO = 'images/logo-background.svg'
+THEME_LOGO_MOBILE = 'images/logo-background-mobile.svg'
 
+THEME_SHOW_FRONTPAGE_INTRO_SECTION = False
 
 # Invenio-App-RDM
 # ===============

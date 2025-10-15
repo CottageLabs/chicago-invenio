@@ -37,6 +37,10 @@ def info_handler(
         audience=remote_app.consumer_key,
     )
 
+    current_app.logger.warning("Decoded data:")
+    current_app.logger.warning(data)
+    current_app.logger.warning("--------" * 10)
+
     return dict(
         user=dict(
             email=data["email"],

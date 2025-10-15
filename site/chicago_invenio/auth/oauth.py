@@ -50,7 +50,7 @@ def info_handler(
                 affiliations="University of Chicago",
             ),
         ),
-        external_id=data["oid"],
+        external_id=data["sub"],
         external_method="chi_sso",
         active=True,
     )

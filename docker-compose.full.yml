@@ -50,6 +50,7 @@ services:
       service: frontend
     volumes:
       - static_data:/opt/invenio/var/instance/static
+      - /etc/letsencrypt:/etc/letsencrypt
     depends_on:
       - web-ui
       - web-api

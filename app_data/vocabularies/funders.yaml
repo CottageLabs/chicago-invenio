@@ -1,0 +1,552 @@
+# InvenioRDM Funders Vocabulary - ROR Funders Only
+# Generated from MARC 536 fields with existing ROR identifiers
+# Total entries: 48
+# All entries use ROR ID as vocabulary ID
+# ROR API metadata verification: Enabled
+
+- id: 024mw5h28
+  country: US
+  name: University of Chicago
+  title:
+    en: University of Chicago
+    es: Universidad de Chicago
+    fr: Université de chicago
+  identifiers:
+  - identifier: 024mw5h28
+    scheme: ror
+  synonyms:
+  - UChicago
+  - UC
+  - Center for the Study of Race, Politics and Culture and University of Chicago Center
+    for Study of Gender and Sexuality, University of Chicago
+- id: 021nxhr62
+  country: US
+  name: U.S. National Science Foundation
+  title:
+    en: U.S. National Science Foundation
+  identifiers:
+  - identifier: 021nxhr62
+    scheme: ror
+  synonyms:
+  - National Science Foundation
+  - NSF
+- id: 042wftp98
+  country: US
+  name: University of Chicago Medicine Comprehensive Cancer Center
+  title:
+    en: University of Chicago Medicine Comprehensive Cancer Center
+  identifiers:
+  - identifier: 042wftp98
+    scheme: ror
+  synonyms:
+  - UChicago Comprehensive Cancer Center
+  - UChicago Medicine Cancer Center
+  - UChicago Medicine Comprehensive Cancer Center
+  - University of Chicago Medicine Cancer Center
+- id: 01cwqze88
+  country: US
+  name: National Institutes of Health
+  title:
+    en: National Institutes of Health
+  identifiers:
+  - identifier: 01cwqze88
+    scheme: ror
+  synonyms:
+  - NIH
+- id: 0076kfe04
+  country: US
+  name: University of Chicago Medical Center
+  title:
+    en: University of Chicago Medical Center
+  identifiers:
+  - identifier: 0076kfe04
+    scheme: ror
+  synonyms:
+  - UChicago Medical Center
+  - UChicago Medicine
+  - UCMC
+  - Bucksbaum Institute for Clinical Excellence, University of Chicago
+- id: 02vdm1p28
+  country: US
+  name: National Endowment for the Humanities
+  title:
+    en: National Endowment for the Humanities
+  identifiers:
+  - identifier: 02vdm1p28
+    scheme: ror
+  synonyms:
+  - NEH
+  - Institute of Museum and Library Services, National Endowment for the Humanities
+- id: 027ka1x80
+  country: US
+  name: National Aeronautics and Space Administration
+  title:
+    en: National Aeronautics and Space Administration
+  identifiers:
+  - identifier: 027ka1x80
+    scheme: ror
+  synonyms:
+  - Mary W. Jackson Headquarters Building
+  - NASA Headquarters
+  - NASA
+  - NASA HQ
+- id: 01y2jtd41
+  country: US
+  name: University of Wisconsin–Madison
+  title:
+    en: University of Wisconsin–Madison
+    es: Universidad de Wisconsin-Madison
+    fr: Université du Wisconsin à Madison
+  identifiers:
+  - identifier: 01y2jtd41
+    scheme: ror
+  synonyms:
+  - UW–Madison
+  - UW
+  - University of Wisconsin-Madison Institute for Research on Poverty
+- id: 02yh9se80
+  country: US
+  name: Russell Sage Foundation
+  title:
+    en: Russell Sage Foundation
+  identifiers:
+  - identifier: 02yh9se80
+    scheme: ror
+  synonyms:
+  - RSF
+  - The Russell Sage Foundation
+- id: 00p9h0053
+  country: US
+  name: Natural History Museum of Los Angeles County
+  title:
+    en: Natural History Museum of Los Angeles County
+  identifiers:
+  - identifier: 00p9h0053
+    scheme: ror
+  synonyms:
+  - NHM
+- id: 033b0v780
+  country: SE
+  name: Wenner-Gren Foundations
+  title:
+    en: Wenner-Gren Foundations
+  identifiers:
+  - identifier: 033b0v780
+    scheme: ror
+- id: 05r2ts661
+  country: GR
+  name: Fulbright Foundation
+  title:
+    en: Fulbright Foundation
+  identifiers:
+  - identifier: 05r2ts661
+    scheme: ror
+- id: 054awkm93
+  country: US
+  name: Achievement Rewards for College Scientists Foundation
+  title:
+    en: Achievement Rewards for College Scientists Foundation
+  identifiers:
+  - identifier: 054awkm93
+    scheme: ror
+  synonyms:
+  - ARCS
+- id: 00mh9zx15
+  country: US
+  name: Field Museum of Natural History
+  title:
+    en: Field Museum of Natural History
+    es: Museo Field de Historia Natural
+    fr: Muséum field
+  identifiers:
+  - identifier: 00mh9zx15
+    scheme: ror
+  synonyms:
+  - Chicago Natural History Museum
+  - Columbian Museum of Chicago
+  - Field Columbian Museum
+  - Field Museum
+- id: 04p4ws960
+  country: JP
+  name: Asian Development Bank Institute
+  title:
+    en: Asian Development Bank Institute
+    ja: アジア開発銀行研究所
+  identifiers:
+  - identifier: 04p4ws960
+    scheme: ror
+  synonyms:
+  - ADBI
+- id: 01nztb982
+  country: US
+  name: Abdul Latif Jameel Poverty Action Lab
+  title:
+    en: Abdul Latif Jameel Poverty Action Lab
+  identifiers:
+  - identifier: 01nztb982
+    scheme: ror
+  synonyms:
+  - Poverty Action Lab
+  - J-PAL
+- id: 01bj3aw27
+  country: US
+  name: United States Department of Energy
+  title:
+    en: United States Department of Energy
+    es: Departamento de Energía de los Estados Unidos
+    fr: Département de l'Énergie des États-unis
+  identifiers:
+  - identifier: 01bj3aw27
+    scheme: ror
+  synonyms:
+  - U.S. Department of Energy
+  - DOE
+- id: 04q48ey07
+  country: US
+  name: National Institute of General Medical Sciences
+  title:
+    en: National Institute of General Medical Sciences
+  identifiers:
+  - identifier: 04q48ey07
+    scheme: ror
+  synonyms:
+  - NIGMS
+- id: 039z13y21
+  country: LU
+  name: Fonds National de la Recherche
+  title:
+    en: Fonds National de la Recherche
+    fr: Fonds National de la Recherche
+  identifiers:
+  - identifier: 039z13y21
+    scheme: ror
+  synonyms:
+  - FNR
+  - Luxembourg National Research Fund
+- id: 05mg91w61
+  country: US
+  name: Office of Basic Energy Sciences
+  title:
+    en: Office of Basic Energy Sciences
+  identifiers:
+  - identifier: 05mg91w61
+    scheme: ror
+  synonyms:
+  - U.S. Department of Energy Office of Basic Energy Sciences
+  - U.S. Department of Energy Office of Science Office of Basic Energy Sciences
+  - United States Department of Energy Office of Basic Energy Sciences
+  - United States Department of Energy Office of Science Office of Basic Energy Sciences
+  - BES
+- id: 05gvnxz63
+  country: US
+  name: Argonne National Laboratory
+  title:
+    en: Argonne National Laboratory
+    es: Laboratorio Nacional Argonne
+  identifiers:
+  - identifier: 05gvnxz63
+    scheme: ror
+  synonyms:
+  - United States Department of Energy Office of Science Argonne National Laboratory
+  - ANL
+- id: 05c5x8342
+  country: KR
+  name: Kwanjeong Educational Foundation
+  title:
+    en: Kwanjeong Educational Foundation
+  identifiers:
+  - identifier: 05c5x8342
+    scheme: ror
+  synonyms:
+  - KEF
+- id: 00m3wrz48
+  country: US
+  name: United States Institute of Peace
+  title:
+    en: United States Institute of Peace
+    fr: Institut des États-unis pour la paix
+  identifiers:
+  - identifier: 00m3wrz48
+    scheme: ror
+  synonyms:
+  - USIP
+- id: 00vxeha61
+  country: US
+  name: Harry Frank Guggenheim Foundation
+  title:
+    en: Harry Frank Guggenheim Foundation
+  identifiers:
+  - identifier: 00vxeha61
+    scheme: ror
+  synonyms:
+  - HFG
+- id: 01ycgxf29
+  country: US
+  name: Hertz Foundation
+  title:
+    en: Hertz Foundation
+  identifiers:
+  - identifier: 01ycgxf29
+    scheme: ror
+  synonyms:
+  - Fannie and John Hertz Foundation
+- id: 035tnyy05
+  country: US
+  name: John Templeton Foundation
+  title:
+    en: John Templeton Foundation
+  identifiers:
+  - identifier: 035tnyy05
+    scheme: ror
+  synonyms:
+  - Templeton Foundation
+- id: 00j4k1h63
+  country: US
+  name: National Institute of Environmental Health Sciences
+  title:
+    en: National Institute of Environmental Health Sciences
+  identifiers:
+  - identifier: 00j4k1h63
+    scheme: ror
+  synonyms:
+  - NIEHS
+- id: 032214n64
+  country: US
+  name: National Archives and Records Administration
+  title:
+    en: National Archives and Records Administration
+    es: Archivos Nacionales y Administración de Documentos de los Estados Unidos
+  identifiers:
+  - identifier: 032214n64
+    scheme: ror
+  synonyms:
+  - NARA
+- id: 04jsh2530
+  country: US
+  name: Andrew W. Mellon Foundation
+  title:
+    en: Andrew W. Mellon Foundation
+  identifiers:
+  - identifier: 04jsh2530
+    scheme: ror
+- id: 04vmvtb21
+  country: US
+  name: Tulane University
+  title:
+    en: Tulane University
+  identifiers:
+  - identifier: 04vmvtb21
+    scheme: ror
+- id: 04xyxjd90
+  country: GB
+  name: Nottingham Trent University
+  title:
+    en: Nottingham Trent University
+  identifiers:
+  - identifier: 04xyxjd90
+    scheme: ror
+  synonyms:
+  - NTU
+  - Centre for the Study of Religion and Conflict, Nottingham Trent University
+- id: 001aqnf71
+  country: GB
+  name: UK Research and Innovation
+  title:
+    en: UK Research and Innovation
+  identifiers:
+  - identifier: 001aqnf71
+    scheme: ror
+  synonyms:
+  - United Kingdom Resarch and Innovation
+  - UKRI
+  - Arts and Humanities Research Council, UK Research and Innovation
+- id: 034mtvk83
+  country: US
+  name: University of New Orleans
+  title:
+    en: University of New Orleans
+    fr: Université de la nouvelle-orléans
+  identifiers:
+  - identifier: 034mtvk83
+    scheme: ror
+  synonyms:
+  - UNO
+  - Midlo Center for New Orleans Studies, University of New Orleans
+- id: 00za53h95
+  country: US
+  name: Johns Hopkins University
+  title:
+    en: Johns Hopkins University
+    es: Universidad Johns Hopkins
+  identifiers:
+  - identifier: 00za53h95
+    scheme: ror
+  synonyms:
+  - JHU
+  - Krieger School of Arts and Sciences, Johns Hopkins University
+- id: 00wxk2s46
+  country: US
+  name: Newberry Library
+  title:
+    en: Newberry Library
+  identifiers:
+  - identifier: 00wxk2s46
+    scheme: ror
+- id: 05dv1j335
+  country: US
+  name: The Huntington Library, Art Museum, and Botanical Gardens
+  title:
+    en: The Huntington Library, Art Museum, and Botanical Gardens
+    fr: Bibliothèque huntington
+  identifiers:
+  - identifier: 05dv1j335
+    scheme: ror
+  synonyms:
+  - Henry E. Huntington Library and Art Gallery
+  - Huntington Library Art Collections and Botanical Gardens
+  - The Huntington
+  - Huntington-USC Institute, Huntington Library
+- id: 0384j8v12
+  country: AU
+  name: The University of Sydney
+  title:
+    en: The University of Sydney
+  identifiers:
+  - identifier: 0384j8v12
+    scheme: ror
+  synonyms:
+  - Sydney University
+  - University of Sydney
+  - USYD
+  - Department of History, University of Sydney
+- id: 00mkhxb43
+  country: US
+  name: University of Notre Dame
+  title:
+    en: University of Notre Dame
+    fr: Université notre-dame
+  identifiers:
+  - identifier: 00mkhxb43
+    scheme: ror
+- id: 05krs5044
+  country: GB
+  name: University of Sheffield
+  title:
+    en: University of Sheffield
+    cy: Prifysgol Sheffield
+  identifiers:
+  - identifier: 05krs5044
+    scheme: ror
+  synonyms:
+  - Sheffield University
+  - Department of History, University of Sheffield
+- id: 049s0rh22
+  country: US
+  name: Dartmouth College
+  title:
+    en: Dartmouth College
+  identifiers:
+  - identifier: 049s0rh22
+    scheme: ror
+- id: 03taz7m60
+  country: US
+  name: University of Southern California
+  title:
+    en: University of Southern California
+    es: Universidad del Sur de California
+    fr: Université de Californie du Sud
+  identifiers:
+  - identifier: 03taz7m60
+    scheme: ror
+  synonyms:
+  - USC
+  - Early Modern Studies Institute, University of Southern California
+- id: 05sxqt066
+  country: US
+  name: McNeil Center for Early American Studies
+  title:
+    en: McNeil Center for Early American Studies
+  identifiers:
+  - identifier: 05sxqt066
+    scheme: ror
+  synonyms:
+  - McNeil Center
+  - Philadelphia Center for Early American Studies
+  - MCEAS
+  - MCEAS Consortium, McNeil Center for Early American Studies
+- id: 047s2c258
+  country: US
+  name: University of Maryland, College Park
+  title:
+    en: University of Maryland, College Park
+    es: Universidad de Maryland
+    fr: Université du Maryland
+  identifiers:
+  - identifier: 047s2c258
+    scheme: ror
+  synonyms:
+  - UMD
+  - Maryland Institute for Technology in the Humanities, University of Maryland, College
+    Park
+- id: 05vt9qd57
+  country: US
+  name: Rutgers, The State University of New Jersey
+  title:
+    en: Rutgers, The State University of New Jersey
+  identifiers:
+  - identifier: 05vt9qd57
+    scheme: ror
+  synonyms:
+  - Rutgers
+  - Rutgers University
+  - RU
+  - Humanities Action Lab, Rutgers, The State University of New Jersey
+- id: 01x8rc503
+  country: US
+  name: University of Louisiana at Lafayette
+  title:
+    en: University of Louisiana at Lafayette
+    fr: Université de louisiane à lafayette
+  identifiers:
+  - identifier: 01x8rc503
+    scheme: ror
+  synonyms:
+  - UL Lafayette
+  - Center for Louisiana Studies, University of Louisiana at Lafayette
+- id: 00vtgdb53
+  country: GB
+  name: University of Glasgow
+  title:
+    en: University of Glasgow
+    gd: Oilthigh Ghlaschu
+    cy: Prifysgol Glasgow
+  identifiers:
+  - identifier: 00vtgdb53
+    scheme: ror
+  synonyms:
+  - Glasgow University
+  - Beniba Centre for Slavery Studies, University of Glasgow
+- id: 0172v8z89
+  country: FR
+  name: Gouvernement de la République française
+  title:
+    en: Gouvernement de la République française
+    fr: Gouvernement de la République française
+  identifiers:
+  - identifier: 0172v8z89
+    scheme: ror
+  synonyms:
+  - Government of the French Republic
+  - Ministère de la Culture, Gouvernement de la République Française
+- id: 0314h5y94
+  country: AU
+  name: Australian Government
+  title:
+    en: Australian Government
+  identifiers:
+  - identifier: 0314h5y94
+    scheme: ror
+  synonyms:
+  - Government of Australia
+  - Government of the Commonwealth of Australia
+  - Australian Research Council, Australian Government

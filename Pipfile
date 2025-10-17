@@ -5,11 +5,11 @@ verify_ssl = true
 
 [dev-packages]
 check-manifest = ">=0.25"
+pre-commit = ">=4.2.0,<5.0.0"
 
 [packages]
 invenio-app-rdm = {extras = ["opensearch2"], version = "~=13.0.0"}
 chicago-invenio = {editable = true, path="./site"}
-
 uwsgi = ">=2.0"
 uwsgitop = ">=0.11"
 uwsgi-tools = ">=1.1.1"

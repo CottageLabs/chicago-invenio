@@ -83,6 +83,15 @@ APP_DEFAULT_SECURE_HEADERS = {
             # Multipart file uploads use a Web Worker running `hash-wasm` to compute content checksums
             # (e.g., MD5) of uploaded parts. This requires both 'blob:' and 'wasm-unsafe-eval' enabled in `script-src`.
         ],
+        "style-src": [
+            "'self'",
+            "https://uchicago-brand-fonts.s3.us-east-2.amazonaws.com",
+            "'unsafe-inline'"
+        ],
+        "font-src": [
+            "'self'",
+            "https://uchicago-brand-fonts.s3.us-east-2.amazonaws.com"
+        ]
     },
     'content_security_policy_report_only': False,
     'content_security_policy_report_uri': None,
@@ -126,9 +135,9 @@ I18N_LANGUAGES = [
 # See https://invenio-theme.readthedocs.io/en/latest/configuration.html
 
 # Name used in header and UI
-THEME_SITENAME = "Chicago Invenio"
+THEME_SITENAME = "UChicago Knowledge"
 # Frontpage title
-THEME_FRONTPAGE_TITLE = "Chicago Invenio"
+THEME_FRONTPAGE_TITLE = "UChicago Knowledge"
 # Header logo
 THEME_LOGO = 'images/invenio-rdm.svg'
 

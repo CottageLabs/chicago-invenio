@@ -68,3 +68,7 @@
 @iconColor: @black;
 
 @itemTextColor: @black;
+
+/* Fonts */
+@pageFont: "UChicagoSansSerif-Regular", Arial, Helvetica, sans-serif;
+@headerFont: @pageFont;

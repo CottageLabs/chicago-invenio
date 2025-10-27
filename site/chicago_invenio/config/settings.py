@@ -139,8 +139,10 @@ THEME_SITENAME = "UChicago Knowledge"
 # Frontpage title
 THEME_FRONTPAGE_TITLE = "UChicago Knowledge"
 # Header logo
-THEME_LOGO = 'images/invenio-rdm.svg'
+THEME_LOGO = 'images/logo-background.svg'
+THEME_LOGO_MOBILE = 'images/logo-background-mobile.svg'
 
+THEME_SHOW_FRONTPAGE_INTRO_SECTION = False
 
 # Invenio-App-RDM
 # ===============

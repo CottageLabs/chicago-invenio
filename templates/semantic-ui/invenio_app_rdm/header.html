@@ -12,14 +12,13 @@
     </div>
     {%- endif -%}
     {%- endblock user_impersonation %}
-    <div id="top-nav" class="ui menu borderless invenio-header-container"
-        style="background-color: maroon; border-radius: 0; margin-bottom: 0;">
+    <div id="navbar-top" class="ui menu borderless invenio-header-container">
         <div class="ui container">
             <nav id="invenio-nav" class="ui inverted menu borderless fluid">
-                <div class="ui fluid menu borderless" style="justify-content: flex-start;">
-                    <a href="https://uchicago.edu" target="_blank" style="gap: 1rem;" class="ui item">
+                <div class="ui fluid menu borderless">
+                    <a href="https://uchicago.edu" target="_blank" class="ui item">
                         <img src="{{ url_for('static', filename='images/Reverse University Logo_1Color_White_RGB.svg')}}" class="ui image"
-                            role="logo" alt-title="The University of Chicago" style="width: 16rem; height: auto" />
+                            role="logo" alt-title="The University of Chicago"/>
                     </a>
                 </div>
                 <div id="rdm-burger-toggle">
@@ -86,23 +85,12 @@
         </div>
 
     </div>
-    <div id="navbar-middle" class="ui menu borderless mobile-hidden" 
-        style="background-color: white; 
-        display: flex;
-        justify-content: center; 
-        align-items: center;
-        height: 10rem;
-        box-shadow: none; 
-        border-radius: 0; 
-        padding: 1em;">
-            <div class="content"
-            style="display: flex;
-            align-items: center;
-            gap: 1rem;">
+    <div id="navbar-middle" class="ui menu borderless mobile-hidden">
+            <div class="content">
                 {%- block navbar_header %}
                 {%- block brand %}
                 <div class="text">
-                        <h1 class="frontpage-title" style="font-size: 3rem" role="logo">
+                        <h1 class="frontpage-title" role="logo">
                             <a href="/">
                                 <span style="color: #A4343A">UChicago </span>
                                 <span style="color: #737373">Knowledge</span>
@@ -113,9 +101,8 @@
                 {%- endblock navbar_header %}
             </div>
     </div>
-    <div id="navbar-bottom"
-        style="border-top: solid 1px #e0e0e0; border-bottom: solid 1px #e0e0e0; background-color: #fafafa; margin-bottom: 3rem;">
-        <div class="ui container menu borderless p-0" style="border-radius: 0; box-shadow: none; background-color: #fafafa;">
+    <div id="navbar-bottom">
+        <div class="ui container menu borderless p-0">
             {%- block navbar_search %}
                 {%- include "invenio_app_rdm/searchbar.html" %}
             {%- endblock navbar_search %}

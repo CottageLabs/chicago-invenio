@@ -4,10 +4,9 @@
 
 @primaryColor: #800000;
 @secondaryColor: #D9D9D9;
+@primaryHighlightColor: #fafafa;
 @featuredListBackgroundColor: @secondaryColor;
 @primaryDarkenColor: @primaryColor;
-
-@primaryHighlightColor: #FAFAFA;
 
 // backwards compatibility
 @brandColor: @primaryColor;
@@ -42,11 +41,11 @@
 @embargoed-components-background-color: @lightGray;
 @embargoed-components-border-color: @mediumGray;
 
-@footerLightColor: #404040;
+@footerLightColor: @primaryHighlightColor;
 @footerDarkColor: #404040;
 @subFooterColor: @footerDarkColor;
-@footerTextLightColor: #ffffff;
-@footerTextDarkColor: #ffffff;
+@footerTextLightColor: @white;
+@footerTextDarkColor: @black;
 
 @errorTextColor: @red;
 @focusedFormBorderColor: @primaryColor;
@@ -70,5 +69,6 @@
 @itemTextColor: @black;
 
 /* Fonts */
-@pageFont: UChicagoSansSerif, Arial, Helvetica, sans-serif;
+@pageFont: UChicagoSansSerif;
 @headerFont: @pageFont;
+

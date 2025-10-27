@@ -1,9 +1,3 @@
-@import url("https://www.lib.uchicago.edu/web-resources/css/uchicagoSansSerif.css");
-
 #header-search-bar .ui.input, #header-search-bar .ui.input>input {
     height: 48px !important;
-}
-
-h1 {
-    font-family: UChicagoSansSerif;
 }

@@ -10,20 +10,20 @@
 #}
 {%- block footer_top %}
 
-  <div class="footer-top" style="background-color: #fafafa;">
+  <div class="footer-top">
     <div class="ui container app-rdm-footer">
       {%- block footer_top_left %}
         <div class="ui grid app-rdm-footer">
             <div class="rdm-footer five wide tablet two wide computer column">
-                <p><a href="https://www.lib.uchicago.edu/" target="_blank" style="gap: 1rem;" class="ui item">
+                <p><a href="https://www.lib.uchicago.edu/" target="_blank" class="ui item">
                     <img src="{{ url_for('static', filename='images/UC_library.png')}}" class="ui image"
                         role="logo" alt-title="UChicago Library"/></p>
                 </a>
             </div>
             <div class="rdm-footer five wide tablet two wide computer column">
-                <p><a href="/" style="color: black;">{{ _("Home") }}</a></p>
-                <p><a href="https://www.uchicago.edu/" style="color: black;">{{ _("University of Chicago") }}</a></p>
-                <p><a href="https://www.lib.uchicago.edu/" style="color: black;">{{ _("UChicago Library") }}</a></p>
+                <p><a href="/">{{ _("Home") }}</a></p>
+                <p><a href="https://www.uchicago.edu/">{{ _("University of Chicago") }}</a></p>
+                <p><a href="https://www.lib.uchicago.edu/">{{ _("UChicago Library") }}</a></p>
             </div>
 
         {%- endblock footer_top_left %}

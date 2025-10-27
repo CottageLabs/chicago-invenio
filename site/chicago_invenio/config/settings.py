@@ -233,6 +233,7 @@ OAISERVER_ADMIN_EMAILS = [
 
 SEARCH_INDEX_PREFIX = "chicago-invenio-"
 
+
 # Invenio-Administration
 # ----------------------
 

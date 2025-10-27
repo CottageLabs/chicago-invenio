@@ -1,5 +1,3 @@
-@import url("https://uchicago-brand-fonts.s3.us-east-2.amazonaws.com/UChicagoSansSerif.css");
-
 .outer-navbar {
     position: relative;
     height: 100%;
@@ -38,5 +36,11 @@
 .mobile-hidden {
     @media (max-width: @mobileBreakpoint) {
         display: none;
+    }
+}
+
+.frontpage-title {
+    a:hover {
+        text-decoration: none;
     }
 }

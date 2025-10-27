@@ -1,0 +1,34 @@
+{#
+
+  Copyright (C) 2019-2020 CERN.
+  Copyright (C) 2019-2020 Northwestern University.
+  Copyright (C) 2021 Graz University of Technology.
+  Copyright (C) 2024 KTH Royal Institute of Technology.
+
+  Invenio App RDM is free software; you can redistribute it and/or modify it
+  under the terms of the MIT License; see LICENSE file for more details.
+#}
+{%- block footer_top %}
+
+  <div class="footer-top" style="background-color: #fafafa;">
+    <div class="ui container app-rdm-footer">
+      {%- block footer_top_left %}
+        <div class="ui grid app-rdm-footer">
+            <div class="rdm-footer five wide tablet two wide computer column">
+                <p><a href="https://www.lib.uchicago.edu/" target="_blank" style="gap: 1rem;" class="ui item">
+                    <img src="{{ url_for('static', filename='images/UC_library.png')}}" class="ui image"
+                        role="logo" alt-title="UChicago Library"/></p>
+                </a>
+            </div>
+            <div class="rdm-footer five wide tablet two wide computer column">
+                <p><a href="/" style="color: black;">{{ _("Home") }}</a></p>
+                <p><a href="https://www.uchicago.edu/" style="color: black;">{{ _("University of Chicago") }}</a></p>
+                <p><a href="https://www.lib.uchicago.edu/" style="color: black;">{{ _("UChicago Library") }}</a></p>
+            </div>
+
+        {%- endblock footer_top_left %}
+      </div>
+    </div>
+
+  </div>
+{%- endblock footer_top %}

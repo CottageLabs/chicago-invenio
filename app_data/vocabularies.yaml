@@ -14,7 +14,9 @@ creatorsroles:
 contributorsroles:
   pid-type: cor
   data-file: vocabularies/roles.yaml
-
+descriptiontypes:
+  pid-type: dty
+  data-file: vocabularies/description_types.yaml
 # Minimal example vocabularies
 # can be used for quick testing, or a basis for building your own customized vocabularies.
 #names:

@@ -200,3 +200,9 @@
 - id: inventor
   title:
     en: Inventor
+- id: patent_applicant
+  title:
+    en: Patent applicant
+- id: patent_assignee
+  title:
+    en: Patent assignee

@@ -259,6 +259,7 @@ RDM_NAMESPACES = {
     **IMPRINT_NAMESPACE,
     **THESIS_NAMESPACE,
     **MEETING_NAMESPACE,
+    "chicago": "https://knowledge.uchicago.edu/"
 }
 
 RDM_CUSTOM_FIELDS = [

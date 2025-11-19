@@ -26,9 +26,7 @@ from invenio_app.factory import create_app
 from invenio_rdm_records.fixtures.tasks import get_authenticated_identity
 from invenio_rdm_records.proxies import current_rdm_records_service
 
-from site.chicago_invenio.scripts.import_utils import parse_personal_name, parse_corporate_name, \
-    parse_personal_name_from_text, extract_full_date, scrape_doi_publication_date, extract_ror_id_from_identifier, \
-    determine_resource_type
+# Functions moved back to avoid circular import
 
 # Configure logging
 logging.basicConfig(
@@ -166,6 +164,268 @@ LICENSE_MAPPINGS = {
     'cc by-nc-nd': 'cc-by-nc-nd-4.0',
     'cc0': 'cc0-1.0'
 }
+
+
+def parse_personal_name_from_text(name_text: str) -> Dict[str, Any]:
+    """Parse a personal name string into InvenioRDM format."""
+    if not name_text or not name_text.strip():
+        return None
+
+    name_text = name_text.strip()
+
+    # Parse "Last, First" format
+    if ',' in name_text:
+        parts = name_text.split(',', 1)
+        family_name = parts[0].strip()
+        given_name = parts[1].strip() if len(parts) > 1 else ""
+    else:
+        # Assume single name or "First Last" format
+        parts = name_text.split()
+        if len(parts) > 1:
+            given_name = " ".join(parts[:-1])
+            family_name = parts[-1]
+        elif len(parts) == 1:
+            # Single name - use as family name
+            family_name = parts[0]
+            given_name = ""
+        else:
+            # Fallback for empty or problematic names
+            family_name = name_text.strip() if name_text.strip() else "Unknown"
+            given_name = ""
+
+    # Ensure family_name is never empty after processing
+    if not family_name or not family_name.strip():
+        family_name = name_text.strip() if name_text.strip() else "Unknown"
+
+    person_data = {
+        "type": "personal",
+        "name": name_text
+    }
+
+    # Only add family_name and given_name if they're not empty
+    family_name_clean = family_name.strip() if family_name else ""
+    given_name_clean = given_name.strip() if given_name else ""
+
+    if family_name_clean:
+        person_data["family_name"] = family_name_clean
+    if given_name_clean:
+        person_data["given_name"] = given_name_clean
+
+    return {"person_or_org": person_data}
+
+
+def parse_personal_name(name_field) -> Dict[str, Any]:
+    """Parse MARC personal name field (100/700) into InvenioRDM format."""
+    subfield_a = name_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+    subfield_q = name_field.find('.//marc:subfield[@code="q"]', MARC_NS)
+    subfield_u = name_field.find('.//marc:subfield[@code="u"]', MARC_NS)
+
+    if subfield_a is None:
+        return None
+
+    name_text = subfield_a.text.strip()
+
+    # Add fuller form of name if present
+    if subfield_q is not None:
+        name_text = f"{name_text} {subfield_q.text.strip()}".strip()
+
+    # Use the shared parsing function
+    result = parse_personal_name_from_text(name_text)
+    if result is None:
+        return None
+
+    # Add affiliation if present
+    if subfield_u is not None:
+        result["affiliations"] = [{"name": subfield_u.text.strip()}]
+
+    return result
+
+
+def parse_corporate_name(name_field) -> Dict[str, Any]:
+    """Parse MARC corporate name field (110/710) into InvenioRDM format."""
+    subfield_a = name_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+
+    if subfield_a is None:
+        return None
+
+    return {
+        "person_or_org": {
+            "type": "organizational",
+            "name": subfield_a.text.strip()
+        }
+    }
+
+
+def extract_full_date(date_text: str) -> Optional[str]:
+    """Extract date in YYYY, YYYY-MM, or YYYY-MM-DD format from date string."""
+    if not date_text:
+        return None
+
+    # Clean up the date text
+    date_text = date_text.strip()
+
+    # Try to match various date formats
+    # YYYY-MM-DD format
+    match = re.search(r'(19|20)\d{2}-\d{2}-\d{2}', date_text)
+    if match:
+        return match.group()
+
+    # YYYY/MM/DD format
+    match = re.search(r'(19|20)\d{2}/\d{2}/\d{2}', date_text)
+    if match:
+        date_parts = match.group().split('/')
+        return f"{date_parts[0]}-{date_parts[1]}-{date_parts[2]}"
+
+    # YYYY-MM format
+    match = re.search(r'(19|20)\d{2}-\d{2}', date_text)
+    if match:
+        return match.group()
+
+    # YYYY/MM format
+    match = re.search(r'(19|20)\d{2}/\d{2}', date_text)
+    if match:
+        date_parts = match.group().split('/')
+        return f"{date_parts[0]}-{date_parts[1]}"
+
+    # Month YYYY format (e.g., "June 2020")
+    month_names = {
+        'january': '01', 'february': '02', 'march': '03', 'april': '04',
+        'may': '05', 'june': '06', 'july': '07', 'august': '08',
+        'september': '09', 'october': '10', 'november': '11', 'december': '12',
+        'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
+        'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
+        'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
+    }
+
+    for month_name, month_num in month_names.items():
+        pattern = rf'{month_name}\s+(19|20)\d{{2}}'
+        match = re.search(pattern, date_text.lower())
+        if match:
+            year = re.search(r'(19|20)\d{2}', match.group()).group()
+            return f"{year}-{month_num}"
+
+    # Just YYYY format (fallback)
+    year_match = re.search(r'(19|20)\d{2}', date_text)
+    if year_match:
+        return year_match.group()
+
+    logger.warning(f"Could not extract date from: '{date_text}'")
+    return None
+
+
+def scrape_doi_publication_date(doi: str) -> Optional[str]:
+    """Scrape publication date from DOI URL."""
+    try:
+        # Construct DOI URL
+        if doi.startswith('http'):
+            url = doi
+        elif doi.startswith('10.'):
+            url = f'https://doi.org/{doi}'
+        else:
+            return None
+
+        # Make request with timeout
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10, allow_redirects=True)
+        response.raise_for_status()
+
+        # Look for Physical Review publication date pattern
+        html = response.text
+
+        # Pattern: <strong>Published 13 May, 2016</strong>
+        pub_date_match = re.search(r'<strong>Published\s+(\d{1,2})\s+(\w+),?\s+(\d{4})</strong>', html, re.IGNORECASE)
+        if pub_date_match:
+            day, month_name, year = pub_date_match.groups()
+
+            # Convert month name to number
+            month_map = {
+                'january': 1, 'february': 2, 'march': 3, 'april': 4,
+                'may': 5, 'june': 6, 'july': 7, 'august': 8,
+                'september': 9, 'october': 10, 'november': 11, 'december': 12,
+                'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4,
+                'may': 5, 'jun': 6, 'jul': 7, 'aug': 8,
+                'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
+            }
+
+            month_num = month_map.get(month_name.lower())
+            if month_num:
+                # Return in YYYY-MM-DD format
+                return f"{year}-{month_num:02d}-{int(day):02d}"
+
+        return None
+
+    except requests.exceptions.RequestException as e:
+        logger.warning(f"Failed to fetch DOI {doi}: {e}")
+        return None
+    except Exception as e:
+        logger.warning(f"Error scraping DOI {doi}: {e}")
+        return None
+
+
+def determine_resource_type(record_elem) -> Dict[str, str]:
+    """Determine resource type from MARC record."""
+    # Check MARC 336 (Content Type) - primary source per CSV mapping
+    content_type_field = record_elem.find('.//marc:datafield[@tag="336"]', MARC_NS)
+    if content_type_field is not None:
+        content_type_a = content_type_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if content_type_a is not None:
+            content_type = content_type_a.text.strip().lower()
+            for key, value in RESOURCE_TYPE_MAPPINGS.items():
+                if key in content_type:
+                    return {'id': value}
+
+    # Fallback: Check MARC 983 (Local resource type)
+    local_type_field = record_elem.find('.//marc:datafield[@tag="983"]', MARC_NS)
+    if local_type_field is not None:
+        type_a = local_type_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if type_a is not None:
+            type_text = type_a.text.strip().lower()
+            for key, value in RESOURCE_TYPE_MAPPINGS.items():
+                if key in type_text:
+                    return {'id': value}
+
+    # Check MARC 502 (Dissertation Note)
+    dissertation_field = record_elem.find('.//marc:datafield[@tag="502"]', MARC_NS)
+    if dissertation_field is not None:
+        return {'id': 'publication-thesis'}
+
+    # Default to other
+    return {'id': 'other'}
+
+
+def extract_ror_id_from_identifier(identifier: str) -> Optional[str]:
+    """Extract ROR ID from various identifier formats using idutils."""
+    if not identifier:
+        logger.debug("extract_ror_id_from_identifier: empty identifier")
+        return None
+
+    identifier = identifier.strip()
+    logger.debug(f"extract_ror_id_from_identifier: processing '{identifier}'")
+
+    # Check if it's a ROR URL and extract the ID first
+    if idutils.is_url(identifier) and 'ror.org/' in identifier.lower():
+        logger.debug(f"extract_ror_id_from_identifier: ROR URL detected '{identifier}'")
+        # Extract the ROR ID from the URL
+        ror_match = re.search(r'ror\.org/([0-9a-z]+)', identifier.lower())
+        if ror_match:
+            extracted_id = ror_match.group(1)
+            logger.debug(f"extract_ror_id_from_identifier: extracted '{extracted_id}'")
+            # Validate the extracted ID
+            if idutils.is_ror(extracted_id):
+                logger.debug(f"extract_ror_id_from_identifier: valid ROR ID '{extracted_id}'")
+                return extracted_id
+            else:
+                logger.debug(f"extract_ror_id_from_identifier: invalid ROR ID '{extracted_id}'")
+
+    # Check if it's already a plain ROR ID (not a URL)
+    elif idutils.is_ror(identifier) and not idutils.is_url(identifier):
+        logger.debug(f"extract_ror_id_from_identifier: direct ROR ID '{identifier}'")
+        return identifier
+
+    logger.debug(f"extract_ror_id_from_identifier: no valid ROR ID found in '{identifier}'")
+    return None
 
 
 def parse_marc_record(record_elem) -> Dict[str, Any]:
@@ -1278,7 +1538,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
     if division_field is not None:
         division_a = division_field.find('.//marc:subfield[@code="a"]', MARC_NS)
         if division_a is not None:
-            custom_fields['division'] = division_a.text.strip()
+            custom_fields['chicago:division'] = division_a.text.strip()
 
     # Department information (MARC 691)
     '''department_field = record_elem.find('.//marc:datafield[@tag="691"]', MARC_NS)
@@ -1542,7 +1802,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
     record = {
         'pids': {},
         'metadata': metadata,
-        'files': {'enabled': True},  # Mark as metadata-only record (no files)
+        'files': {'enabled': False},  # Mark as metadata-only record (no files)
         'access': {
             'record': 'public',
             'files': 'public'
@@ -1710,7 +1970,7 @@ def process_records_batch(records_batch, owner_id: int) -> list:
 
             # Add test file to the draft
             error_record["error_stage"] = "add_files"
-            add_test_file_to_draft(draft, identity)
+            #add_test_file_to_draft(draft, identity)
 
             # Publish the record
             error_record["error_stage"] = "publish"
@@ -1745,7 +2005,7 @@ def process_records_batch(records_batch, owner_id: int) -> list:
 @click.argument("email")
 @click.argument("filepath")
 @click.option("--batch-size", default=100, help="Number of records to process in each batch")
-@click.option("--max-records", default=1000, type=int, help="Maximum number of records to process (for testing)")
+@click.option("--max-records", default=3000, type=int, help="Maximum number of records to process (for testing)")
 def xml_import_data(email: str, filepath: str, batch_size: int, max_records: Optional[int]):
     """Import MARCXML bibliographic data into Chicago Invenio.
 
@@ -1787,7 +2047,7 @@ def xml_import_data(email: str, filepath: str, batch_size: int, max_records: Opt
                 # Check max_records limit
                 if max_records and total_processed >= max_records:
                     logger.info(f"Reached maximum records limit: {max_records}")
-                    #break
+                    break
 
                 # Process the batch
                 batch_results = process_records_batch(batch, owner.id)

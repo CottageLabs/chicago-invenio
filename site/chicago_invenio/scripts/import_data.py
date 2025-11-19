@@ -116,6 +116,7 @@ LANGUAGE_MAPPINGS = {
     'fr': 'fra',  # French
     'fre': 'fra', # French (alternative 3-letter code)
     'de': 'deu',  # German
+    'ger': 'deu', # German (alternative 3-letter code)
     'it': 'ita',  # Italian
     'pt': 'por',  # Portuguese
     'ru': 'rus',  # Russian
@@ -1237,8 +1238,9 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
             if funder_name is not None:
                 funding_info['funder'] = {'name': funder_name.text.strip()}
 
-            # Funder identifier - use the validated ROR ID in proper format
+            # Funder identifier - use the validated ROR ID as vocabulary reference
             funding_info['funder'] = funding_info.get('funder', {})
+            # Use ROR ID directly as vocabulary reference (matching funders.yaml)
             funding_info['funder']['id'] = ror_id
             logger.debug(f"Setting funder ID to: '{ror_id}'")
 

@@ -12,6 +12,7 @@ To run the script, go to the repository root directory and use the following com
 import logging
 import sys
 import time
+import json
 from typing import Dict, Any, Optional, Generator
 import xml.etree.ElementTree as ET
 from itertools import islice
@@ -24,6 +25,10 @@ from flask import current_app
 from invenio_app.factory import create_app
 from invenio_rdm_records.fixtures.tasks import get_authenticated_identity
 from invenio_rdm_records.proxies import current_rdm_records_service
+
+from site.chicago_invenio.scripts.import_utils import parse_personal_name, parse_corporate_name, \
+    parse_personal_name_from_text, extract_full_date, scrape_doi_publication_date, extract_ror_id_from_identifier, \
+    determine_resource_type
 
 # Configure logging
 logging.basicConfig(
@@ -76,6 +81,9 @@ records_with_additional_but_no_main_description = 0
 # Track resource types for records missing main descriptions
 resource_types_missing_main_description = {}
 
+# Global error tracking
+errors_log = []
+
 # MARC namespace
 MARC_NS = {'marc': 'http://www.loc.gov/MARC21/slim'}
 
@@ -106,6 +114,7 @@ LANGUAGE_MAPPINGS = {
     'en': 'eng',  # English
     'es': 'spa',  # Spanish
     'fr': 'fra',  # French
+    'fre': 'fra', # French (alternative 3-letter code)
     'de': 'deu',  # German
     'it': 'ita',  # Italian
     'pt': 'por',  # Portuguese
@@ -158,308 +167,6 @@ LICENSE_MAPPINGS = {
 }
 
 
-def parse_personal_name_from_text(name_text: str) -> Dict[str, Any]:
-    """Parse a personal name string into InvenioRDM format."""
-    if not name_text or not name_text.strip():
-        return None
-
-    name_text = name_text.strip()
-
-    # Parse "Last, First" format
-    if ',' in name_text:
-        parts = name_text.split(',', 1)
-        family_name = parts[0].strip()
-        given_name = parts[1].strip() if len(parts) > 1 else ""
-    else:
-        # Assume single name or "First Last" format
-        parts = name_text.split()
-        if len(parts) > 1:
-            given_name = " ".join(parts[:-1])
-            family_name = parts[-1]
-        elif len(parts) == 1:
-            # Single name - use as family name
-            family_name = parts[0]
-            given_name = ""
-        else:
-            # Fallback for empty or problematic names
-            family_name = name_text.strip() if name_text.strip() else "Unknown"
-            given_name = ""
-
-    # Ensure family_name is never empty after processing
-    if not family_name or not family_name.strip():
-        family_name = name_text.strip() if name_text.strip() else "Unknown"
-
-    person_data = {
-        "type": "personal",
-        "name": name_text
-    }
-
-    # Only add family_name and given_name if they're not empty
-    family_name_clean = family_name.strip() if family_name else ""
-    given_name_clean = given_name.strip() if given_name else ""
-
-    if family_name_clean:
-        person_data["family_name"] = family_name_clean
-    if given_name_clean:
-        person_data["given_name"] = given_name_clean
-
-    return {"person_or_org": person_data}
-
-
-def parse_personal_name(name_field) -> Dict[str, Any]:
-    """Parse MARC personal name field (100/700) into InvenioRDM format."""
-    subfield_a = name_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-    subfield_q = name_field.find('.//marc:subfield[@code="q"]', MARC_NS)
-    subfield_u = name_field.find('.//marc:subfield[@code="u"]', MARC_NS)
-
-    if subfield_a is None:
-        return None
-
-    name_text = subfield_a.text.strip()
-
-    # Add fuller form of name if present
-    if subfield_q is not None:
-        name_text = f"{name_text} {subfield_q.text.strip()}".strip()
-
-    # Use the shared parsing function
-    result = parse_personal_name_from_text(name_text)
-    if result is None:
-        return None
-
-    # Add affiliation if present
-    if subfield_u is not None:
-        result["affiliations"] = [{"name": subfield_u.text.strip()}]
-
-    return result
-
-
-def parse_corporate_name(name_field) -> Dict[str, Any]:
-    """Parse MARC corporate name field (110/710) into InvenioRDM format."""
-    subfield_a = name_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-
-    if subfield_a is None:
-        return None
-
-    return {
-        "person_or_org": {
-            "type": "organizational",
-            "name": subfield_a.text.strip()
-        }
-    }
-
-
-def extract_full_date(date_text: str) -> Optional[str]:
-    """Extract date in YYYY, YYYY-MM, or YYYY-MM-DD format from date string."""
-    if not date_text:
-        return None
-
-    # Clean up the date text
-    date_text = date_text.strip()
-
-    # Try to match various date formats
-    # YYYY-MM-DD format
-    match = re.search(r'(19|20)\d{2}-\d{2}-\d{2}', date_text)
-    if match:
-        return match.group()
-
-    # YYYY/MM/DD format
-    match = re.search(r'(19|20)\d{2}/\d{2}/\d{2}', date_text)
-    if match:
-        date_parts = match.group().split('/')
-        return f"{date_parts[0]}-{date_parts[1]}-{date_parts[2]}"
-
-    # YYYY-MM format
-    match = re.search(r'(19|20)\d{2}-\d{2}', date_text)
-    if match:
-        return match.group()
-
-    # YYYY/MM format
-    match = re.search(r'(19|20)\d{2}/\d{2}', date_text)
-    if match:
-        date_parts = match.group().split('/')
-        return f"{date_parts[0]}-{date_parts[1]}"
-
-    # Month YYYY format (e.g., "June 2020")
-    month_names = {
-        'january': '01', 'february': '02', 'march': '03', 'april': '04',
-        'may': '05', 'june': '06', 'july': '07', 'august': '08',
-        'september': '09', 'october': '10', 'november': '11', 'december': '12',
-        'jan': '01', 'feb': '02', 'mar': '03', 'apr': '04',
-        'may': '05', 'jun': '06', 'jul': '07', 'aug': '08',
-        'sep': '09', 'oct': '10', 'nov': '11', 'dec': '12'
-    }
-
-    for month_name, month_num in month_names.items():
-        pattern = rf'{month_name}\s+(19|20)\d{{2}}'
-        match = re.search(pattern, date_text.lower())
-        if match:
-            year = re.search(r'(19|20)\d{2}', match.group()).group()
-            return f"{year}-{month_num}"
-
-    # Just YYYY format (fallback)
-    year_match = re.search(r'(19|20)\d{2}', date_text)
-    if year_match:
-        return year_match.group()
-
-    logger.warning(f"Could not extract date from: '{date_text}'")
-    return None
-
-
-def scrape_doi_publication_date(doi: str) -> Optional[str]:
-    """Scrape publication date from DOI URL.
-
-    Args:
-        doi: DOI identifier
-
-    Returns:
-        Publication date in YYYY-MM-DD format, or None if not found
-    """
-    try:
-        # Construct DOI URL
-        if doi.startswith('http'):
-            url = doi
-        elif doi.startswith('10.'):
-            url = f'https://doi.org/{doi}'
-        else:
-            return None
-
-        # Make request with timeout
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-        response = requests.get(url, headers=headers, timeout=10, allow_redirects=True)
-        response.raise_for_status()
-
-        # Look for Physical Review publication date pattern
-        html = response.text
-
-        # Pattern: <strong>Published 13 May, 2016</strong>
-        pub_date_match = re.search(r'<strong>Published\s+(\d{1,2})\s+(\w+),?\s+(\d{4})</strong>', html, re.IGNORECASE)
-        if pub_date_match:
-            day, month_name, year = pub_date_match.groups()
-
-            # Convert month name to number
-            month_map = {
-                'january': 1, 'february': 2, 'march': 3, 'april': 4,
-                'may': 5, 'june': 6, 'july': 7, 'august': 8,
-                'september': 9, 'october': 10, 'november': 11, 'december': 12,
-                'jan': 1, 'feb': 2, 'mar': 3, 'apr': 4,
-                'may': 5, 'jun': 6, 'jul': 7, 'aug': 8,
-                'sep': 9, 'oct': 10, 'nov': 11, 'dec': 12
-            }
-
-            month_num = month_map.get(month_name.lower())
-            if month_num:
-                # Return in YYYY-MM-DD format
-                return f"{year}-{month_num:02d}-{int(day):02d}"
-
-        # Alternative pattern: look for other date formats in Physical Review pages
-        # You can add more patterns here as needed
-
-        return None
-
-    except requests.exceptions.RequestException as e:
-        logger.warning(f"Failed to fetch DOI {doi}: {e}")
-        return None
-    except Exception as e:
-        logger.warning(f"Error scraping DOI {doi}: {e}")
-        return None
-
-
-def determine_resource_type(record_elem) -> Dict[str, str]:
-    """Determine resource type from MARC record."""
-    # Check MARC 983 (Local resource type - highest priority for this collection)
-    local_type_field = record_elem.find('.//marc:datafield[@tag="983"]', MARC_NS)
-    if local_type_field is not None:
-        type_a = local_type_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-        if type_a is not None:
-            type_text = type_a.text.strip().lower()
-            for key, value in RESOURCE_TYPE_MAPPINGS.items():
-                if key in type_text:
-                    return {'id': value}
-
-    ''''# Check MARC 037 (Submission form ID - maps to resource type)
-    submission_form = record_elem.find('.//marc:datafield[@tag="037"]', MARC_NS)
-    if submission_form is not None:
-        form_a = submission_form.find('.//marc:subfield[@code="a"]', MARC_NS)
-        form_b = submission_form.find('.//marc:subfield[@code="b"]', MARC_NS)
-
-        for subfield in [form_a, form_b]:
-            if subfield is not None:
-                form_text = subfield.text.strip().lower()
-                for key, value in RESOURCE_TYPE_MAPPINGS.items():
-                    if key in form_text:
-                        return {'id': value}'''
-
-    # Check MARC 336 (Content Type)
-    content_type_field = record_elem.find('.//marc:datafield[@tag="336"]', MARC_NS)
-    if content_type_field is not None:
-        content_type_a = content_type_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-        if content_type_a is not None:
-            content_type = content_type_a.text.strip().lower()
-            for key, value in RESOURCE_TYPE_MAPPINGS.items():
-                if key in content_type:
-                    return {'id': value}
-
-    '''# Check MARC 502 (Dissertation Note)
-    dissertation_field = record_elem.find('.//marc:datafield[@tag="502"]', MARC_NS)
-    if dissertation_field is not None:
-        return {'id': 'publication-thesis'}
-
-    # Check MARC 655 (Genre/Form)
-    genre_fields = record_elem.findall('.//marc:datafield[@tag="655"]', MARC_NS)
-    for genre_field in genre_fields:
-        genre_a = genre_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-        if genre_a is not None:
-            genre_text = genre_a.text.strip().lower()
-            for key, value in RESOURCE_TYPE_MAPPINGS.items():
-                if key in genre_text:
-                    return {'id': value}'''
-
-    # Default to article
-    return {'id': 'other'}
-
-
-def extract_ror_id_from_identifier(identifier: str) -> Optional[str]:
-    """Extract ROR ID from various identifier formats using idutils.
-
-    Args:
-        identifier: The identifier string to check
-
-    Returns:
-        ROR ID if valid, None otherwise
-    """
-    if not identifier:
-        logger.debug("extract_ror_id_from_identifier: empty identifier")
-        return None
-
-    identifier = identifier.strip()
-    logger.debug(f"extract_ror_id_from_identifier: processing '{identifier}'")
-
-    # Check if it's a ROR URL and extract the ID first
-    if idutils.is_url(identifier) and 'ror.org/' in identifier.lower():
-        logger.debug(f"extract_ror_id_from_identifier: ROR URL detected '{identifier}'")
-        # Extract the ROR ID from the URL
-        ror_match = re.search(r'ror\.org/([0-9a-z]+)', identifier.lower())
-        if ror_match:
-            extracted_id = ror_match.group(1)
-            logger.debug(f"extract_ror_id_from_identifier: extracted '{extracted_id}'")
-            # Validate the extracted ID
-            if idutils.is_ror(extracted_id):
-                logger.debug(f"extract_ror_id_from_identifier: valid ROR ID '{extracted_id}'")
-                return extracted_id
-            else:
-                logger.debug(f"extract_ror_id_from_identifier: invalid ROR ID '{extracted_id}'")
-
-    # Check if it's already a plain ROR ID (not a URL)
-    elif idutils.is_ror(identifier) and not idutils.is_url(identifier):
-        logger.debug(f"extract_ror_id_from_identifier: direct ROR ID '{identifier}'")
-        return identifier
-
-    logger.debug(f"extract_ror_id_from_identifier: no valid ROR ID found in '{identifier}'")
-    return None
-
-
 def parse_marc_record(record_elem) -> Dict[str, Any]:
     """Convert MARCXML record to InvenioRDM format.
 
@@ -470,6 +177,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         Dictionary with InvenioRDM record data
     """
     metadata = {}
+    custom_fields = {}
 
     # ==================== RESOURCE TYPE ====================
 
@@ -523,8 +231,35 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         if contributor_data:
             contributors.append(contributor_data)
 
+    # Extract inventors (MARC 701)
+    inventor_fields = record_elem.findall('.//marc:datafield[@tag="701"]', MARC_NS)
+    for inventor_field in inventor_fields:
+        if inventor_field.get('ind1') == '1':  # Personal name
+            inventor_data = parse_personal_name(inventor_field)
+            if inventor_data:
+                inventor_data['role'] = {'id': 'inventor'}
+                contributors.append(inventor_data)
+
+    # Extract patent applicant (MARC 712)
+    applicant_fields = record_elem.findall('.//marc:datafield[@tag="712"]', MARC_NS)
+    for applicant_field in applicant_fields:
+        if applicant_field.get('ind1') == '1':  # Personal/organizational name
+            applicant_data = parse_corporate_name(applicant_field)
+            if applicant_data:
+                applicant_data['role'] = {'id': 'patent_applicant'}
+                contributors.append(applicant_data)
+
+    # Extract patent assignee (MARC 713)
+    assignee_fields = record_elem.findall('.//marc:datafield[@tag="713"]', MARC_NS)
+    for assignee_field in assignee_fields:
+        if assignee_field.get('ind1') == '1':  # Personal/organizational name
+            assignee_data = parse_corporate_name(assignee_field)
+            if assignee_data:
+                assignee_data['role'] = {'id': 'patent_assignee'}
+                contributors.append(assignee_data)
+
     # Extract additional contributors from local/variant fields (MARC 701-713)
-    for tag in ['701', '702', '703', '711', '712', '713']:
+    for tag in ['701', '702', '703', '712', '713']:
         variant_fields = record_elem.findall(f'.//marc:datafield[@tag="{tag}"]', MARC_NS)
         for field in variant_fields:
             if tag in ['701', '702', '703']:  # Personal name variants
@@ -548,12 +283,14 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
             name_text = contrib_name.text.strip()
 
             # Check for role-specific handling
-            role = 'contributor'  # default
+            role = 'other'  # default
             if contrib_role is not None:
                 role_text = contrib_role.text.strip().lower()
                 if role_text in CONTRIBUTOR_ROLE_MAPPINGS:
                     role = CONTRIBUTOR_ROLE_MAPPINGS[role_text]
-                elif role_text in ['advisor', 'supervisor']:
+                elif role_text in ['advisor']:
+                    role = 'advisor'
+                elif role_text in ['supervisor']:
                     role = 'supervisor'
                 elif role_text == 'sponsor':
                     role = 'sponsor'
@@ -561,9 +298,11 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
             # Check for special roles based on indicators
             if contrib_field.get('ind1') == '1':
                 if contrib_field.get('ind2') == '2':
-                    role = 'supervisor'  # Advisor
+                    role = 'advisor'  # Advisor
                 elif contrib_field.get('ind2') == '4':
-                    role = 'other'  # Committee member
+                    role = 'committeemember'  # Committee member
+                elif contrib_field.get('ind2') == '5':
+                    role = 'interviewee'  # Interviewee
 
             # Use parse_personal_name for consistent name handling
             if any(word in name_text.lower() for word in ['university', 'institute', 'foundation', 'center']):
@@ -636,7 +375,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         contributors = []
         # Check if any contributors came from 701-713 fields
         has_701_713 = any(record_elem.find(f'.//marc:datafield[@tag="{tag}"]', MARC_NS) is not None
-                          for tag in ['701', '702', '703', '711', '712', '713'])
+                          for tag in ['701', '702', '703', '712', '713'])
         if has_701_713:
             creator_sources.append("701-713 (promoted)")
         else:
@@ -691,6 +430,45 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
     else:
         metadata['title'] = "Untitled"
 
+    # ==================== ALTERNATIVE TITLES ====================
+    
+    additional_titles = []
+    
+    # Variant Titles (MARC 246)
+    variant_title_fields = record_elem.findall('.//marc:datafield[@tag="246"]', MARC_NS)
+    for variant_field in variant_title_fields:
+        variant_title_a = variant_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        variant_lang_g = variant_field.find('.//marc:subfield[@code="g"]', MARC_NS)
+        
+        if variant_title_a is not None:
+            title_entry = {
+                "title": variant_title_a.text.strip(),
+                "type": {
+                    "id": "alternative-title",
+                    "title": {"en": "Alternative Title"}
+                }
+            }
+            
+            # Add language if present
+            if variant_lang_g is not None:
+                lang_code = variant_lang_g.text.strip().lower()
+                # Convert 2-letter to 3-letter codes if needed
+                if len(lang_code) == 2 and lang_code in LANGUAGE_MAPPINGS:
+                    lang_code = LANGUAGE_MAPPINGS[lang_code]
+                elif len(lang_code) == 3:
+                    pass  # Already 3-letter
+                else:
+                    logger.warning(f"Unknown language code in 246$g: {lang_code}")
+                    lang_code = None
+                    
+                if lang_code:
+                    title_entry["lang"] = {"id": lang_code}
+            
+            additional_titles.append(title_entry)
+    
+    if additional_titles:
+        metadata['additional_titles'] = additional_titles
+
     # ==================== VERSION ====================
 
     version_field = record_elem.find('.//marc:datafield[@tag="251"]', MARC_NS)
@@ -718,6 +496,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         subfield_d = id_field.find('.//marc:subfield[@code="d"]', MARC_NS)
         subfield_2 = id_field.find('.//marc:subfield[@code="2"]', MARC_NS)
 
+        # TODO 024-7-2 should be parent doi?
         # Handle DOI identifiers (024$7$2="doi")
         if (id_field.get('ind1') == '7' and subfield_2 is not None and
                 subfield_2.text.strip().lower() == 'doi' and subfield_a is not None):
@@ -731,31 +510,45 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
             else:
                 logger.error(f"Invalid DOI found: {doi_value}")
 
-        # Handle other identifiers in $a and $d
-        for subfield in [subfield_a, subfield_d]:
-            if subfield is not None:
-                id_value = subfield.text.strip()
-                if id_value and not any(existing['identifier'] == id_value for existing in identifiers):
-                    # Try to determine scheme from content
-                    if idutils.is_doi(id_value):
-                        identifiers.append({
-                            'identifier': id_value,
-                            'scheme': 'doi'
-                        })
-                    elif 'US ' in id_value and (' A' in id_value or ' B' in id_value):
-                        # Patent number pattern
-                        identifiers.append({
-                            'identifier': id_value,
-                            'scheme': 'other'
-                        })
-                    else:
-                        identifiers.append({
-                            'identifier': id_value,
-                            'scheme': 'other'
-                        })
+        # Handle patent numbers (MARC 024$a)
+        elif subfield_a is not None:
+            id_value = subfield_a.text.strip()
+            if id_value and not any(existing['identifier'] == id_value for existing in identifiers):
+                # Check for patent number patterns
+                if 'US ' in id_value and (' A' in id_value or ' B' in id_value):
+                    identifiers.append({
+                        'identifier': id_value,
+                        'scheme': 'patent'
+                    })
+                elif idutils.is_doi(id_value):
+                    identifiers.append({
+                        'identifier': id_value,
+                        'scheme': 'doi'
+                    })
+                else:
+                    identifiers.append({
+                        'identifier': id_value,
+                        'scheme': 'other'
+                    })
+
+        # Handle patent application numbers (MARC 024$d)
+        if subfield_d is not None:
+            id_value = subfield_d.text.strip()
+            if id_value and not any(existing['identifier'] == id_value for existing in identifiers):
+                # Patent application numbers
+                if 'US ' in id_value and (' A' in id_value or ' B' in id_value):
+                    identifiers.append({
+                        'identifier': id_value,
+                        'scheme': 'patent-application'
+                    })
+                else:
+                    identifiers.append({
+                        'identifier': id_value,
+                        'scheme': 'other'
+                    })
 
     # ISBN (MARC 020)
-    isbn_fields = record_elem.findall('.//marc:datafield[@tag="020"]', MARC_NS)
+    '''isbn_fields = record_elem.findall('.//marc:datafield[@tag="020"]', MARC_NS)
     for isbn_field in isbn_fields:
         isbn_a = isbn_field.find('.//marc:subfield[@code="a"]', MARC_NS)
         if isbn_a is not None:
@@ -766,10 +559,10 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                 identifiers.append({
                     'identifier': isbn,
                     'scheme': 'isbn'
-                })
+                })'''
 
     # ISSN (MARC 022)
-    issn_fields = record_elem.findall('.//marc:datafield[@tag="022"]', MARC_NS)
+    '''issn_fields = record_elem.findall('.//marc:datafield[@tag="022"]', MARC_NS)
     for issn_field in issn_fields:
         issn_a = issn_field.find('.//marc:subfield[@code="a"]', MARC_NS)
         if issn_a is not None:
@@ -781,7 +574,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                     'scheme': 'issn'
                 })
             else:
-                logger.error(f"Invalid ISSN found: {issn_value}")
+               logger.error(f"Invalid ISSN found: {issn_value}")'''
 
     # Electronic location/URLs (MARC 856)
     url_fields = record_elem.findall('.//marc:datafield[@tag="856"]', MARC_NS)
@@ -830,7 +623,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
     pub_field_264 = record_elem.find('.//marc:datafield[@tag="264"]', MARC_NS)  # Preferred
 
     # Try 264 first
-    if pub_field_264 is not None:
+    '''if pub_field_264 is not None:
         # Publisher name
         pub_b = pub_field_264.find('.//marc:subfield[@code="b"]', MARC_NS)
         if pub_b is not None:
@@ -842,48 +635,81 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
             date = extract_full_date(pub_c.text.strip())
             if date:
                 metadata['publication_date'] = date
-                date_source = '264$c'
+                date_source = '264$c'''
 
-    # If no 264, try all 260 fields
-    if 'publication_date' not in metadata:
+
+    pub_fields_260 = record_elem.findall('.//marc:datafield[@tag="260"]', MARC_NS)
+    for pub_field_260 in pub_fields_260:
+        # Publisher name (from first field that has it)
+        if 'publisher' not in metadata:
+            pub_b = pub_field_260.find('.//marc:subfield[@code="b"]', MARC_NS)
+            if pub_b is not None:
+                metadata['publisher'] = pub_b.text.strip()
+
+        # Publication date - prioritize $c over other subfields
+        '''pub_c = pub_field_260.find('.//marc:subfield[@code="c"]', MARC_NS)
+        if pub_c is not None:
+            date = extract_full_date(pub_c.text.strip())
+            if date:
+                metadata['publication_date'] = date
+                date_source = '260$c'
+                break  # Stop after finding first valid $c date'''
+
+    # ==================== DATES (ADDITIONAL) ====================
+    
+    dates = []
+    
+    # Patent filing date (MARC 260$g) - only for patents
+    resource_type_id = resource_type.get('id', '')
+    if resource_type_id == 'publication-patent':
         pub_fields_260 = record_elem.findall('.//marc:datafield[@tag="260"]', MARC_NS)
         for pub_field_260 in pub_fields_260:
-            # Publisher name (from first field that has it)
-            if 'publisher' not in metadata:
-                pub_b = pub_field_260.find('.//marc:subfield[@code="b"]', MARC_NS)
-                if pub_b is not None:
-                    metadata['publisher'] = pub_b.text.strip()
-
-            # Publication date - prioritize $c over other subfields
-            pub_c = pub_field_260.find('.//marc:subfield[@code="c"]', MARC_NS)
-            if pub_c is not None:
-                date = extract_full_date(pub_c.text.strip())
-                if date:
-                    metadata['publication_date'] = date
-                    date_source = '260$c'
-                    break  # Stop after finding first valid $c date
-
-        # Try manufacture date (260$g) if no publication date found
-        if 'publication_date' not in metadata:
-            for pub_field_260 in pub_fields_260:
-                pub_g = pub_field_260.find('.//marc:subfield[@code="g"]', MARC_NS)
-                if pub_g is not None:
-                    date = extract_full_date(pub_g.text.strip())
-                    if date:
-                        metadata['publication_date'] = date
-                        date_source = '260$g (manufacture)'
-                        break
+            pub_g = pub_field_260.find('.//marc:subfield[@code="g"]', MARC_NS)
+            if pub_g is not None:
+                filing_date = extract_full_date(pub_g.text.strip())
+                if filing_date:
+                    dates.append({
+                        'date': filing_date,
+                        'type': {
+                            'id': 'patent-filed',
+                            'title': {'en': 'Patent Filed'}
+                        }
+                    })
+                    break
+    
+    # Relevant dates (MARC 518)
+    relevant_date_fields = record_elem.findall('.//marc:datafield[@tag="518"]', MARC_NS)
+    for date_field in relevant_date_fields:
+        date_d = date_field.find('.//marc:subfield[@code="d"]', MARC_NS)
+        date_type_o = date_field.find('.//marc:subfield[@code="o"]', MARC_NS)
+        
+        if date_d is not None:
+            date_value = extract_full_date(date_d.text.strip())
+            if date_value:
+                date_entry = {'date': date_value}
+                
+                # Add type if present
+                if date_type_o is not None:
+                    type_text = date_type_o.text.strip()
+                    date_entry['type'] = {
+                        'id': type_text.lower(),
+                        'title': {'en': type_text}
+                    }
+                
+                dates.append(date_entry)
+    
+    if dates:
+        metadata['dates'] = dates
 
     # Additional date information (MARC 269)
-    if 'publication_date' not in metadata:
-        date_269 = record_elem.find('.//marc:datafield[@tag="269"]', MARC_NS)
-        if date_269 is not None:
-            date_a = date_269.find('.//marc:subfield[@code="a"]', MARC_NS)
-            if date_a is not None:
-                date = extract_full_date(date_a.text.strip())
-                if date:
-                    metadata['publication_date'] = date
-                    date_source = '269$a'
+    date_269 = record_elem.find('.//marc:datafield[@tag="269"]', MARC_NS)
+    if date_269 is not None:
+        date_a = date_269.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if date_a is not None:
+            date = extract_full_date(date_a.text.strip())
+            if date:
+                metadata['publication_date'] = date
+                date_source = '269$a'
 
     # Additional fallback date sources
     if 'publication_date' not in metadata:
@@ -960,8 +786,8 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         if lang_a is not None:
             lang_code = lang_a.text.strip().lower()
             if lang_code and len(lang_code) >= 2:
-                # Convert 2-digit codes to 3-digit codes
-                if len(lang_code) == 2 and lang_code in LANGUAGE_MAPPINGS:
+                # Check mappings first (handles both 2-digit and alternate 3-digit codes)
+                if lang_code in LANGUAGE_MAPPINGS:
                     lang_code = LANGUAGE_MAPPINGS[lang_code]
                 elif len(lang_code) == 3:
                     # Already 3-digit, use as-is
@@ -993,31 +819,80 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         if subfield_a is not None:
             subjects.append({'subject': subfield_a.text.strip()})
 
-    # Local subject headings (MARC 690-699)
-    for tag in ['690', '691', '692', '693', '694', '695', '696', '697', '698', '699']:
-        local_subject_fields = record_elem.findall(f'.//marc:datafield[@tag="{tag}"]', MARC_NS)
-        for subject_field in local_subject_fields:
-            subfield_a = subject_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-            if subfield_a is not None:
-                subjects.append({'subject': subfield_a.text.strip()})
+    # LC subject headings (MARC 691)
+    all_691_fields = record_elem.findall(f'.//marc:datafield[@tag="691"]', MARC_NS)
+    for lc_field in all_691_fields:
+        subfield_1 = lc_field.find('.//marc:subfield[@code="1"]', MARC_NS)
+        subfield_a = lc_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if subfield_1 is not None:
+            subjects.append({'subject': subfield_a.text.strip()})
+        else:
+            custom_fields['chicago:department'] = subfield_a.text.strip()
 
     if subjects:
         metadata['subjects'] = subjects
 
+    # ==================== DIVISON/DEPT ====================
+
+    # Subject headings (MARC 650)
+    subject_690_field = record_elem.findall('.//marc:datafield[@tag="690"]', MARC_NS)
+    #subject_691_field = record_elem.findall('.//marc:datafield[@tag="691"]', MARC_NS)
+
     # ==================== DESCRIPTION/ABSTRACT ====================
 
-    desc_field = record_elem.find('.//marc:datafield[@tag="520"]', MARC_NS)
-    if desc_field is not None:
+    # Handle main description/abstract (MARC 520$a)
+    desc_fields_520 = record_elem.findall('.//marc:datafield[@tag="520"]', MARC_NS)
+    main_description_set = False
+    
+    for desc_field in desc_fields_520:
         desc_a = desc_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        desc_type_7 = desc_field.find('.//marc:subfield[@code="7"]', MARC_NS)
+        
         if desc_a is not None:
             desc_text = desc_a.text.strip()
             # Ignore "No abstract" values
             if desc_text.lower() != "no abstract":
+                # Check if this should be main description or additional
+                if not main_description_set and (desc_type_7 is None or 
+                   desc_type_7.text.strip().lower() in ['abstract', '']):
+                    metadata['description'] = desc_text
+                    main_description_set = True
+                else:
+                    # Add to additional descriptions with type
+                    if 'additional_descriptions' not in locals():
+                        additional_descriptions = []
+                    
+                    desc_type = "Abstract"
+                    if desc_type_7 is not None:
+                        desc_type = desc_type_7.text.strip()
+                    
+                    additional_descriptions.append({
+                        'description': desc_text,
+                        'type': {'id': desc_type.lower(), 'title': {'en': desc_type}}
+                    })
+
+    # Handle MARC 590 (Local Note) - should be description if no main description
+    desc_590_fields = record_elem.findall('.//marc:datafield[@tag="590"]', MARC_NS)
+    for desc_field in desc_590_fields:
+        desc_a = desc_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if desc_a is not None:
+            desc_text = desc_a.text.strip()
+            if not main_description_set:
                 metadata['description'] = desc_text
+                main_description_set = True
+            else:
+                if 'additional_descriptions' not in locals():
+                    additional_descriptions = []
+                additional_descriptions.append({
+                    'description': desc_text,
+                    'type': {'id': 'abstract', 'title': {'en': 'Abstract'}}
+                })
 
     # ==================== ADDITIONAL DESCRIPTIONS ====================
 
-    additional_descriptions = []
+    # Initialize if not already done
+    if 'additional_descriptions' not in locals():
+        additional_descriptions = []
     record_additional_description_sources = []  # Track sources for this record
 
     # Alternative descriptions from MARC 520$b (alternative language)
@@ -1031,111 +906,95 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
             })
             record_additional_description_sources.append('520$b')
 
-    # General notes (MARC 500)
-    general_note_fields = record_elem.findall('.//marc:datafield[@tag="500"]', MARC_NS)
-    for note_field in general_note_fields:
-        note_a = note_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-        if note_a is not None:
-            additional_descriptions.append({
-                'description': note_a.text.strip(),
-                'type': {'id': 'other'}
-            })
-            record_additional_description_sources.append('500')
-
-    # Local notes (MARC 590)
-    local_note_fields = record_elem.findall('.//marc:datafield[@tag="590"]', MARC_NS)
-    for note_field in local_note_fields:
-        note_a = note_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-        if note_a is not None:
-            additional_descriptions.append({
-                'description': note_a.text.strip(),
-                'type': {'id': 'other'}
-            })
-            record_additional_description_sources.append('590')
-
-    # Additional local notes (MARC 591) - often acknowledgements
-    acknowledgement_fields = record_elem.findall('.//marc:datafield[@tag="591"]', MARC_NS)
-    for note_field in acknowledgement_fields:
-        note_a = note_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-        if note_a is not None:
-            additional_descriptions.append({
-                'description': note_a.text.strip(),
-                'type': {'id': 'other', 'title': {'en': 'Acknowledgements'}}
-            })
-            record_additional_description_sources.append('591')
+    # General notes (MARC 500) - skip as per CSV mapping
+    # general_note_fields = record_elem.findall('.//marc:datafield[@tag="500"]', MARC_NS)
 
     # Administrative notes (MARC 592) - internal use only, skip
-    # Notes (MARC 593)
+
+    # Notes (MARC 593) - using custom description type
     note_593_fields = record_elem.findall('.//marc:datafield[@tag="593"]', MARC_NS)
     for note_field in note_593_fields:
         note_a = note_field.find('.//marc:subfield[@code="a"]', MARC_NS)
         if note_a is not None:
             additional_descriptions.append({
                 'description': note_a.text.strip(),
-                'type': {'id': 'other', 'title': {'en': 'Notes'}}
+                'type': {'id': 'notes', 'title': {'en': 'Notes'}}
             })
             record_additional_description_sources.append('593')
 
-    # Additional local notes (MARC 594)
+    # Data Availability Statement (MARC 594) - using custom description type
     note_594_fields = record_elem.findall('.//marc:datafield[@tag="594"]', MARC_NS)
     for note_field in note_594_fields:
         note_a = note_field.find('.//marc:subfield[@code="a"]', MARC_NS)
         if note_a is not None:
             additional_descriptions.append({
                 'description': note_a.text.strip(),
-                'type': {'id': 'other'}
+                'type': {'id': 'data-availability', 'title': {'en': 'Data Availability Statement'}}
             })
             record_additional_description_sources.append('594')
+
+    # Additional notes from MARC 904 - using custom description type
+    note_904_fields = record_elem.findall('.//marc:datafield[@tag="904"]', MARC_NS)
+    for note_field in note_904_fields:
+        note_a = note_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if note_a is not None:
+            additional_descriptions.append({
+                'description': note_a.text.strip(),
+                'type': {'id': 'notes', 'title': {'en': 'Notes'}}
+            })
+            record_additional_description_sources.append('904')
 
     # ==================== RIGHTS INFORMATION ====================
 
     rights = []
 
-    # Copyright status (MARC 542) - preferred field for rights
+    # License (MARC 542$a) - Creative Commons license identifier
     rights_542 = record_elem.find('.//marc:datafield[@tag="542"]', MARC_NS)
     if rights_542 is not None:
-        # Check various subfields for rights information
-        rights_f = rights_542.find('.//marc:subfield[@code="f"]', MARC_NS)  # Copyright statement
-        rights_l = rights_542.find('.//marc:subfield[@code="l"]', MARC_NS)  # Copyright status
-        rights_n = rights_542.find('.//marc:subfield[@code="n"]', MARC_NS)  # Note
-
-        if rights_f is not None:
-            rights_text = rights_f.text.strip()
-            # Check if it's a Creative Commons license
-            if rights_text.upper().startswith('CC '):
-                # Try to map to proper license ID
-                license_key = rights_text.lower()
-                if license_key in LICENSE_MAPPINGS:
-                    rights.append({
-                        'id': LICENSE_MAPPINGS[license_key],
-                        'title': {'en': rights_text}
-                    })
-                else:
-                    # Fallback to generic rights statement
-                    rights.append({'title': {'en': rights_text}})
+        # License identifier (542$a)
+        license_a = rights_542.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if license_a is not None:
+            license_id = license_a.text.strip().upper()
+            if license_id.lower() in LICENSE_MAPPINGS:
+                # Use only id for known licenses
+                rights.append({
+                    'id': LICENSE_MAPPINGS[license_id.lower()]
+                })
             else:
-                rights.append({'title': {'en': rights_text}})
-        elif rights_l is not None:
-            rights.append({'title': {'en': rights_l.text.strip()}})
-        elif rights_n is not None:
-            rights.append({'title': {'en': rights_n.text.strip()}})
+                # Use title for unknown licenses
+                rights.append({'title': {'en': license_id}})
 
-    # Fallback: Terms governing use (MARC 540)
-    if not rights:
-        rights_540 = record_elem.find('.//marc:datafield[@tag="540"]', MARC_NS)
-        if rights_540 is not None:
-            rights_a = rights_540.find('.//marc:subfield[@code="a"]', MARC_NS)
-            if rights_a is not None:
-                rights.append({'title': {'en': rights_a.text.strip()}})
+        # License description (542$f)
+        license_f = rights_542.find('.//marc:subfield[@code="f"]', MARC_NS)
+        if license_f is not None and license_a is None:
+            rights_text = license_f.text.strip()
+            rights.append({'title': {'en': rights_text}})
 
-    # Distribution license (MARC 908)
+    # Copyright statement (MARC 540)
+    rights_540 = record_elem.find('.//marc:datafield[@tag="540"]', MARC_NS)
+    if rights_540 is not None:
+        # Copyright statement (540$a)
+        copyright_a = rights_540.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if copyright_a is not None:
+            copyright_text = copyright_a.text.strip()
+            if copyright_text:
+                metadata['copyright'] = copyright_text
+
+        # Skip 540$f as per CSV mapping (no longer used)
+
+    # Distribution license (MARC 908) - generate URL
     distribution_license = record_elem.find('.//marc:datafield[@tag="908"]', MARC_NS)
     if distribution_license is not None:
         license_a = distribution_license.find('.//marc:subfield[@code="a"]', MARC_NS)
         if license_a is not None:
             license_text = license_a.text.strip()
             if license_text and license_text.lower() != 'i agree':
-                rights.append({'title': {'en': f"Distribution License: {license_text}"}})
+                # Generate distribution license URL as per CSV mapping
+                dist_license_url = "https://knowledge.uchicago.edu/pages/?page=Distribution+License&ln=en"
+                rights.append({
+                    'identifier': dist_license_url,
+                    'title': {'en': 'Distribution License'}
+                })
 
     if rights:
         metadata['rights'] = rights
@@ -1261,10 +1120,39 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         if phys_a is not None:
             phys_text = phys_a.text.strip()
             if phys_text:
-                sizes.append(phys_text)
+                # For textual resource types, append "pages" to numeric values as per CSV mapping
+                textual_types = [
+                    'publication-article', 'publication-book', 'publication-section',
+                    'publication-thesis', 'publication-dissertation', 'publication-report'
+                ]
+                if resource_type.get('id') in textual_types and phys_text.isdigit():
+                    sizes.append(f"{phys_text} pages")
+                else:
+                    sizes.append(phys_text)
 
     if sizes:
         metadata['sizes'] = sizes
+
+    # ==================== FORMATS ====================
+    
+    formats = []
+    
+    # Dataset format - human readable (MARC 337$a)
+    format_337_fields = record_elem.findall('.//marc:datafield[@tag="337"]', MARC_NS)
+    for format_field in format_337_fields:
+        format_a = format_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if format_a is not None:
+            formats.append(format_a.text.strip())
+
+    # Format mimetype (MARC 347$b)
+    format_347_fields = record_elem.findall('.//marc:datafield[@tag="347"]', MARC_NS)
+    for format_field in format_347_fields:
+        format_b = format_field.find('.//marc:subfield[@code="b"]', MARC_NS)
+        if format_b is not None:
+            formats.append(format_b.text.strip())
+
+    if formats:
+        metadata['formats'] = formats
 
     # Add additional descriptions to metadata if any exist
     if additional_descriptions:
@@ -1299,8 +1187,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
     #    metadata['custom']['collections'] = collections
 
     # ==================== CUSTOM FIELDS ====================
-
-    custom_fields = {}
 
     # Thesis information (MARC 502)
     thesis_field = record_elem.find('.//marc:datafield[@tag="502"]', MARC_NS)
@@ -1377,22 +1263,57 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         if meeting_place is not None:
             meeting_info['place'] = meeting_place.text.strip()
 
+        # Meeting organizer
+        meeting_organizer = meeting_field.find('.//marc:subfield[@code="u"]', MARC_NS)
+        if meeting_organizer is not None:
+            meeting_info['organizer'] = meeting_organizer.text.strip()
+
         if meeting_info:
             custom_fields['meeting'] = meeting_info
 
-    # Journal information (MARC 773)
+    # Division information (MARC 690)
+    division_field = record_elem.find('.//marc:datafield[@tag="690"]', MARC_NS)
+    if division_field is not None:
+        division_a = division_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if division_a is not None:
+            custom_fields['division'] = division_a.text.strip()
+
+    # Department information (MARC 691)
+    '''department_field = record_elem.find('.//marc:datafield[@tag="691"]', MARC_NS)
+    if department_field is not None:
+        department_a = department_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if department_a is not None:
+            custom_fields['department'] = department_a.text.strip()'''
+
+    # Center or Institute information (MARC 692)
+    center_field = record_elem.find('.//marc:datafield[@tag="692"]', MARC_NS)
+    if center_field is not None:
+        center_a = center_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if center_a is not None:
+            custom_fields['chicago:center_or_institute'] = center_a.text.strip()
+
+    # Original submitter information (MARC 270)
+    submitter_field = record_elem.find('.//marc:datafield[@tag="270"]', MARC_NS)
+    if submitter_field is not None:
+        submitter_email = submitter_field.find('.//marc:subfield[@code="m"]', MARC_NS)
+        if submitter_email is not None:
+            custom_fields['chicago:original_submitter'] = submitter_email.text.strip()
+
+    # Journal information (MARC 773) and other journal fields
+    journal_info = {}
+    
+    # Get journal title from MARC 773$t (canonical as per CSV)
     journal_field = record_elem.find('.//marc:datafield[@tag="773"]', MARC_NS)
     if journal_field is not None:
-        journal_info = {}
-
-        # Journal title (try both $a and $t)
-        journal_title_a = journal_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        # Journal title - prefer $t over $a
         journal_title_t = journal_field.find('.//marc:subfield[@code="t"]', MARC_NS)
+        journal_title_a = journal_field.find('.//marc:subfield[@code="a"]', MARC_NS)
 
-        if journal_title_a is not None:
-            journal_info['title'] = journal_title_a.text.strip()
-        elif journal_title_t is not None:
+        if journal_title_t is not None:
             journal_info['title'] = journal_title_t.text.strip()
+        elif journal_title_a is not None:
+            # Skip $a if $t exists as per CSV mapping notes
+            pass
 
         # Journal volume
         journal_volume = journal_field.find('.//marc:subfield[@code="j"]', MARC_NS)
@@ -1404,8 +1325,85 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         if journal_issue is not None:
             journal_info['issue'] = journal_issue.text.strip()
 
-        if journal_info:
-            custom_fields['journal:journal'] = journal_info
+        # Journal ISSN (773$x)
+        journal_issn = journal_field.find('.//marc:subfield[@code="x"]', MARC_NS)
+        if journal_issn is not None:
+            journal_info['issn'] = journal_issn.text.strip()
+
+    # Series statement (MARC 490$a) - maps to journal title
+    series_field = record_elem.find('.//marc:datafield[@tag="490"]', MARC_NS)
+    if series_field is not None and 'title' not in journal_info:
+        series_a = series_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if series_a is not None:
+            journal_info['title'] = series_a.text.strip()
+
+    if journal_info:
+        custom_fields['journal:journal'] = journal_info
+
+    # Imprint information for books
+    imprint_info = {}
+    
+    # Additional physical form (MARC 776$t)
+    imprint_field = record_elem.find('.//marc:datafield[@tag="776"]', MARC_NS)
+    if imprint_field is not None:
+        imprint_t = imprint_field.find('.//marc:subfield[@code="t"]', MARC_NS)
+        if imprint_t is not None:
+            imprint_info['title'] = imprint_t.text.strip()
+
+    # ISBN for books (MARC 020$a) - add to custom fields
+    resource_type_id = resource_type.get('id', '')
+    if resource_type_id in ['publication-book', 'publication-section']:
+        isbn_field = record_elem.find('.//marc:datafield[@tag="020"]', MARC_NS)
+        if isbn_field is not None:
+            isbn_a = isbn_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+            if isbn_a is not None:
+                isbn_text = isbn_a.text.strip().split()[0]  # Clean ISBN
+                imprint_info['isbn'] = isbn_text
+
+    if imprint_info:
+        custom_fields['imprint:imprint'] = imprint_info
+
+    # Related Item information (MARC 791)
+    related_item_fields = record_elem.findall('.//marc:datafield[@tag="791"]', MARC_NS)
+    related_items = []
+    
+    for related_field in related_item_fields:
+        related_item = {}
+        
+        # Related Item Identifier Type (791$2)
+        id_type = related_field.find('.//marc:subfield[@code="2"]', MARC_NS)
+        if id_type is not None:
+            related_item['identifier'] = {'scheme': id_type.text.strip()}
+        
+        # Related Item Type (791$a)
+        item_type = related_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if item_type is not None:
+            related_item['item_type'] = item_type.text.strip()
+        
+        # Relation Type (791$e)
+        relation_type = related_field.find('.//marc:subfield[@code="e"]', MARC_NS)
+        if relation_type is not None:
+            related_item['relation_type'] = {
+                'title': {'en': relation_type.text.strip()}
+            }
+        
+        # Related Item Title (791$t)
+        related_title = related_field.find('.//marc:subfield[@code="t"]', MARC_NS)
+        if related_title is not None:
+            related_item['title'] = related_title.text.strip()
+        
+        # Related Item Identifier (791$w)
+        related_identifier = related_field.find('.//marc:subfield[@code="w"]', MARC_NS)
+        if related_identifier is not None:
+            if 'identifier' not in related_item:
+                related_item['identifier'] = {}
+            related_item['identifier']['identifier'] = related_identifier.text.strip()
+        
+        if related_item:
+            related_items.append(related_item)
+    
+    if related_items:
+        custom_fields['related_item'] = related_items
 
     # ==================== LOCATIONS/GEOGRAPHIC DATA ====================
 
@@ -1426,12 +1424,12 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
     geo_975_fields = record_elem.findall('.//marc:datafield[@tag="975"]', MARC_NS)
     for geo_field in geo_975_fields:
         place_a = geo_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-        coord_b = geo_field.find('.//marc:subfield[@code="b"]', MARC_NS)  # lat for point
-        coord_c = geo_field.find('.//marc:subfield[@code="c"]', MARC_NS)  # lng for point
-        coord_d = geo_field.find('.//marc:subfield[@code="d"]', MARC_NS)  # coord1 for polygon
-        coord_e = geo_field.find('.//marc:subfield[@code="e"]', MARC_NS)  # coord2 for polygon
-        coord_f = geo_field.find('.//marc:subfield[@code="f"]', MARC_NS)  # coord3 for polygon
-        coord_g = geo_field.find('.//marc:subfield[@code="g"]', MARC_NS)  # coord4 for polygon
+        coord_b = geo_field.find('.//marc:subfield[@code="b"]', MARC_NS)  # latitude for point (-118.1)
+        coord_c = geo_field.find('.//marc:subfield[@code="c"]', MARC_NS)  # longitude for point (34.1)
+        coord_d = geo_field.find('.//marc:subfield[@code="d"]', MARC_NS)  # coord1 for polygon (-104.05)
+        coord_e = geo_field.find('.//marc:subfield[@code="e"]', MARC_NS)  # coord2 for polygon (-111.05)
+        coord_f = geo_field.find('.//marc:subfield[@code="f"]', MARC_NS)  # coord3 for polygon (45.01)
+        coord_g = geo_field.find('.//marc:subfield[@code="g"]', MARC_NS)  # coord4 for polygon (40.99)
 
         feature = {}
 
@@ -1441,32 +1439,39 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         # Check if we have point coordinates (lat/lng)
         if coord_b is not None and coord_c is not None:
             try:
-                lat = float(coord_b.text.strip())
-                lng = float(coord_c.text.strip())
+                # Based on CSV mapping: 975$b = coordinates[1] (latitude), 975$c = coordinates[0] (longitude)
+                lat = float(coord_c.text.strip())  # 975$c is latitude
+                lng = float(coord_b.text.strip())  # 975$b is longitude
                 feature['geometry'] = {
                     'type': 'Point',
                     'coordinates': [lng, lat]  # GeoJSON format: [longitude, latitude]
                 }
             except ValueError:
-                logger.warning(f"Invalid coordinates in MARC 975: lat={coord_b.text}, lng={coord_c.text}")
+                logger.warning(f"Invalid coordinates in MARC 975: lat={coord_c.text}, lng={coord_b.text}")
 
         # Check if we have polygon coordinates (bounding box)
         elif all(coord is not None for coord in [coord_d, coord_e, coord_f, coord_g]):
             try:
-                coord1 = float(coord_d.text.strip())
-                coord2 = float(coord_e.text.strip())
-                coord3 = float(coord_f.text.strip())
-                coord4 = float(coord_g.text.strip())
+                # Based on CSV mapping: 975$d = coordinates[0], 975$e = coordinates[1], 975$f = coordinates[2], 975$g = coordinates[3]
+                coord1 = float(coord_d.text.strip())  # -104.05
+                coord2 = float(coord_e.text.strip())  # -111.05  
+                coord3 = float(coord_f.text.strip())  # 45.01
+                coord4 = float(coord_g.text.strip())  # 40.99
 
-                # Assuming these are bounding box coordinates: [west, east, north, south]
+                # Create bounding box polygon: [west, south, east, north]
+                west = min(coord1, coord2)
+                east = max(coord1, coord2)
+                south = min(coord3, coord4)
+                north = max(coord3, coord4)
+
                 feature['geometry'] = {
                     'type': 'Polygon',
                     'coordinates': [[
-                        [coord1, coord4],  # southwest
-                        [coord2, coord4],  # southeast
-                        [coord2, coord3],  # northeast
-                        [coord1, coord3],  # northwest
-                        [coord1, coord4]  # close polygon
+                        [west, south],   # southwest
+                        [east, south],   # southeast
+                        [east, north],   # northeast
+                        [west, north],   # northwest
+                        [west, south]    # close polygon
                     ]]
                 }
             except ValueError:
@@ -1659,26 +1664,54 @@ def process_records_batch(records_batch, owner_id: int) -> list:
     Returns:
         List of created record IDs
     """
+    global errors_log
     results = []
     identity = get_authenticated_identity(owner_id)
 
     for record_elem in records_batch:
         invenio_data = None
+        record_identifier = "Unknown"
+        error_record = {
+            "record_identifier": record_identifier,
+            "error_stage": None,
+            "error_message": None,
+            "error_details": None,
+            "invenio_data": None,
+            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+        }
+        
         try:
+            # Extract record identifier for error tracking
+            control_001 = record_elem.find('.//marc:controlfield[@tag="001"]', MARC_NS)
+            if control_001 is not None:
+                record_identifier = control_001.text.strip()
+                error_record["record_identifier"] = record_identifier
+            
             # Convert MARC to InvenioRDM format
             invenio_data = parse_marc_record(record_elem)
-            print(invenio_data)
+            error_record["invenio_data"] = invenio_data
+            
+            # Extract DOI for better identification
+            if 'identifiers' in invenio_data.get('metadata', {}):
+                for identifier in invenio_data['metadata']['identifiers']:
+                    if identifier.get('scheme') == 'doi':
+                        record_identifier = identifier['identifier']
+                        error_record["record_identifier"] = record_identifier
+                        break
 
             # Create draft record
+            error_record["error_stage"] = "create_draft"
             draft = current_rdm_records_service.create(
                 data=invenio_data,
                 identity=identity
             )
 
             # Add test file to the draft
+            error_record["error_stage"] = "add_files"
             add_test_file_to_draft(draft, identity)
 
             # Publish the record
+            error_record["error_stage"] = "publish"
             published = current_rdm_records_service.publish(
                 id_=draft.id,
                 identity=identity
@@ -1687,8 +1720,20 @@ def process_records_batch(records_batch, owner_id: int) -> list:
             results.append(published.id)
 
         except Exception as e:
-            logger.error(f"Error processing record: {e}")
-            logger.info(invenio_data)
+            error_record["error_message"] = str(e)
+            error_record["error_details"] = {
+                "exception_type": type(e).__name__,
+                "exception_args": str(e.args) if hasattr(e, 'args') else None
+            }
+            
+            # Try to extract more detailed error information
+            if hasattr(e, 'errors'):
+                error_record["error_details"]["validation_errors"] = e.errors
+            elif hasattr(e, 'description'):
+                error_record["error_details"]["description"] = e.description
+            
+            errors_log.append(error_record)
+            logger.error(f"Error processing record {record_identifier} at stage {error_record['error_stage']}: {e}")
             continue
 
     return results
@@ -1740,7 +1785,7 @@ def xml_import_data(email: str, filepath: str, batch_size: int, max_records: Opt
                 # Check max_records limit
                 if max_records and total_processed >= max_records:
                     logger.info(f"Reached maximum records limit: {max_records}")
-                    break
+                    #break
 
                 # Process the batch
                 batch_results = process_records_batch(batch, owner.id)
@@ -1753,10 +1798,6 @@ def xml_import_data(email: str, filepath: str, batch_size: int, max_records: Opt
                     f"{len(batch_results)} created. "
                     f"Total: {total_processed} processed, {total_created} created"
                 )
-
-                # Check max_records limit after processing
-                if max_records and total_processed >= max_records:
-                    break
 
         except Exception as e:
             logger.error(f"Import failed: {e}")
@@ -1838,6 +1879,18 @@ def xml_import_data(email: str, filepath: str, batch_size: int, max_records: Opt
             logger.info("No additional description source data available")
 
         logger.info("=" * 50)
+
+        # Write errors to JSON file
+        if errors_log:
+            errors_file = "errors.json"
+            try:
+                with open(errors_file, 'w', encoding='utf-8') as f:
+                    json.dump(errors_log, f, indent=2, ensure_ascii=False)
+                logger.info(f"Wrote {len(errors_log)} errors to {errors_file}")
+            except Exception as e:
+                logger.error(f"Failed to write errors file: {e}")
+        else:
+            logger.info("No errors to write - all records processed successfully!")
 
 
 if __name__ == "__main__":

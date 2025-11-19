@@ -29,6 +29,9 @@ from invenio_rdm_records.contrib.meeting import (
     MEETING_CUSTOM_FIELDS_UI,
     MEETING_NAMESPACE,
 )
+from invenio_records_resources.services.custom_fields import (
+    TextCF,
+)
 import os
 
 def _(x):  # needed to avoid start time failure with lazy strings
@@ -263,6 +266,10 @@ RDM_CUSTOM_FIELDS = [
     *IMPRINT_CUSTOM_FIELDS,
     *MEETING_CUSTOM_FIELDS,
     *THESIS_CUSTOM_FIELDS,
+    TextCF(name="chicago:original_submitter"),
+    TextCF(name="chicago:division"),
+    TextCF(name="chicago:department"),
+    TextCF(name="chicago:center_or_institute"),
 ]
 
 RDM_CUSTOM_FIELDS_UI = [

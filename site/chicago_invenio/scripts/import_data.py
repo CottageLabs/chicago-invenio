@@ -13,12 +13,40 @@ import logging
 import sys
 import time
 import json
+import os
 from typing import Dict, Any, Optional, Generator
 import xml.etree.ElementTree as ET
 from itertools import islice
 import re
+import html
 
 import click
+
+def strip_html_tags(text):
+    """Remove HTML tags and decode HTML entities from text"""
+    if not text:
+        return text
+    # Remove HTML tags using regex
+    clean = re.sub('<.*?>', '', text)
+    # Decode HTML entities (like &amp; &lt; &gt; etc.)
+    clean = html.unescape(clean)
+    return clean.strip()
+
+def map_description_type(desc_type):
+    """Map MARC description types to DataCite vocabulary IDs"""
+    if not desc_type:
+        return 'abstract'
+    
+    # Convert to lowercase for mapping
+    desc_lower = desc_type.lower().strip()
+    
+    # Mapping table for specific MARC values to DataCite vocabulary IDs
+    type_mappings = {
+        'tableofcontents': 'table-of-contents',
+        'technicalinfo': 'technical-info'
+    }
+    
+    return type_mappings.get(desc_lower, desc_lower)
 import idutils
 import requests
 from flask import current_app
@@ -119,6 +147,7 @@ LANGUAGE_MAPPINGS = {
     'pt': 'por',  # Portuguese
     'ru': 'rus',  # Russian
     'zh': 'zho',  # Chinese
+    'chi': 'zho', # Chinese (3-letter code)
     'ja': 'jpn',  # Japanese
     'ko': 'kor',  # Korean
     'ar': 'ara',  # Arabic
@@ -162,8 +191,13 @@ LICENSE_MAPPINGS = {
     'cc by-nc-sa': 'cc-by-nc-sa-4.0',
     'cc by-nd': 'cc-by-nd-4.0',
     'cc by-nc-nd': 'cc-by-nc-nd-4.0',
-    'cc0': 'cc0-1.0'
+    'cc0': 'cc0-1.0',
+    'attribution-noncommercial 4.0 international': 'cc-by-nc-4.0',
+    'attribution-noncommercial-noderivatives 4.0 international': 'cc-by-nc-nd-4.0',
+    'attribution-noncommercial-sharealike 4.0 international': 'cc-by-nc-sa-4.0',
 }
+
+rights_deb = []
 
 
 def parse_personal_name_from_text(name_text: str) -> Dict[str, Any]:
@@ -401,17 +435,24 @@ def extract_ror_id_from_identifier(identifier: str) -> Optional[str]:
         logger.debug("extract_ror_id_from_identifier: empty identifier")
         return None
 
+    # List of known invalid ROR IDs to ignore
+    INVALID_ROR_IDS = {'01gj55p76', '05s2rj042', '110007622'}
+
     identifier = identifier.strip()
     logger.debug(f"extract_ror_id_from_identifier: processing '{identifier}'")
 
-    # Check if it's a ROR URL and extract the ID first
-    if idutils.is_url(identifier) and 'ror.org/' in identifier.lower():
-        logger.debug(f"extract_ror_id_from_identifier: ROR URL detected '{identifier}'")
-        # Extract the ROR ID from the URL
+    # Check if it contains ror.org pattern and extract the ID
+    if 'ror.org/' in identifier.lower():
+        logger.debug(f"extract_ror_id_from_identifier: ROR pattern detected '{identifier}'")
+        # Extract the ROR ID from the pattern (works for URLs and partial URLs)
         ror_match = re.search(r'ror\.org/([0-9a-z]+)', identifier.lower())
         if ror_match:
             extracted_id = ror_match.group(1)
             logger.debug(f"extract_ror_id_from_identifier: extracted '{extracted_id}'")
+            # Check if it's in the invalid list
+            if extracted_id in INVALID_ROR_IDS:
+                logger.debug(f"extract_ror_id_from_identifier: ignoring invalid ROR ID '{extracted_id}'")
+                return None
             # Validate the extracted ID
             if idutils.is_ror(extracted_id):
                 logger.debug(f"extract_ror_id_from_identifier: valid ROR ID '{extracted_id}'")
@@ -422,6 +463,10 @@ def extract_ror_id_from_identifier(identifier: str) -> Optional[str]:
     # Check if it's already a plain ROR ID (not a URL)
     elif idutils.is_ror(identifier) and not idutils.is_url(identifier):
         logger.debug(f"extract_ror_id_from_identifier: direct ROR ID '{identifier}'")
+        # Check if it's in the invalid list
+        if identifier in INVALID_ROR_IDS:
+            logger.debug(f"extract_ror_id_from_identifier: ignoring invalid ROR ID '{identifier}'")
+            return None
         return identifier
 
     logger.debug(f"extract_ror_id_from_identifier: no valid ROR ID found in '{identifier}'")
@@ -683,9 +728,9 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         title_b = title_field.find('.//marc:subfield[@code="b"]', MARC_NS)
         title_c = title_field.find('.//marc:subfield[@code="c"]', MARC_NS)
 
-        title = title_a.text.strip() if title_a is not None else "Untitled"
+        title = strip_html_tags(title_a.text.strip()) if title_a is not None else "Untitled"
         if title_b is not None:
-            title += f": {title_b.text.strip()}"
+            title += f": {strip_html_tags(title_b.text.strip())}"
 
         metadata['title'] = title
     else:
@@ -701,7 +746,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         variant_title_a = variant_field.find('.//marc:subfield[@code="a"]', MARC_NS)
         variant_lang_g = variant_field.find('.//marc:subfield[@code="g"]', MARC_NS)
         
-        if variant_title_a is not None:
+        if variant_title_a is not None and variant_title_a.text and variant_title_a.text.strip():
             title_entry = {
                 "title": variant_title_a.text.strip(),
                 "type": {
@@ -776,12 +821,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
             id_value = subfield_a.text.strip()
             if id_value and not any(existing['identifier'] == id_value for existing in identifiers):
                 # Check for patent number patterns
-                if 'US ' in id_value and (' A' in id_value or ' B' in id_value):
-                    identifiers.append({
-                        'identifier': id_value,
-                        'scheme': 'patent'
-                    })
-                elif idutils.is_doi(id_value):
+                if idutils.is_doi(id_value):
                     identifiers.append({
                         'identifier': id_value,
                         'scheme': 'doi'
@@ -797,16 +837,10 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
             id_value = subfield_d.text.strip()
             if id_value and not any(existing['identifier'] == id_value for existing in identifiers):
                 # Patent application numbers
-                if 'US ' in id_value and (' A' in id_value or ' B' in id_value):
-                    identifiers.append({
-                        'identifier': id_value,
-                        'scheme': 'patent-application'
-                    })
-                else:
-                    identifiers.append({
-                        'identifier': id_value,
-                        'scheme': 'other'
-                    })
+                identifiers.append({
+                    'identifier': id_value,
+                    'scheme': 'other'
+                })
 
     # ISBN (MARC 020)
     '''isbn_fields = record_elem.findall('.//marc:datafield[@tag="020"]', MARC_NS)
@@ -907,14 +941,16 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
             if pub_b is not None:
                 metadata['publisher'] = pub_b.text.strip()
 
-        # Publication date - prioritize $c over other subfields
-        '''pub_c = pub_field_260.find('.//marc:subfield[@code="c"]', MARC_NS)
+        # Publication date - prioritize $c for patents, skip for others to avoid interference
+        pub_c = pub_field_260.find('.//marc:subfield[@code="c"]', MARC_NS)
         if pub_c is not None:
-            date = extract_full_date(pub_c.text.strip())
-            if date:
-                metadata['publication_date'] = date
-                date_source = '260$c'
-                break  # Stop after finding first valid $c date'''
+            # For patents only, use 260$c as publication date
+            if resource_type['id'] == 'publication-patent':
+                date = extract_full_date(pub_c.text.strip())
+                if date:
+                    metadata['publication_date'] = date
+                    date_source = '260$c'
+                    break  # Stop after finding first valid $c date
 
     # ==================== DATES (ADDITIONAL) ====================
     
@@ -949,13 +985,23 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
             if date_value:
                 date_entry = {'date': date_value}
                 
-                # Add type if present
+                # Add type if present, or default for interviews
                 if date_type_o is not None:
                     type_text = date_type_o.text.strip()
                     date_entry['type'] = {
                         'id': type_text.lower(),
                         'title': {'en': type_text}
                     }
+                else:
+                    # Check if this is an interview and use "collected" as default
+                    content_type_field = record_elem.find('.//marc:datafield[@tag="336"]', MARC_NS)
+                    if content_type_field is not None:
+                        content_type_a = content_type_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+                        if content_type_a is not None and content_type_a.text.strip().lower() == 'interview':
+                            date_entry['type'] = {
+                                'id': 'collected',
+                                'title': {'en': 'Collected'}
+                            }
                 
                 dates.append(date_entry)
     
@@ -1127,9 +1173,10 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                     if desc_type_7 is not None:
                         desc_type = desc_type_7.text.strip()
                     
+                    mapped_type_id = map_description_type(desc_type)
                     additional_descriptions.append({
                         'description': desc_text,
-                        'type': {'id': desc_type.lower(), 'title': {'en': desc_type}}
+                        'type': {'id': mapped_type_id, 'title': {'en': desc_type}}
                     })
 
     # Handle MARC 590 (Local Note) - should be description if no main description
@@ -1209,6 +1256,8 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
 
     rights = []
 
+    r_debug = {}
+
     # License (MARC 542$a) - Creative Commons license identifier
     rights_542 = record_elem.find('.//marc:datafield[@tag="542"]', MARC_NS)
     if rights_542 is not None:
@@ -1216,20 +1265,38 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         license_a = rights_542.find('.//marc:subfield[@code="a"]', MARC_NS)
         if license_a is not None:
             license_id = license_a.text.strip().upper()
+            r_debug['license_a'] = license_id
             if license_id.lower() in LICENSE_MAPPINGS:
                 # Use only id for known licenses
                 rights.append({
                     'id': LICENSE_MAPPINGS[license_id.lower()]
                 })
+                r_debug['mapped_license'] = LICENSE_MAPPINGS[license_id.lower()]
             else:
                 # Use title for unknown licenses
                 rights.append({'title': {'en': license_id}})
+                r_debug['mapped_license'] = {'title': {'en': license_id}}
 
         # License description (542$f)
         license_f = rights_542.find('.//marc:subfield[@code="f"]', MARC_NS)
         if license_f is not None and license_a is None:
             rights_text = license_f.text.strip()
-            rights.append({'title': {'en': rights_text}})
+
+            if rights_text.lower() in LICENSE_MAPPINGS:
+                # Use only id for known licenses
+                rights.append({
+                    'id': LICENSE_MAPPINGS[rights_text.lower()]
+                })
+            else:
+                if not rights_text.lower().startswith('university of chicago dissertations are covered by copyright.')\
+                        and not rights_text.lower().startswith('university of chicago theses are covered by copyright.'):
+                    rights.append({'title': {'en': rights_text}})
+                else:
+                    metadata['copyright'] = strip_html_tags(rights_text)
+            r_debug ['license_f'] = rights_text
+            r_debug['mapped_license'] = rights
+
+    rights_deb.append(r_debug)
 
     # Copyright statement (MARC 540)
     rights_540 = record_elem.find('.//marc:datafield[@tag="540"]', MARC_NS)
@@ -1239,7 +1306,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         if copyright_a is not None:
             copyright_text = copyright_a.text.strip()
             if copyright_text:
-                metadata['copyright'] = copyright_text
+                metadata['copyright'] = strip_html_tags(copyright_text)
 
         # Skip 540$f as per CSV mapping (no longer used)
 
@@ -1315,6 +1382,10 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                 scheme = 'orcid'
             elif 'handle.net' in identifier_text or identifier_text.startswith('hdl:'):
                 scheme = 'handle'
+
+            if scheme == 'url' and not idutils.is_url(identifier_text):
+                rights_deb.append(identifier_text)
+                scheme = 'other'
 
             related_identifiers.append({
                 'identifier': identifier_text,
@@ -1486,23 +1557,27 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                     funding_info['award'] = {}
                 funding_info['award']['title'] = {'en': award_title.text.strip()}
 
-            # Award identifier (536$c)
+            # Award identifier (536$c) - write to file but don't add to metadata
             award_id = funding_field.find('.//marc:subfield[@code="c"]', MARC_NS)
             if award_id is not None:
-                if 'award' not in funding_info:
-                    funding_info['award'] = {}
-                funding_info['award']['id'] = award_id.text.strip()
-
-            # Funder name
-            funder_name = funding_field.find('.//marc:subfield[@code="o"]', MARC_NS)
-            if funder_name is not None:
-                funding_info['funder'] = {'name': funder_name.text.strip()}
+                # Write award ID to awards.txt file for later processing
+                award_id_text = award_id.text.strip()
+                with open('awards.txt', 'a') as f:
+                    f.write(f"{award_id_text}\n")
+                logger.debug(f"Logged award ID to awards.txt: {award_id_text}")
+                # Note: Not adding award to funding_info to avoid validation errors
 
             # Funder identifier - use the validated ROR ID as vocabulary reference
-            funding_info['funder'] = funding_info.get('funder', {})
-            # Use ROR ID directly as vocabulary reference (matching funders.yaml)
-            funding_info['funder']['id'] = ror_id
-            logger.debug(f"Setting funder ID to: '{ror_id}'")
+            if ror_id:
+                # Use only the ROR ID when available (omit name to avoid vocabulary conflicts)
+                funding_info['funder'] = {'id': ror_id}
+                logger.debug(f"Setting funder ID to: '{ror_id}'")
+            else:
+                # Fall back to funder name only when no ROR ID is available
+                funder_name = funding_field.find('.//marc:subfield[@code="o"]', MARC_NS)
+                if funder_name is not None:
+                    funding_info['funder'] = {'name': funder_name.text.strip()}
+                    logger.debug(f"Setting funder name to: '{funder_name.text.strip()}'")
 
             if funding_info:
                 funding_list.append(funding_info)
@@ -1967,6 +2042,10 @@ def process_records_batch(records_batch, owner_id: int) -> list:
                 data=invenio_data,
                 identity=identity
             )
+            
+            # Check if draft creation was successful
+            if draft is None:
+                raise ValueError("Draft record creation failed - service returned None")
 
             # Add test file to the draft
             error_record["error_stage"] = "add_files"
@@ -1978,6 +2057,10 @@ def process_records_batch(records_batch, owner_id: int) -> list:
                 id_=draft.id,
                 identity=identity
             )
+            
+            # Check if publishing was successful
+            if published is None:
+                raise ValueError("Record publishing failed - service returned None")
 
             results.append(published.id)
 
@@ -2004,8 +2087,8 @@ def process_records_batch(records_batch, owner_id: int) -> list:
 @click.command("xml_import_data")
 @click.argument("email")
 @click.argument("filepath")
-@click.option("--batch-size", default=100, help="Number of records to process in each batch")
-@click.option("--max-records", default=3000, type=int, help="Maximum number of records to process (for testing)")
+@click.option("--batch-size", default=500, help="Number of records to process in each batch")
+@click.option("--max-records", default=300, type=int, help="Maximum number of records to process (for testing)")
 def xml_import_data(email: str, filepath: str, batch_size: int, max_records: Optional[int]):
     """Import MARCXML bibliographic data into Chicago Invenio.
 
@@ -2026,9 +2109,18 @@ def xml_import_data(email: str, filepath: str, batch_size: int, max_records: Opt
             click.secho(f"User with email {email} not found.", fg="red")
             sys.exit(1)
 
+        # Clear the global error log at the start of each import
+        global errors_log
+        errors_log = []
+        
+        # Clear the awards.txt file at the start of import
+        with open('awards.txt', 'w') as f:
+            f.write("")  # Clear file
+        
         logger.info(f"Starting XML import for user: {email}")
         logger.info(f"File: {filepath}")
         logger.info(f"Batch size: {batch_size}")
+        logger.info(f"Awards will be logged to awards.txt")
 
         start_time = time.time()
         total_processed = 0
@@ -2047,7 +2139,7 @@ def xml_import_data(email: str, filepath: str, batch_size: int, max_records: Opt
                 # Check max_records limit
                 if max_records and total_processed >= max_records:
                     logger.info(f"Reached maximum records limit: {max_records}")
-                    break
+                    #break
 
                 # Process the batch
                 batch_results = process_records_batch(batch, owner.id)
@@ -2140,17 +2232,68 @@ def xml_import_data(email: str, filepath: str, batch_size: int, max_records: Opt
         else:
             logger.info("No additional description source data available")
 
+        with open("rights.log", 'w', encoding='utf-8') as rights_file:
+            for line in rights_deb:
+                rights_file.write(str(line))
+
         logger.info("=" * 50)
 
         # Write errors to JSON file
         if errors_log:
             errors_file = "errors.json"
+            logger.info(f"DEBUG: Preparing to write {len(errors_log)} errors to {errors_file}")
+            
+            # Debug: Log some sample error identifiers
+            sample_identifiers = [err.get('record_identifier', 'unknown') for err in errors_log[:5]]
+            logger.info(f"DEBUG: Sample error identifiers: {sample_identifiers}")
+            
             try:
-                with open(errors_file, 'w', encoding='utf-8') as f:
+                # Write to a temporary file first
+                temp_file = f"{errors_file}.tmp"
+                logger.info(f"DEBUG: Writing to temporary file {temp_file}")
+                
+                with open(temp_file, 'w', encoding='utf-8') as f:
                     json.dump(errors_log, f, indent=2, ensure_ascii=False)
-                logger.info(f"Wrote {len(errors_log)} errors to {errors_file}")
+                    f.flush()  # Ensure data is written
+                    os.fsync(f.fileno())  # Force write to disk
+                
+                # Check temporary file size
+                temp_size = os.path.getsize(temp_file)
+                logger.info(f"DEBUG: Temporary file {temp_file} size: {temp_size} bytes")
+                
+                # Move temporary file to final location
+                os.rename(temp_file, errors_file)
+                logger.info(f"DEBUG: Moved {temp_file} to {errors_file}")
+                
+                # Verify final file
+                final_size = os.path.getsize(errors_file)
+                logger.info(f"DEBUG: Final file {errors_file} size: {final_size} bytes")
+                
+                # Verify by reading back
+                with open(errors_file, 'r', encoding='utf-8') as f:
+                    verification_data = json.load(f)
+                logger.info(f"SUCCESS: Wrote and verified {len(verification_data)} errors to {errors_file}")
+                
             except Exception as e:
-                logger.error(f"Failed to write errors file: {e}")
+                logger.error(f"FAILED to write errors file: {e}")
+                logger.error(f"Exception type: {type(e).__name__}")
+                import traceback
+                logger.error(f"Full traceback: {traceback.format_exc()}")
+                
+                # Try to write at least the count and some sample data
+                try:
+                    error_summary_file = "errors_summary.json"
+                    summary = {
+                        "total_errors": len(errors_log),
+                        "sample_errors": errors_log[:5] if len(errors_log) >= 5 else errors_log,
+                        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
+                        "write_error": str(e)
+                    }
+                    with open(error_summary_file, 'w', encoding='utf-8') as f:
+                        json.dump(summary, f, indent=2, ensure_ascii=False)
+                    logger.info(f"Wrote error summary to {error_summary_file}")
+                except Exception as summary_error:
+                    logger.error(f"Failed to write error summary: {summary_error}")
         else:
             logger.info("No errors to write - all records processed successfully!")
 

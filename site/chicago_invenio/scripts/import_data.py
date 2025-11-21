@@ -220,8 +220,6 @@ ORG_WORDS = ['center', 'institute', 'university', 'foundation', 'study', 'statis
              'club', 'church', 'party', 'government', 'corporation', 'press', 'publisher', 'organization',
              'organisation']
 
-rights_deb = []
-
 
 def parse_personal_name_from_text(name_text: str) -> Dict[str, Any]:
     """Parse a personal name string into InvenioRDM format."""
@@ -711,16 +709,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                 contributor_data["affiliations"] = [{"name": contrib_affiliation.text.strip()}]
 
             contributors.append(contributor_data)
-
-    # Extract submitter information from MARC 270
-    # Note: Email identifiers are not supported in Invenio, so we skip this
-    # submitter_270 = record_elem.find('.//marc:datafield[@tag="270"]', MARC_NS)
-    # if submitter_270 is not None:
-    #     submitter_email = submitter_270.find('.//marc:subfield[@code="m"]', MARC_NS)
-    #     if submitter_email is not None:
-    #         # Email scheme not supported in Invenio RDM
-    #         pass
-
             
     # Deduplicate creators to avoid duplicates from multiple MARC fields
     if creators:
@@ -893,14 +881,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
 
     identifiers = []
 
-    # Control number (MARC 001)
-    # control_001 = record_elem.find('.//marc:controlfield[@tag="001"]', MARC_NS)
-    # if control_001 is not None:
-    #    identifiers.append({
-    #        'identifier': control_001.text.strip(),
-    #        'scheme': 'marc_control_number'
-    #    })
-
     # DOI and other identifiers (MARC 024)
     identifier_024_fields = record_elem.findall('.//marc:datafield[@tag="024"]', MARC_NS)
     for id_field in identifier_024_fields:
@@ -948,35 +928,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                     'scheme': 'other'
                 })
 
-    # ISBN (MARC 020)
-    '''isbn_fields = record_elem.findall('.//marc:datafield[@tag="020"]', MARC_NS)
-    for isbn_field in isbn_fields:
-        isbn_a = isbn_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-        if isbn_a is not None:
-            isbn_text = isbn_a.text.strip()
-            # Clean ISBN (remove any extra text after space)
-            isbn = isbn_text.split()[0] if isbn_text else ""
-            if isbn:
-                identifiers.append({
-                    'identifier': isbn,
-                    'scheme': 'isbn'
-                })'''
-
-    # ISSN (MARC 022)
-    '''issn_fields = record_elem.findall('.//marc:datafield[@tag="022"]', MARC_NS)
-    for issn_field in issn_fields:
-        issn_a = issn_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-        if issn_a is not None:
-            issn_value = issn_a.text.strip()
-            # Validate ISSN using idutils
-            if idutils.is_issn(issn_value):
-                identifiers.append({
-                    'identifier': issn_value,
-                    'scheme': 'issn'
-                })
-            else:
-               logger.error(f"Invalid ISSN found: {issn_value}")'''
-
     # Electronic location/URLs (MARC 856)
     url_fields = record_elem.findall('.//marc:datafield[@tag="856"]', MARC_NS)
     for url_field in url_fields:
@@ -988,18 +939,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                     'identifier': url_text,
                     'scheme': 'url'
                 })
-
-    # Handle identifiers (MARC 902)
-    '''handle_fields = record_elem.findall('.//marc:datafield[@tag="902"]', MARC_NS)
-    for handle_field in handle_fields:
-        handle_a = handle_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-        if handle_a is not None:
-            handle_text = handle_a.text.strip()
-            if 'handle.net' in handle_text or handle_text.startswith('hdl:'):
-                identifiers.append({
-                    'identifier': handle_text,
-                    'scheme': 'handle'
-                })'''
 
     # OAI identifiers (MARC 909CO)
     oai_fields = record_elem.findall('.//marc:datafield[@tag="909"][@ind1="C"][@ind2="O"]', MARC_NS)
@@ -1021,24 +960,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
     date_source = None  # Track where publication date comes from
 
     # Publication info (MARC 260 or 264)
-    pub_field_264 = record_elem.find('.//marc:datafield[@tag="264"]', MARC_NS)  # Preferred
-
-    # Try 264 first
-    '''if pub_field_264 is not None:
-        # Publisher name
-        pub_b = pub_field_264.find('.//marc:subfield[@code="b"]', MARC_NS)
-        if pub_b is not None:
-            metadata['publisher'] = pub_b.text.strip()
-
-        # Publication date
-        pub_c = pub_field_264.find('.//marc:subfield[@code="c"]', MARC_NS)
-        if pub_c is not None:
-            date = extract_full_date(pub_c.text.strip())
-            if date:
-                metadata['publication_date'] = date
-                date_source = '264$c'''
-
-
+    pub_field_264 = record_elem.find('.//marc:datafield[@tag="264"]', MARC_NS)
     pub_fields_260 = record_elem.findall('.//marc:datafield[@tag="260"]', MARC_NS)
     for pub_field_260 in pub_fields_260:
         # Publisher name (from first field that has it)
@@ -1245,12 +1167,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
     if subjects:
         metadata['subjects'] = subjects
 
-    # ==================== DIVISON/DEPT ====================
-
-    # Subject headings (MARC 650)
-    subject_690_field = record_elem.findall('.//marc:datafield[@tag="690"]', MARC_NS)
-    #subject_691_field = record_elem.findall('.//marc:datafield[@tag="691"]', MARC_NS)
-
     # ==================== DESCRIPTION/ABSTRACT ====================
 
     # Handle main description/abstract (MARC 520$a)
@@ -1362,8 +1278,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
 
     rights = []
 
-    r_debug = {}
-
     # License (MARC 542$a) - Creative Commons license identifier
     rights_542 = record_elem.find('.//marc:datafield[@tag="542"]', MARC_NS)
     if rights_542 is not None:
@@ -1377,11 +1291,9 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                 rights.append({
                     'id': LICENSE_MAPPINGS[license_id.lower()]
                 })
-                r_debug['mapped_license'] = LICENSE_MAPPINGS[license_id.lower()]
             else:
                 # Use title for unknown licenses
                 rights.append({'title': {'en': license_id}})
-                r_debug['mapped_license'] = {'title': {'en': license_id}}
 
         # License description (542$f)
         license_f = rights_542.find('.//marc:subfield[@code="f"]', MARC_NS)
@@ -1399,10 +1311,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                     rights.append({'title': {'en': rights_text}})
                 else:
                     metadata['copyright'] = strip_html_tags(rights_text)
-            r_debug ['license_f'] = rights_text
-            r_debug['mapped_license'] = rights
-
-    rights_deb.append(r_debug)
 
     # Copyright statement (MARC 540)
     rights_540 = record_elem.find('.//marc:datafield[@tag="540"]', MARC_NS)
@@ -2333,68 +2241,13 @@ def xml_import_data(email: str, filepath: str, batch_size: int, max_records: Opt
         else:
             logger.info("No additional description source data available")
 
-        with open("rights.log", 'w', encoding='utf-8') as rights_file:
-            for line in rights_deb:
-                rights_file.write(str(line))
-
         logger.info("=" * 50)
 
         # Write errors to JSON file
         if errors_log:
-            errors_file = "errors.json"
-            logger.info(f"DEBUG: Preparing to write {len(errors_log)} errors to {errors_file}")
-            
-            # Debug: Log some sample error identifiers
-            sample_identifiers = [err.get('record_identifier', 'unknown') for err in errors_log[:5]]
-            logger.info(f"DEBUG: Sample error identifiers: {sample_identifiers}")
-            
-            try:
-                # Write to a temporary file first
-                temp_file = f"{errors_file}.tmp"
-                logger.info(f"DEBUG: Writing to temporary file {temp_file}")
-                
-                with open(temp_file, 'w', encoding='utf-8') as f:
-                    json.dump(errors_log, f, indent=2, ensure_ascii=False)
-                    f.flush()  # Ensure data is written
-                    os.fsync(f.fileno())  # Force write to disk
-                
-                # Check temporary file size
-                temp_size = os.path.getsize(temp_file)
-                logger.info(f"DEBUG: Temporary file {temp_file} size: {temp_size} bytes")
-                
-                # Move temporary file to final location
-                os.rename(temp_file, errors_file)
-                logger.info(f"DEBUG: Moved {temp_file} to {errors_file}")
-                
-                # Verify final file
-                final_size = os.path.getsize(errors_file)
-                logger.info(f"DEBUG: Final file {errors_file} size: {final_size} bytes")
-                
-                # Verify by reading back
-                with open(errors_file, 'r', encoding='utf-8') as f:
-                    verification_data = json.load(f)
-                logger.info(f"SUCCESS: Wrote and verified {len(verification_data)} errors to {errors_file}")
-                
-            except Exception as e:
-                logger.error(f"FAILED to write errors file: {e}")
-                logger.error(f"Exception type: {type(e).__name__}")
-                import traceback
-                logger.error(f"Full traceback: {traceback.format_exc()}")
-                
-                # Try to write at least the count and some sample data
-                try:
-                    error_summary_file = "errors_summary.json"
-                    summary = {
-                        "total_errors": len(errors_log),
-                        "sample_errors": errors_log[:5] if len(errors_log) >= 5 else errors_log,
-                        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-                        "write_error": str(e)
-                    }
-                    with open(error_summary_file, 'w', encoding='utf-8') as f:
-                        json.dump(summary, f, indent=2, ensure_ascii=False)
-                    logger.info(f"Wrote error summary to {error_summary_file}")
-                except Exception as summary_error:
-                    logger.error(f"Failed to write error summary: {summary_error}")
+            with open("errors.json", 'w', encoding='utf-8') as f:
+                json.dump(errors_log, f, indent=2, ensure_ascii=False)
+            logger.info(f"Wrote {len(errors_log)} errors to errors.json")
         else:
             logger.info("No errors to write - all records processed successfully!")
 

@@ -47,6 +47,24 @@ def map_description_type(desc_type):
     }
     
     return type_mappings.get(desc_lower, desc_lower)
+
+def add_pages(resource_type, phys_text):
+    # For textual resource types, append "pages" to numeric values as per CSV mapping
+    textual_types = [
+        'publication-article', 'publication-book', 'publication-section',
+        'publication-thesis', 'publication-dissertation', 'publication-report'
+    ]
+
+    if resource_type.get('id') in textual_types:
+        if phys_text.isdigit():
+            return True
+
+        digit_range = [d.strip() for d in phys_text.split('-') if d.strip().isdigit()]
+        if len(digit_range) == 2:
+            return True
+
+    return False
+
 import idutils
 import requests
 from flask import current_app
@@ -69,9 +87,8 @@ logger = logging.getLogger(__name__)
 
 # Global counter for creator sources
 creator_source_counts = {
-    '100': 0,
-    '110': 0,
-    '700/710 (promoted)': 0,
+    '700': 0,
+    '700 (promoted)': 0,
     '701-713 (promoted)': 0,
     '245$c': 0,
     'Unknown': 0
@@ -197,6 +214,12 @@ LICENSE_MAPPINGS = {
     'attribution-noncommercial-sharealike 4.0 international': 'cc-by-nc-sa-4.0',
 }
 
+ORG_WORDS = ['center', 'institute', 'university', 'foundation', 'study', 'statistics', 'administration',
+             'department', 'office', 'agency', 'committee', 'society', 'association', 'corporation', 'company',
+             'laboratory', 'lab', 'council', 'board', 'museum', 'library', 'school', 'college', 'firm', 'group',
+             'club', 'church', 'party', 'government', 'corporation', 'press', 'publisher', 'organization',
+             'organisation']
+
 rights_deb = []
 
 
@@ -276,7 +299,7 @@ def parse_personal_name(name_field) -> Dict[str, Any]:
 
 
 def parse_corporate_name(name_field) -> Dict[str, Any]:
-    """Parse MARC corporate name field (110/710) into InvenioRDM format."""
+    """Parse MARC corporate name field into InvenioRDM format."""
     subfield_a = name_field.find('.//marc:subfield[@code="a"]', MARC_NS)
 
     if subfield_a is None:
@@ -400,6 +423,11 @@ def scrape_doi_publication_date(doi: str) -> Optional[str]:
 
 def determine_resource_type(record_elem) -> Dict[str, str]:
     """Determine resource type from MARC record."""
+    # Check MARC 502 (Dissertation Note) FIRST - thesis takes precedence
+    dissertation_field = record_elem.find('.//marc:datafield[@tag="502"]', MARC_NS)
+    if dissertation_field is not None:
+        return {'id': 'publication-thesis'}
+    
     # Check MARC 336 (Content Type) - primary source per CSV mapping
     content_type_field = record_elem.find('.//marc:datafield[@tag="336"]', MARC_NS)
     if content_type_field is not None:
@@ -419,11 +447,6 @@ def determine_resource_type(record_elem) -> Dict[str, str]:
             for key, value in RESOURCE_TYPE_MAPPINGS.items():
                 if key in type_text:
                     return {'id': value}
-
-    # Check MARC 502 (Dissertation Note)
-    dissertation_field = record_elem.find('.//marc:datafield[@tag="502"]', MARC_NS)
-    if dissertation_field is not None:
-        return {'id': 'publication-thesis'}
 
     # Default to other
     return {'id': 'other'}
@@ -496,11 +519,34 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
     contributors = []
     creator_sources = []  # Track which MARC fields provided creators
 
-    # Extract additional personal contributors (MARC 700)
+
+    # Extract additional personal creators (MARC 700)
     added_personal = record_elem.findall('.//marc:datafield[@tag="700"]', MARC_NS)
     for personal_field in added_personal:
-        contributor_data = parse_personal_name(personal_field)
-        if contributor_data:
+        # Check if this is actually an organizational name in a 700 field
+        subfield_a = personal_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if subfield_a is not None:
+            name_text = subfield_a.text.strip()
+            # Check for organizational indicators
+            if any(word in name_text.lower() for word in ORG_WORDS):
+                # Treat as organizational creator
+                creator_data = {
+                    "person_or_org": {
+                        "type": "organizational",
+                        "name": name_text
+                    }
+                }
+                # Add affiliation if present
+                subfield_u = personal_field.find('.//marc:subfield[@code="u"]', MARC_NS)
+                if subfield_u is not None:
+                    creator_data["affiliations"] = [{"name": subfield_u.text.strip()}]
+            else:
+                # Process as personal name
+                creator_data = parse_personal_name(personal_field)
+        else:
+            creator_data = None
+            
+        if creator_data:
             # Add ORCID if present
             contrib_orcid = personal_field.find('.//marc:subfield[@code="1"]', MARC_NS)
             if contrib_orcid is not None:
@@ -509,33 +555,35 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                     orcid_id = orcid_id.split('/')[-1]  # Extract just the ID
                 # Validate ORCID format (should be XXXX-XXXX-XXXX-XXXX)
                 if len(orcid_id) == 19 and orcid_id.count('-') == 3:
-                    contributor_data["person_or_org"]["identifiers"] = [{
+                    creator_data["person_or_org"]["identifiers"] = [{
                         "identifier": orcid_id,
                         "scheme": "orcid"
                     }]
 
-            # Determine role from subfield $e or $4
+            # Check if there are contributor-specific role indicators
             role_e = personal_field.find('.//marc:subfield[@code="e"]', MARC_NS)
             role_4 = personal_field.find('.//marc:subfield[@code="4"]', MARC_NS)
 
-            role = None
-            if role_e is not None:
-                role_text = role_e.text.strip().lower()
-                role = CONTRIBUTOR_ROLE_MAPPINGS.get(role_text, 'contributor')
-            elif role_4 is not None:
-                role = role_4.text.strip()
+            # If explicit contributor roles are found, add as contributor instead
+            if role_e is not None or role_4 is not None:
+                role = None
+                if role_e is not None:
+                    role_text = role_e.text.strip().lower()
+                    role = CONTRIBUTOR_ROLE_MAPPINGS.get(role_text, 'contributor')
+                elif role_4 is not None:
+                    role = role_4.text.strip()
 
-            if role:
-                contributor_data['role'] = {'id': role}
+                if role:
+                    creator_data['role'] = {'id': role}
+                else:
+                    creator_data['role'] = {'id': 'other'}
+                
+                contributors.append(creator_data)
+            else:
+                # No specific role - add as creator
+                creators.append(creator_data)
+                creator_sources.append("700")
 
-            contributors.append(contributor_data)
-
-    # Extract additional corporate contributors (MARC 710)
-    added_corporate = record_elem.findall('.//marc:datafield[@tag="710"]', MARC_NS)
-    for corporate_field in added_corporate:
-        contributor_data = parse_corporate_name(corporate_field)
-        if contributor_data:
-            contributors.append(contributor_data)
 
     # Extract inventors (MARC 701)
     inventor_fields = record_elem.findall('.//marc:datafield[@tag="701"]', MARC_NS)
@@ -543,8 +591,14 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         if inventor_field.get('ind1') == '1':  # Personal name
             inventor_data = parse_personal_name(inventor_field)
             if inventor_data:
-                inventor_data['role'] = {'id': 'inventor'}
-                contributors.append(inventor_data)
+                # For patents, promote inventors to creators; otherwise add as contributors
+                if resource_type['id'] == 'publication-patent':
+                    inventor_data['role'] = {'id': 'inventor'}
+                    creators.append(inventor_data)
+                    creator_sources.append("701")
+                else:
+                    inventor_data['role'] = {'id': 'inventor'}
+                    contributors.append(inventor_data)
 
     # Extract patent applicant (MARC 712)
     applicant_fields = record_elem.findall('.//marc:datafield[@tag="712"]', MARC_NS)
@@ -574,6 +628,8 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                 contributor_data = parse_corporate_name(field)
 
             if contributor_data:
+                # Add required role field for contributors
+                contributor_data['role'] = {'id': 'other'}
                 contributors.append(contributor_data)
 
     # Extract contributors from MARC 720 (Uncontrolled names)
@@ -611,7 +667,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                     role = 'interviewee'  # Interviewee
 
             # Use parse_personal_name for consistent name handling
-            if any(word in name_text.lower() for word in ['university', 'institute', 'foundation', 'center']):
+            if any(word in name_text.lower() for word in ORG_WORDS):
                 # Organizational name
                 contributor_data = {
                     "person_or_org": {
@@ -665,27 +721,77 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
     #         # Email scheme not supported in Invenio RDM
     #         pass
 
-    # Ensure we have at least one creator - promote all contributors if needed
-    if not creators and contributors:
-        # Move all contributors to creators, removing roles
-        creators = []
-        for contrib in contributors:
-            creator = {
-                "person_or_org": contrib["person_or_org"]
-            }
-            # Copy affiliations if present
-            if "affiliations" in contrib:
-                creator["affiliations"] = contrib["affiliations"]
-            creators.append(creator)
+            
+    # Deduplicate creators to avoid duplicates from multiple MARC fields
+    if creators:
+        seen_creators = []
+        unique_creators = []
+        for creator in creators:
+            # Create a unique identifier for each creator
+            creator_key = (
+                creator["person_or_org"]["type"],
+                creator["person_or_org"]["name"],
+                tuple(aff["name"] for aff in creator.get("affiliations", []))
+            )
+            if creator_key not in seen_creators:
+                seen_creators.append(creator_key)
+                unique_creators.append(creator)
+        creators = unique_creators
 
-        contributors = []
-        # Check if any contributors came from 701-713 fields
-        has_701_713 = any(record_elem.find(f'.//marc:datafield[@tag="{tag}"]', MARC_NS) is not None
-                          for tag in ['701', '702', '703', '712', '713'])
-        if has_701_713:
-            creator_sources.append("701-713 (promoted)")
-        else:
-            creator_sources.append("700/710 (promoted)")
+    # Deduplicate contributors to avoid duplicates from multiple MARC fields
+    # Role-agnostic deduplication but prioritize non-"other" roles
+    # Also exclude anyone who is already listed as a creator
+    if contributors:
+        # Create a set of creator keys to exclude from contributors
+        creator_keys = set()
+        for creator in creators:
+            creator_key = (
+                creator["person_or_org"]["type"],
+                creator["person_or_org"]["name"],
+                tuple(aff["name"] for aff in creator.get("affiliations", []))
+            )
+            creator_keys.add(creator_key)
+        
+        seen_contributors = {}
+        unique_contributors = []
+        for contributor in contributors:
+            # Create a unique identifier for each contributor (excluding role)
+            contributor_key = (
+                contributor["person_or_org"]["type"],
+                contributor["person_or_org"]["name"],
+                tuple(aff["name"] for aff in contributor.get("affiliations", []))
+            )
+            
+            # Skip contributors who are already creators
+            if contributor_key in creator_keys:
+                continue
+            
+            current_role = contributor.get("role", {}).get("id", "other")
+            
+            if contributor_key not in seen_contributors:
+                # First occurrence of this contributor
+                seen_contributors[contributor_key] = contributor
+                unique_contributors.append(contributor)
+            else:
+                # Duplicate found - keep the one with better role priority
+                existing_role = seen_contributors[contributor_key].get("role", {}).get("id", "other")
+                
+                # If existing role is "other" and current role is not "other", replace it
+                if existing_role == "other" and current_role != "other":
+                    # Find and replace the existing contributor
+                    for i, uc in enumerate(unique_contributors):
+                        uc_key = (
+                            uc["person_or_org"]["type"],
+                            uc["person_or_org"]["name"],
+                            tuple(aff["name"] for aff in uc.get("affiliations", []))
+                        )
+                        if uc_key == contributor_key:
+                            unique_contributors[i] = contributor
+                            seen_contributors[contributor_key] = contributor
+                            break
+                # If both are "other" or current is "other" and existing is not, keep existing
+        
+        contributors = unique_contributors
 
     # If still no creators, try to extract from statement of responsibility (MARC 245$c)
     if not creators:
@@ -1452,12 +1558,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         if phys_a is not None:
             phys_text = phys_a.text.strip()
             if phys_text:
-                # For textual resource types, append "pages" to numeric values as per CSV mapping
-                textual_types = [
-                    'publication-article', 'publication-book', 'publication-section',
-                    'publication-thesis', 'publication-dissertation', 'publication-report'
-                ]
-                if resource_type.get('id') in textual_types and phys_text.isdigit():
+                if add_pages(resource_type, phys_text):
                     sizes.append(f"{phys_text} pages")
                 else:
                     sizes.append(phys_text)
@@ -2088,7 +2189,7 @@ def process_records_batch(records_batch, owner_id: int) -> list:
 @click.argument("email")
 @click.argument("filepath")
 @click.option("--batch-size", default=500, help="Number of records to process in each batch")
-@click.option("--max-records", default=300, type=int, help="Maximum number of records to process (for testing)")
+@click.option("--max-records", default=3000, type=int, help="Maximum number of records to process (for testing)")
 def xml_import_data(email: str, filepath: str, batch_size: int, max_records: Optional[int]):
     """Import MARCXML bibliographic data into Chicago Invenio.
 

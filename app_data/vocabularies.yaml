@@ -6,7 +6,7 @@ subjects:
       uri: "http://www.oecd.org/science/inno/38235147.pdf"
       data-file: vocabularies/subjects_oecd_fos.yaml
 funders:
-  pid-type: funders
+  pid-type: fun
   data-file: vocabularies/funders.yaml
 creatorsroles:
   pid-type: crr

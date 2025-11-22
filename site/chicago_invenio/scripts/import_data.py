@@ -13,7 +13,6 @@ import logging
 import sys
 import time
 import json
-import os
 from typing import Dict, Any, Optional, Generator
 import xml.etree.ElementTree as ET
 from itertools import islice
@@ -1258,7 +1257,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         license_a = rights_542.find('.//marc:subfield[@code="a"]', MARC_NS)
         if license_a is not None:
             license_id = license_a.text.strip().upper()
-            r_debug['license_a'] = license_id
+
             if license_id.lower() in LICENSE_MAPPINGS:
                 # Use only id for known licenses
                 rights.append({
@@ -1371,7 +1370,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                 scheme = 'handle'
 
             if scheme == 'url' and not idutils.is_url(identifier_text):
-                rights_deb.append(identifier_text)
                 scheme = 'other'
 
             related_identifiers.append({

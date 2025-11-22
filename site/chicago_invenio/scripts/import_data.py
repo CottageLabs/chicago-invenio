@@ -85,18 +85,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Global counter for creator sources
-creator_source_counts = {
-    '700': 0,
-    '700 (promoted)': 0,
-    '701-713 (promoted)': 0,
-    '245$c': 0,
-    'Unknown': 0
-}
-
 # Global counter for publication date sources
 date_source_counts = {
-    '264$c': 0,
     '260$c': 0,
     '260$g (manufacture)': 0,
     '269$a': 0,
@@ -419,6 +409,19 @@ def scrape_doi_publication_date(doi: str) -> Optional[str]:
         return None
 
 
+def add_orcid_if_valid(person_data: Dict[str, Any], orcid_field) -> None:
+    """Add ORCID identifier to person data if present and valid."""
+    if orcid_field is not None:
+        orcid_id = orcid_field.text.strip()
+        if 'orcid.org' in orcid_id:
+            orcid_id = orcid_id.split('/')[-1]  # Extract just the ID
+        # Validate ORCID format (should be XXXX-XXXX-XXXX-XXXX)
+        if len(orcid_id) == 19 and orcid_id.count('-') == 3:
+            person_data["person_or_org"]["identifiers"] = [{
+                "identifier": orcid_id,
+                "scheme": "orcid"
+            }]
+
 def determine_resource_type(record_elem) -> Dict[str, str]:
     """Determine resource type from MARC record."""
     # Check MARC 502 (Dissertation Note) FIRST - thesis takes precedence
@@ -515,7 +518,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
 
     creators = []
     contributors = []
-    creator_sources = []  # Track which MARC fields provided creators
 
 
     # Extract additional personal creators (MARC 700)
@@ -547,16 +549,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         if creator_data:
             # Add ORCID if present
             contrib_orcid = personal_field.find('.//marc:subfield[@code="1"]', MARC_NS)
-            if contrib_orcid is not None:
-                orcid_id = contrib_orcid.text.strip()
-                if 'orcid.org' in orcid_id:
-                    orcid_id = orcid_id.split('/')[-1]  # Extract just the ID
-                # Validate ORCID format (should be XXXX-XXXX-XXXX-XXXX)
-                if len(orcid_id) == 19 and orcid_id.count('-') == 3:
-                    creator_data["person_or_org"]["identifiers"] = [{
-                        "identifier": orcid_id,
-                        "scheme": "orcid"
-                    }]
+            add_orcid_if_valid(creator_data, contrib_orcid)
 
             # Check if there are contributor-specific role indicators
             role_e = personal_field.find('.//marc:subfield[@code="e"]', MARC_NS)
@@ -580,7 +573,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
             else:
                 # No specific role - add as creator
                 creators.append(creator_data)
-                creator_sources.append("700")
 
 
     # Extract inventors (MARC 701)
@@ -589,13 +581,11 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         if inventor_field.get('ind1') == '1':  # Personal name
             inventor_data = parse_personal_name(inventor_field)
             if inventor_data:
+                inventor_data['role'] = {'id': 'inventor'}
                 # For patents, promote inventors to creators; otherwise add as contributors
                 if resource_type['id'] == 'publication-patent':
-                    inventor_data['role'] = {'id': 'inventor'}
                     creators.append(inventor_data)
-                    creator_sources.append("701")
                 else:
-                    inventor_data['role'] = {'id': 'inventor'}
                     contributors.append(inventor_data)
 
     # Extract patent applicant (MARC 712)
@@ -693,16 +683,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                     }
 
             # Add ORCID if present
-            if contrib_orcid is not None:
-                orcid_id = contrib_orcid.text.strip()
-                if 'orcid.org' in orcid_id:
-                    orcid_id = orcid_id.split('/')[-1]  # Extract just the ID
-                # Validate ORCID format (should be XXXX-XXXX-XXXX-XXXX)
-                if len(orcid_id) == 19 and orcid_id.count('-') == 3:
-                    contributor_data["person_or_org"]["identifiers"] = [{
-                        "identifier": orcid_id,
-                        "scheme": "orcid"
-                    }]
+            add_orcid_if_valid(contributor_data, contrib_orcid)
 
             # Add affiliation if present
             if contrib_affiliation is not None:
@@ -797,7 +778,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                             "name": creator_name
                         }
                     }]
-                    creator_sources.append("245$c")
 
     # Final fallback - create unknown creator
     if not creators:
@@ -807,7 +787,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                 "name": "Unknown"
             }
         }]
-        creator_sources.append("Unknown")
 
     if creators:
         metadata['creators'] = creators
@@ -959,8 +938,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
 
     date_source = None  # Track where publication date comes from
 
-    # Publication info (MARC 260 or 264)
-    pub_field_264 = record_elem.find('.//marc:datafield[@tag="264"]', MARC_NS)
+    # Publication info (MARC 260)
     pub_fields_260 = record_elem.findall('.//marc:datafield[@tag="260"]', MARC_NS)
     for pub_field_260 in pub_fields_260:
         # Publisher name (from first field that has it)
@@ -1096,7 +1074,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                         scraped_date = scrape_doi_publication_date(doi)
                         if scraped_date:
                             metadata['publication_date'] = scraped_date
-                            date_source = 'DOI scraping (Physical Review)'
+                            date_source = 'DOI scraping'
                             break
 
                     # Fallback: Physical Review D volume mapping if scraping fails
@@ -1107,7 +1085,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                         if volume >= 85:  # Starting from known volume/year
                             year = str(2012 + (volume - 85) // 2)  # ~2 volumes per year
                             metadata['publication_date'] = year
-                            date_source = f'DOI volume mapping (PhysRevD vol.{volume})'
+                            date_source = 'DOI volume mapping'
                             break
 
                     # Other Physical Review journals could be added here
@@ -1168,6 +1146,8 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         metadata['subjects'] = subjects
 
     # ==================== DESCRIPTION/ABSTRACT ====================
+    
+    additional_descriptions = []  # Initialize once at the beginning
 
     # Handle main description/abstract (MARC 520$a)
     desc_fields_520 = record_elem.findall('.//marc:datafield[@tag="520"]', MARC_NS)
@@ -1188,8 +1168,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                     main_description_set = True
                 else:
                     # Add to additional descriptions with type
-                    if 'additional_descriptions' not in locals():
-                        additional_descriptions = []
                     
                     desc_type = "Abstract"
                     if desc_type_7 is not None:
@@ -1211,8 +1189,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                 metadata['description'] = desc_text
                 main_description_set = True
             else:
-                if 'additional_descriptions' not in locals():
-                    additional_descriptions = []
                 additional_descriptions.append({
                     'description': desc_text,
                     'type': {'id': 'abstract', 'title': {'en': 'Abstract'}}
@@ -1220,9 +1196,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
 
     # ==================== ADDITIONAL DESCRIPTIONS ====================
 
-    # Initialize if not already done
-    if 'additional_descriptions' not in locals():
-        additional_descriptions = []
     record_additional_description_sources = []  # Track sources for this record
 
     # Alternative descriptions from MARC 520$b (alternative language)
@@ -1837,10 +1810,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                 record_doi = identifier['identifier']
                 break
 
-    # Update global counters for creator sources
-    for source in creator_sources:
-        if source in creator_source_counts:
-            creator_source_counts[source] += 1
 
     # Update global counters for date sources
     if date_source:
@@ -1877,10 +1846,10 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
     main_desc_status = "has main description" if has_main_description else "NO MAIN DESCRIPTION"
 
     logger.info(
-        f"Record {record_doi}: Creators from {', '.join(creator_sources) if creator_sources else 'none'}, Publication date from {date_source or 'missing'}{additional_desc_info}, {main_desc_status}")
+        f"Record {record_doi}: Publication date from {date_source or 'missing'}{additional_desc_info}, {main_desc_status}")
 
     # Log error for records with Unknown creators
-    if "Unknown" in creator_sources:
+    if creators and creators[0].get("person_or_org", {}).get("name") == "Unknown":
         logger.error(f"No creator information found for record: {record_doi}")
 
     record = {
@@ -2186,18 +2155,6 @@ def xml_import_data(email: str, filepath: str, batch_size: int, max_records: Opt
         if total_processed > 0:
             rate = total_processed / elapsed_time
             logger.info(f"Processing rate: {rate:.2f} records/second")
-
-        # Creator source statistics
-        logger.info("")
-        logger.info("CREATOR SOURCE STATISTICS")
-        logger.info("-" * 30)
-        total_creator_records = sum(creator_source_counts.values())
-        if total_creator_records > 0:
-            for source, count in creator_source_counts.items():
-                percentage = (count / total_creator_records) * 100
-                logger.info(f"MARC {source}: {count} records ({percentage:.1f}%)")
-        else:
-            logger.info("No creator source data available")
 
         # Publication date source statistics
         logger.info("")

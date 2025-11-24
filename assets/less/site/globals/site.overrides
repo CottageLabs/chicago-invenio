@@ -8,7 +8,7 @@
         position: absolute;
         top: 0;
         left: 50%;
-        transform: translateX(-50%;);
+        transform: translateX(-50%);
         height: 100%;
         width: auto;
         .logo-link {
@@ -46,7 +46,7 @@
 }
 
 #navbar-top {
-    background-color: maroon; 
+    background-color: @primaryColor;
     border-radius: 0; 
     margin-bottom: 0;
     .nav-logo {

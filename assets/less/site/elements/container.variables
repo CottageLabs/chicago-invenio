@@ -1,0 +1,5 @@
+/***********************************************
+         Invenio App RDM Container Variables
+***********************************************/
+
+@highlightBackgroundColor: @primaryHighlightColor;

@@ -1,0 +1,116 @@
+.outer-navbar {
+    position: relative;
+    height: 100%;
+    a {
+        text-transform: uppercase;
+    }
+    .item.logo {
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        height: 100%;
+        width: auto;
+        .logo-link {
+            display: block;
+            height: 100%;
+            img.ui.image {
+                height: 100%;
+                width: auto;
+                min-height: 100%;
+            }
+        }
+    }
+}
+
+@media (max-width: @tabletBreakpoint) {
+    .ui.container {
+        width: 75%;
+    }
+}
+
+.ui.small.horizontal.label {
+    font-weight: normal;
+}
+
+.mobile-hidden {
+    @media (max-width: @mobileBreakpoint) {
+        display: none;
+    }
+}
+
+.frontpage-title {
+    a:hover {
+        text-decoration: none;
+    }
+}
+
+#navbar-top {
+    background-color: @primaryColor;
+    border-radius: 0; 
+    margin-bottom: 0;
+    .nav-logo {
+        justify-content: flex-start;
+        a {
+            gap: 1rem;
+            img {
+                width: 16rem;
+                height: auto;
+            }
+        }
+    }
+}
+
+#navbar-middle {
+    background-color: white; 
+    display: flex;
+    justify-content: center; 
+    align-items: center;
+    height: 10rem;
+    box-shadow: none; 
+    border-radius: 0; 
+    padding: 1em;
+    .content {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        .text > h1 {
+            font-size: 3rem;
+        }
+    }
+}
+
+#navbar-bottom {
+    border-top: solid 1px #e0e0e0; 
+    border-bottom: solid 1px #e0e0e0; 
+    background-color: @primaryHighlightColor; 
+    margin-bottom: 3rem;
+    .ui.container.menu {
+        border-radius: 0; 
+        box-shadow: none; 
+        background-color: @primaryHighlightColor;
+    }
+}
+
+
+#rdm-footer-element {
+    .footer-top {
+        a {
+            color: @footerTextDarkColor;
+            &:hover {
+                color: @footerTextDarkColor;
+                text-decoration: underline;
+            }
+        }
+    }
+  .footer-bottom.subfooter {
+        color: @footerTextLightColor;
+        a {
+            color: @footerTextLightColor;
+            &:hover {
+                color: @footerTextLightColor;
+                text-decoration: underline;
+            }
+        }
+    }
+}

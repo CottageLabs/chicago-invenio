@@ -1,0 +1,43 @@
+{# -*- coding: utf-8 -*-
+
+  This file is part of Invenio.
+  Copyright (C) 2015-2024 CERN.
+  Copyright (C) 2021 New York University.
+
+  Invenio is free software; you can redistribute it and/or modify it
+  under the terms of the MIT License; see LICENSE file for more details.
+#}
+
+{%- extends "invenio_theme/page.html" -%}
+
+{% block head_links %}
+  {{ super() }}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400..800;1,400..800&display=swap" rel="stylesheet">
+{% endblock head_links %}
+
+{%- block body_inner %}
+
+  {%- block page_header %}
+    {% include config.THEME_HEADER_TEMPLATE %}
+  {%- endblock page_header %}
+
+  <main id="main">
+    <div class="invenio-page-body">
+      {%- block page_body %}
+        {% include "invenio_theme/body.html" %}
+      {%- endblock page_body %}
+    </div>
+  </main>
+
+  {%- block page_footer %}
+    <footer id="rdm-footer-element">
+        {% include config.THEME_FOOTER_TEMPLATE %}
+      {%- block footer_bottom %}
+        {% include "invenio_app_rdm/site_footer.html" %}
+      {%- endblock footer_bottom %}
+    </footer>
+  {%- endblock page_footer %}
+
+{%- endblock body_inner %}

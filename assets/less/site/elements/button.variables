@@ -1,0 +1,6 @@
+/***********************************************
+         Invenio App RDM Button Variables
+***********************************************/
+
+@searchButtonColor: @white;
+@searchButtonColorTextColor: @darkGray;

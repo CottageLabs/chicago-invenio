@@ -1,0 +1,180 @@
+#rdm-burger-menu-icon,
+#rdm-close-burger-menu-icon {
+  .navicon {
+    background: @white;
+    display: block;
+    height: 2px;
+    position: relative;
+    transition: background 0.2s ease-out;
+    width: 18px;
+
+    &:before,
+    &:after {
+      display: block;
+      background: @white;
+      content: "";
+      height: 100%;
+      position: absolute;
+      transition: all 0.2s ease-out;
+      width: 100%;
+    }
+  }
+}
+
+#invenio-nav.ui.menu {
+  .ui.menu .item {
+    a:not(.ui.button) {
+      &:hover {
+        background-color: transparent;
+        color: @white;
+        text-decoration: underline dotted;
+      }
+    }
+  }
+
+  a.ui.button.auth-button,
+  a.ui.button.signup {
+    border: 1px solid @white;
+    border-radius: 0;
+    background: transparent;
+    color: white;
+
+    i.icon.auth-icon {
+      color: @white;
+    }
+  }
+
+  a.ui.button.auth-button:hover,
+  a.ui.button.signup:hover {
+    background: white;
+    border-radius: 0;
+    color: @primaryColor;
+    transition: .5s ease-in-out;
+
+    i.icon.auth-icon {
+      color: @primaryColor;
+    }
+  }
+
+  &.active {
+    transition: opacity .4s ease-in;
+    opacity: 1;
+    pointer-events: all;
+
+    align-items: flex-start;
+    background-color: #f3f3f3;
+    bottom: 0;
+    display: flex;
+
+    .ui.menu .item {
+      align-items: flex-start;
+      flex-direction: column;
+      margin-left: unset !important;
+      padding: 0.8em 1.5rem !important;
+      border-left: 2px solid #d9d9d9;
+      
+      a {
+        color: @primaryColor !important;
+        font-weight: bold;
+        
+        &:hover {
+          background-color: transparent;
+          color: @primaryColor;
+          text-decoration: underline solid;
+          transition: .5s ease-in-out;
+        }
+      }
+
+      form {
+        display: flex;
+        flex-direction: column;
+        margin-top: 0 !important;
+      }
+    }
+
+    a.ui.button.auth-button,
+    a.ui.button.signup {
+      border-radius: 0;
+      background: transparent;
+      color: @primaryColor;
+      text-align: center;
+
+      i.icon.auth-icon {
+        color: @primaryColor;
+      }
+    }
+
+    a.ui.button {
+      box-shadow: none;
+    }
+
+    a.ui.button.auth-button:hover,
+    a.ui.button.signup:hover {
+      background: transparent;
+      border-radius: 0;
+      color: @primaryColor;
+      text-decoration: underline;
+      transition: .5s ease-in-out;
+
+      i.icon.auth-icon {
+        color: @primaryColor;
+      }
+    }
+
+    #rdm-close-burger-menu-icon{
+      .navicon:before,
+      .navicon:after {
+        background: @black;
+      }
+    }
+  }
+}
+
+.search-bar {
+  width: 100%;
+
+  #header-search-bar {
+    display: flex;
+    justify-content: center;
+
+    .ui.fluid.search {
+      margin: 7rem 0;
+      width: 100%;
+
+      @media (max-width: @computerBreakpoint) {
+        margin: 1rem 0;
+      }
+
+      &.focus,
+      &.active,
+      &.visible {
+        margin: 7rem 0;
+        width: 100%;
+      }
+
+      .ui.input {
+        input {
+          border: @secondaryColor solid 2px;
+          border-radius: 0;
+          color: @darkGray;
+          line-height: 1rem;
+          padding: 1.2rem;
+          transition: border-color .3s ease-in-out;
+
+          &:focus,
+          &:focus-visible {
+            border: @darkGray solid 2px;
+          }
+        }
+
+        button {
+          margin-left: .5rem !important;
+          padding: 1rem 1.5rem;
+          border: @secondaryColor solid 2px;
+          border-radius: 0;
+        }
+      }
+    }
+  }
+
+}

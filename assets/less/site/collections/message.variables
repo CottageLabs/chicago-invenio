@@ -1,0 +1,7 @@
+/***********************************************
+         Invenio App RDM Message Variables
+***********************************************/
+
+@infoTextColor: @black;
+@infoBackgroundColor: @white;
+@infoBorderColor: @darkGray;

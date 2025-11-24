@@ -86,11 +86,16 @@ APP_DEFAULT_SECURE_HEADERS = {
         "style-src": [
             "'self'",
             "https://www.lib.uchicago.edu",
+            "https://fonts.googleapis.com",
+            "https://uchicago-brand-fonts.s3.us-east-2.amazonaws.com",
             "'unsafe-inline'"
         ],
         "font-src": [
             "'self'",
-            "https://www.lib.uchicago.edu"
+            "https://www.lib.uchicago.edu",
+            "https://fonts.gstatic.com",
+            "https://uchicago-brand-fonts.s3.us-east-2.amazonaws.com",
+            "data:"
         ]
     },
     'content_security_policy_report_only': False,

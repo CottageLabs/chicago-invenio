@@ -9,6 +9,7 @@ https://inveniordm.docs.cern.ch/reference/configuration/.
 
 from datetime import datetime
 from invenio_i18n import lazy_gettext as _
+from invenio_oauthclient.views.client import auto_redirect_login
 from invenio_rdm_records.contrib.imprint import (
     IMPRINT_CUSTOM_FIELDS,
     IMPRINT_CUSTOM_FIELDS_UI,
@@ -220,7 +221,6 @@ SECURITY_LOGIN_WITHOUT_CONFIRMATION = False  # require users to confirm email be
 
 OAUTHCLIENT_REMOTE_APPS = {}  # configure external login providers
 
-from invenio_oauthclient.views.client import auto_redirect_login
 ACCOUNTS_LOGIN_VIEW_FUNCTION = auto_redirect_login  # autoredirect to external login if enabled
 OAUTHCLIENT_AUTO_REDIRECT_TO_EXTERNAL_LOGIN = False  # autoredirect to external login
 
@@ -324,7 +324,3 @@ RDM_CUSTOM_FIELDS_UI = [
 
 MEETING_CUSTOM_FIELDS_UI["hide_from_landing_page"] = True
 
-# Invenio-OAuthclient
-# -------------------
-# See:
-# https://github.com/inveniosoftware/invenio-oauthclient/blob/master/invenio_oauthclient/config.py

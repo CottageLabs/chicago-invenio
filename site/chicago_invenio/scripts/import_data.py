@@ -9,6 +9,7 @@ To run the script, go to the repository root directory and use the following com
         $ pipenv run invenio shell site/chicago_invenio/scripts/xml_import_data.py <email> <filepath>
 """
 
+import click
 import logging
 import sys
 import time
@@ -18,8 +19,13 @@ import xml.etree.ElementTree as ET
 from itertools import islice
 import re
 import html
+import idutils
+import requests
+from flask import current_app
+from invenio_app.factory import create_app
+from invenio_rdm_records.fixtures.tasks import get_authenticated_identity
+from invenio_rdm_records.proxies import current_rdm_records_service
 
-import click
 
 def strip_html_tags(text):
     """Remove HTML tags and decode HTML entities from text"""
@@ -63,13 +69,6 @@ def add_pages(resource_type, phys_text):
             return True
 
     return False
-
-import idutils
-import requests
-from flask import current_app
-from invenio_app.factory import create_app
-from invenio_rdm_records.fixtures.tasks import get_authenticated_identity
-from invenio_rdm_records.proxies import current_rdm_records_service
 
 # Functions moved back to avoid circular import
 
@@ -2060,12 +2059,12 @@ def process_records_batch(records_batch, owner_id: int) -> list:
     return results
 
 
-@click.command("xml_import_data")
+@click.command("import_data")
 @click.argument("email")
 @click.argument("filepath")
 @click.option("--batch-size", default=500, help="Number of records to process in each batch")
 @click.option("--max-records", default=3000, type=int, help="Maximum number of records to process (for testing)")
-def xml_import_data(email: str, filepath: str, batch_size: int, max_records: Optional[int]):
+def import_data(email: str, filepath: str, batch_size: int, max_records: Optional[int]):
     """Import MARCXML bibliographic data into Chicago Invenio.
 
     Args:
@@ -2208,4 +2207,4 @@ def xml_import_data(email: str, filepath: str, batch_size: int, max_records: Opt
 
 
 if __name__ == "__main__":
-    xml_import_data()
+    import_data()

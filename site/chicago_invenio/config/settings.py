@@ -34,7 +34,6 @@ import os
 def _(x):  # needed to avoid start time failure with lazy strings
     return x
 
-
 # Flask
 # =====
 # See https://flask.palletsprojects.com/en/1.1.x/config/
@@ -283,3 +282,4 @@ RDM_CUSTOM_FIELDS_UI = [
 ]
 
 MEETING_CUSTOM_FIELDS_UI["hide_from_landing_page"] = True
+COMMUNITIES_SHOW_BROWSE_MENU_ENTRY = True

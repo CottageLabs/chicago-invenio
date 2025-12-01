@@ -4,15 +4,19 @@ import sys
 import re, unicodedata
 
 from invenio_collections.api import CollectionTree, Collection
+from invenio_collections.errors import CollectionTreeNotFound
 from invenio_collections.proxies import current_collections
 from invenio_access.permissions import system_identity
 
 from invenio_db import db
 
-#from invenio_communities.proxies import current_communities
-#current_communities.service
+from invenio_communities.proxies import current_communities
+
 
 import os
+
+from sqlalchemy.exc import IntegrityError
+
 
 def rel2abs(src, *paths):
     src = os.path.realpath(src)
@@ -21,10 +25,7 @@ def rel2abs(src, *paths):
     return os.path.abspath(os.path.join(src, *paths))
 
 CSV = rel2abs(__file__, 'com_col_data.csv')
-COM = "61943e3d-9bf3-40e3-822c-2f3a14557515"
-
-# from invenio_rdm_records.proxies import current_record_communities_service
-# from invenio_communities.proxies import current_communities
+# COM = "61943e3d-9bf3-40e3-822c-2f3a14557515"
 
 def build_nested_dict(csv_path):
     nested = {}
@@ -73,55 +74,79 @@ def build_nested_dict(csv_path):
 
     return nested
 
-def load_collections(structure, community_id):
-    ctree = CollectionTree.resolve(slug="collections", community_id=community_id)
-    if ctree is None:
-        ctree = CollectionTree.create(title="Collections", slug="collections", community_id=community_id)
+def load_structure(structure):
 
-    for c in ctree.collections:
-        db.session.delete(c.model)
-    db.session.commit()
-
-
+    communities_service = current_communities.service
     collections_service = current_collections.service
 
     for k, v in structure.items():
-        parent = collections_service.create(
-            system_identity,
-            v.get("community_id", community_id),
-            tree_slug=ctree.slug,
-            slug=k,
-            title=v.get("title", k),
-            query=v.get("query"),
-            order=v.get("order", 10),
-        )
+        # locate a community if one exists, and delete it
+        # FIXME: finds, but does not delete the community, so the script cannot be re-run
+        #
+        # model = communities_service.config.record_cls.model_cls
+        # c_record = db.session.query(model).filter_by(slug=k).one_or_none()
+        # if c_record is not None:
+        #     print("Deleting existing community:", k)
+        #     db.session.delete(c_record)
+        #     db.session.commit()
 
-        for ck, cv in v.get("children", {}).items():
-            collections_service.add(
+        # com = None
+        # if c_record is not None:
+        #     com = communities_service.service.result_item_cls(communities_service, system_identity, c_record)
+        #
+        # if com is not None:
+
+        # create a new community
+        try:
+            com = communities_service.create(
+                data={
+                    "slug": k,
+                    "metadata": v.get("metadata", {"title": k}),
+                    "access": v.get("access", {"visibility" : "public"}),
+                },
+                identity=system_identity,
+            )
+        except IntegrityError:
+            print("Community creation failed (already exists?):", k)
+            continue
+
+        # create a collection tree in the community
+        try:
+            ctree = CollectionTree.resolve(slug=f"{k}-collections", community_id=com.id)
+        except CollectionTreeNotFound:
+            ctree = CollectionTree.create(title="Collections", slug=f"{k}-collections", community_id=com.id)
+
+        # delete any existing collections
+        for c in ctree.collections:
+            db.session.delete(c.model)
+        db.session.commit()
+
+        # create collections in the tree for the community
+        for ck, cv in v.get("collections", {}).items():
+            collections_service.create(
                 system_identity,
-                collection=parent._collection,
+                com.id,
+                tree_slug=ctree.slug,
                 slug=ck,
                 title=cv.get("title", ck),
                 query=cv.get("query"),
                 order=cv.get("order", 10),
             )
 
-def to_collection_tree(structure, community_id):
+def to_com_col_tree(structure):
     tree = {}
-    po = 10
     for k, v in structure.items():
         slug = slugify(k)
         tree[slug] = {
-            "community_id": community_id,
-            "title": k,
-            "query": parent_query_for(v),
-            "order": po,
-            "children": {}
+            "metadata": {
+                "title": k
+            },
+            "access": {"visibility": "public"},
+            "collections": {}
         }
-        po += 10
 
         co = 10
-        ctx = tree[slug]["children"]
+        ctx = tree[slug]["collections"]
         for k1, v1 in v.items():
             if k1 != "":
                 slug1 = slugify(k + "-" + k1)
@@ -179,12 +204,12 @@ def parent_query_for(rules):
     return "(" + ") OR (".join(ors) + ")"
 
 
-def main(csv_path, community_id):
+def main(csv_path):
     nested = build_nested_dict(csv_path)
     # print(json.dumps(nested, ensure_ascii=False, indent=2))
-    tree = to_collection_tree(nested, community_id)
+    tree = to_com_col_tree(nested)
     # print(json.dumps(tree, ensure_ascii=False, indent=2))
-    load_collections(tree, community_id)
+    load_structure(tree)
 
 if __name__ == '__main__':
     # import argparse
@@ -195,6 +220,6 @@ if __name__ == '__main__':
     # args = parser.parse_args()
 
     # main(args.input_csv, args.community)
-    main(CSV, COM)
+    main(CSV)
     # sys.exit()
 

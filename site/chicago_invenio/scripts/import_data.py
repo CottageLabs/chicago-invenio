@@ -422,18 +422,14 @@ def add_orcid_if_valid(person_data: Dict[str, Any], orcid_field) -> None:
 
 def determine_resource_type(record_elem) -> Dict[str, str]:
     """Determine resource type from MARC record."""
-    # Check MARC 502 (Dissertation Note) FIRST - thesis takes precedence
-    dissertation_field = record_elem.find('.//marc:datafield[@tag="502"]', MARC_NS)
-    if dissertation_field is not None:
-        return {'id': 'publication-thesis'}
-    
     # Check MARC 336 (Content Type) - primary source per CSV mapping
     content_type_field = record_elem.find('.//marc:datafield[@tag="336"]', MARC_NS)
     if content_type_field is not None:
         content_type_a = content_type_field.find('.//marc:subfield[@code="a"]', MARC_NS)
         if content_type_a is not None:
             content_type = content_type_a.text.strip().lower()
-            for key, value in RESOURCE_TYPE_MAPPINGS.items():
+            # Sort mappings by key length (longest first) to match specific terms before generic ones
+            for key, value in sorted(RESOURCE_TYPE_MAPPINGS.items(), key=lambda x: len(x[0]), reverse=True):
                 if key in content_type:
                     return {'id': value}
 
@@ -443,7 +439,8 @@ def determine_resource_type(record_elem) -> Dict[str, str]:
         type_a = local_type_field.find('.//marc:subfield[@code="a"]', MARC_NS)
         if type_a is not None:
             type_text = type_a.text.strip().lower()
-            for key, value in RESOURCE_TYPE_MAPPINGS.items():
+            # Sort mappings by key length (longest first) to match specific terms before generic ones
+            for key, value in sorted(RESOURCE_TYPE_MAPPINGS.items(), key=lambda x: len(x[0]), reverse=True):
                 if key in type_text:
                     return {'id': value}
 

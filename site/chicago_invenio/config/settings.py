@@ -83,7 +83,8 @@ APP_DEFAULT_SECURE_HEADERS = {
             # Add your own policies here (e.g. analytics)
         ],
         'script-src': [
-            "'self'", "blob:", "'wasm-unsafe-eval'"  # for WASM-based workers
+            "'self'", "blob:", "'wasm-unsafe-eval'", "'unsafe-inline'",  # for WASM-based workers and inline scripts
+            "cdnjs.cloudflare.com"
             # Multipart file uploads use a Web Worker running `hash-wasm` to compute content checksums
             # (e.g., MD5) of uploaded parts. This requires both 'blob:' and 'wasm-unsafe-eval' enabled in `script-src`.
         ],
@@ -99,6 +100,7 @@ APP_DEFAULT_SECURE_HEADERS = {
             "https://www.lib.uchicago.edu",
             "https://fonts.gstatic.com",
             "https://uchicago-brand-fonts.s3.us-east-2.amazonaws.com",
+            "https://cdnjs.cloudflare.com",
             "data:"
         ]
     },
@@ -324,3 +326,5 @@ RDM_CUSTOM_FIELDS_UI = [
 
 MEETING_CUSTOM_FIELDS_UI["hide_from_landing_page"] = True
 
+# Enable MathJax for rendering mathematical expressions
+THEME_MATHJAX_CDN = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"

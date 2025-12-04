@@ -130,6 +130,7 @@ RESOURCE_TYPE_MAPPINGS = {
     'software': 'software',
     'patent': 'publication-patent',
     'presentation': 'presentation',
+    'image': 'image'
 }
 
 CONTRIBUTOR_ROLE_MAPPINGS = {

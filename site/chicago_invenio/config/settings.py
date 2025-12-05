@@ -10,6 +10,7 @@ https://inveniordm.docs.cern.ch/reference/configuration/.
 from datetime import datetime
 from invenio_i18n import lazy_gettext as _
 from invenio_oauthclient.views.client import auto_redirect_login
+from invenio_rdm_records.config import RDM_RECORDS_IDENTIFIERS_SCHEMES
 from invenio_rdm_records.contrib.imprint import (
     IMPRINT_CUSTOM_FIELDS,
     IMPRINT_CUSTOM_FIELDS_UI,
@@ -34,6 +35,7 @@ from invenio_records_resources.services.custom_fields import (
     TextCF,
 )
 import os
+
 
 def _(x):  # needed to avoid start time failure with lazy strings
     return x
@@ -60,14 +62,12 @@ SECRET_KEY = os.environ.get('INVENIO_SECRET_KEY', "CHANGE_ME")
 # route correct hosts to the application.
 TRUSTED_HOSTS = ['0.0.0.0', 'localhost', '127.0.0.1', 'uchicago.invenio.cottagelabs.com']
 
-
 # Flask-SQLAlchemy
 # ================
 # See https://flask-sqlalchemy.palletsprojects.com/en/2.x/config/
 
 # TODO: Set
 SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://chicago-invenio:chicago-invenio@localhost/chicago-invenio"
-
 
 # Invenio-App
 # ===========
@@ -119,7 +119,6 @@ APP_DEFAULT_SECURE_HEADERS = {
     'strict_transport_security_preload': False,
 }
 
-
 # Flask-Babel
 # ===========
 # See https://python-babel.github.io/flask-babel/#configuration
@@ -128,7 +127,6 @@ APP_DEFAULT_SECURE_HEADERS = {
 BABEL_DEFAULT_LOCALE = 'en'
 # Default time zone
 BABEL_DEFAULT_TIMEZONE = 'America/Chicago'
-
 
 # Invenio-I18N
 # ============
@@ -139,7 +137,6 @@ I18N_LANGUAGES = [
     # ('de', _('German')),
     # ('tr', _('Turkish')),
 ]
-
 
 # Invenio-Theme
 # =============
@@ -277,16 +274,15 @@ OAISERVER_ADMIN_EMAILS = [
 
 SEARCH_INDEX_PREFIX = "chicago-invenio-"
 
-
 # Invenio-Administration
 # ----------------------
 
 from invenio_app_rdm import __version__
+
 ADMINISTRATION_DISPLAY_VERSIONS = [
     ("invenio-app-rdm", f"v{__version__}"),
     ("chicago-invenio", "v1.0.0"),
 ]
-
 
 RDM_NAMESPACES = {
     **JOURNAL_NAMESPACE,
@@ -328,3 +324,11 @@ MEETING_CUSTOM_FIELDS_UI["hide_from_landing_page"] = True
 
 # Enable MathJax for rendering mathematical expressions
 THEME_MATHJAX_CDN = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"
+
+# Add custom identifiers
+# patent_applications = re.compile('^US\s+(?:\d{4}\/)?(?:\d{7,11})\s+[AB][12]?$')
+
+RDM_RECORDS_IDENTIFIERS_SCHEMES = {**RDM_RECORDS_IDENTIFIERS_SCHEMES,
+                                   "patent_application_number": {"label": _("Patent application number"),
+                                                                 "validator": lambda x: True},
+                                   "patent_number": {"label": _("Patent number"), "validator": lambda x: True}}

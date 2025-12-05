@@ -881,16 +881,18 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         elif subfield_a is not None:
             id_value = subfield_a.text.strip()
             if id_value and not any(existing['identifier'] == id_value for existing in identifiers):
-                # Check for patent number patterns
+                # There are some DOIs erroneously placed in 024$a, so check for DOI pattern first
+                # it's fine to add these as DOIs
                 if idutils.is_doi(id_value):
                     identifiers.append({
                         'identifier': id_value,
                         'scheme': 'doi'
                     })
+                # Assign as patent number
                 else:
                     identifiers.append({
                         'identifier': id_value,
-                        'scheme': 'other'
+                        'scheme': 'patent_number'
                     })
 
         # Handle patent application numbers (MARC 024$d)
@@ -900,7 +902,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                 # Patent application numbers
                 identifiers.append({
                     'identifier': id_value,
-                    'scheme': 'other'
+                    'scheme': 'patent_application_number'
                 })
 
     # Electronic location/URLs (MARC 856)

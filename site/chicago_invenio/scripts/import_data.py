@@ -1128,7 +1128,12 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
     for subject_field in subject_653_fields:
         subfield_a = subject_field.find('.//marc:subfield[@code="a"]', MARC_NS)
         if subfield_a is not None:
-            subjects.append({'subject': subfield_a.text.strip()})
+            # Some fields contain semi-colon separated values
+            subfield_a = subfield_a.text.strip().split(';')
+            # Omit empty string
+            a_subfields = [term.strip() for term in subfield_a if term.strip()]
+            for term in a_subfields:
+                subjects.append({'subject': term.strip()})
 
     # LC subject headings (MARC 691)
     all_691_fields = record_elem.findall(f'.//marc:datafield[@tag="691"]', MARC_NS)

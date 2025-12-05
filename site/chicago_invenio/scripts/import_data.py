@@ -1571,13 +1571,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         if division_a is not None:
             custom_fields['chicago:division'] = division_a.text.strip()
 
-    # Department information (MARC 691)
-    '''department_field = record_elem.find('.//marc:datafield[@tag="691"]', MARC_NS)
-    if department_field is not None:
-        department_a = department_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-        if department_a is not None:
-            custom_fields['department'] = department_a.text.strip()'''
-
     # Center or Institute information (MARC 692)
     center_field = record_elem.find('.//marc:datafield[@tag="692"]', MARC_NS)
     if center_field is not None:

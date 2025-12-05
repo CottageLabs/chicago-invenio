@@ -1831,16 +1831,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
 
     # ==================== ACCESS RIGHTS ====================
 
-    # Check for access restrictions (MARC 506)
-    access_506 = record_elem.find('.//marc:datafield[@tag="506"]', MARC_NS)
-    if access_506 is not None:
-        access_a = access_506.find('.//marc:subfield[@code="a"]', MARC_NS)
-        if access_a is not None:
-            access_text = access_a.text.strip().lower()
-            if 'restricted' in access_text or 'embargo' in access_text:
-                record['access']['record'] = 'restricted'
-                record['access']['files'] = 'restricted'
-
     # Check for embargo information (MARC 856$e)
     embargo_fields = record_elem.findall('.//marc:datafield[@tag="856"][@ind1="4"]', MARC_NS)
     for embargo_field in embargo_fields:

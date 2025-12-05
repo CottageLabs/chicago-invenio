@@ -8,6 +8,7 @@ To run the script, go to the repository root directory and use the following com
 
         $ pipenv run invenio shell site/chicago_invenio/scripts/xml_import_data.py <email> <filepath>
 """
+from datetime import datetime
 
 import click
 import logging
@@ -1120,6 +1121,8 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
     subject_650_fields = record_elem.findall('.//marc:datafield[@tag="650"]', MARC_NS)
     for subject_field in subject_650_fields:
         subfield_a = subject_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        # TODO Should this be a controlled vocabulary term with scheme?
+        # 'id' instead of 'subject'?
         if subfield_a is not None:
             subjects.append({'subject': subfield_a.text.strip()})
 
@@ -1838,7 +1841,20 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         if embargo_e is not None:
             embargo_text = embargo_e.text.strip().lower()
             if 'restricted' in embargo_text or 'embargo' in embargo_text:
+                record['access']['record'] = 'restricted'
                 record['access']['files'] = 'restricted'
+
+                if 'embargo' in embargo_text:
+                    date_obj = None
+                    try:
+                        date_obj = datetime.strptime(embargo_text[9:-1], '%Y-%m-%d')
+                    except Exception:
+                        continue
+
+                    if date_obj and date_obj > datetime.now():
+                        record['access']['embargo'] = {'active': True, 'until': str(date_obj.date())}
+                    else:
+                        record['access']['embargo'] = {'active': False}
 
     if custom_fields:
         record['custom_fields'] = custom_fields

@@ -1467,34 +1467,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
     if additional_descriptions:
         metadata['additional_descriptions'] = additional_descriptions
 
-    # ==================== LOCAL COLLECTION INFO (900 series) ====================
-
-    # Publication status (MARC 981)
-    # pub_status_981 = record_elem.find('.//marc:datafield[@tag="981"]', MARC_NS)
-    # if pub_status_981 is not None:
-    #    status_a = pub_status_981.find('.//marc:subfield[@code="a"]', MARC_NS)
-    #    if status_a is not None:
-    #        status_text = status_a.text.strip()
-    #        # Add as custom metadata
-    #        if 'custom' not in metadata:
-    #            metadata['custom'] = {}
-    #        metadata['custom']['publication_status'] = status_text
-
-    # Collection/Set information (MARC 909CO $p)
-    collection_909 = record_elem.findall('.//marc:datafield[@tag="909"][@ind1="C"][@ind2="O"]', MARC_NS)
-    collections = []
-    for coll_field in collection_909:
-        coll_p = coll_field.find('.//marc:subfield[@code="p"]', MARC_NS)
-        if coll_p is not None:
-            coll_text = coll_p.text.strip()
-            if coll_text and coll_text != 'GLOBAL_SET':
-                collections.append(coll_text)
-
-    # if collections:
-    #    if 'custom' not in metadata:
-    #        metadata['custom'] = {}
-    #    metadata['custom']['collections'] = collections
-
     # ==================== CUSTOM FIELDS ====================
 
     # Thesis information (MARC 502)

@@ -516,7 +516,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
     creators = []
     contributors = []
 
-
     # Extract additional personal creators (MARC 700)
     added_personal = record_elem.findall('.//marc:datafield[@tag="700"]', MARC_NS)
     for personal_field in added_personal:
@@ -1202,6 +1201,16 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
 
     # ==================== ADDITIONAL DESCRIPTIONS ====================
 
+    # Administrative notes (MARC 592) - internal use only
+    note_592_fields = record_elem.findall('.//marc:datafield[@tag="592"]', MARC_NS)
+    internal_notes = []
+    for note_field in note_592_fields:
+        note_a = note_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if note_a is not None:
+            internal_notes.append({'note': note_a.text.strip()})
+
+    # ==================== ADDITIONAL DESCRIPTIONS ====================
+
     record_additional_description_sources = []  # Track sources for this record
 
     # Alternative descriptions from MARC 520$b (alternative language)
@@ -1214,11 +1223,6 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
                 'type': {'id': 'other', 'title': {'en': 'Alternative Description'}}
             })
             record_additional_description_sources.append('520$b')
-
-    # General notes (MARC 500) - skip as per CSV mapping
-    # general_note_fields = record_elem.findall('.//marc:datafield[@tag="500"]', MARC_NS)
-
-    # Administrative notes (MARC 592) - internal use only, skip
 
     # Notes (MARC 593) - using custom description type
     note_593_fields = record_elem.findall('.//marc:datafield[@tag="593"]', MARC_NS)
@@ -1831,6 +1835,9 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
             'files': 'public'
         }
     }
+
+    if internal_notes:
+        record['internal_notes'] = internal_notes
 
     # ==================== ACCESS RIGHTS ====================
 

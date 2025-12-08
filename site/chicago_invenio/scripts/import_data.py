@@ -28,7 +28,13 @@ import requests
 from flask import current_app
 from invenio_app.factory import create_app
 from invenio_rdm_records.fixtures.tasks import get_authenticated_identity
-from invenio_rdm_records.proxies import current_rdm_records_service
+from invenio_rdm_records.proxies import (
+    current_rdm_records_service,
+    current_record_communities_service,
+)
+from invenio_requests.proxies import current_requests_service
+
+from load_as_coms_colls import main as get_create_community_collection_structure, slugify
 
 
 def strip_html_tags(text):
@@ -1952,19 +1958,19 @@ def stream_marc_records(filepath: str, chunk_size: int = 1000) -> Generator[ET.E
         raise
 
 
-def process_records_batch(records_batch, owner_id: int) -> list:
+def process_records_batch(records_batch, identity, community_map) -> list:
     """Process a batch of records.
 
     Args:
         records_batch: List of XML record elements
-        owner_id: ID of the record owner
+        identity: ID of the record owner
+        community_map: Mapping of community slugs to IDs
 
     Returns:
         List of created record IDs
     """
     global errors_log
     results = []
-    identity = get_authenticated_identity(owner_id)
 
     for record_elem in records_batch:
         invenio_data = None
@@ -2023,6 +2029,18 @@ def process_records_batch(records_batch, owner_id: int) -> list:
             if published is None:
                 raise ValueError("Record publishing failed - service returned None")
 
+            community_id = community_map[slugify(invenio_data['custom_fields']['chicago:center_or_institute'])]
+
+            request_id = current_record_communities_service.add(
+                identity,
+                published.id,
+                dict(communities=[dict(id=community_id, require_review=False)]),
+            )[0][0]["request_id"]
+
+            current_requests_service.execute_action(
+                identity, request_id, "accept"
+            )
+
             results.append(published.id)
 
         except Exception as e:
@@ -2070,6 +2088,11 @@ def import_data(email: str, filepath: str, batch_size: int, max_records: Optiona
             click.secho(f"User with email {email} not found.", fg="red")
             sys.exit(1)
 
+        identity = get_authenticated_identity(owner.id)
+
+        # Get create community collection structure and get community map
+        community_map = get_create_community_collection_structure(identity)
+
         # Clear the global error log at the start of each import
         global errors_log
         errors_log = []
@@ -2103,7 +2126,7 @@ def import_data(email: str, filepath: str, batch_size: int, max_records: Optiona
                     #break
 
                 # Process the batch
-                batch_results = process_records_batch(batch, owner.id)
+                batch_results = process_records_batch(batch, identity, community_map)
 
                 total_processed += len(batch)
                 total_created += len(batch_results)

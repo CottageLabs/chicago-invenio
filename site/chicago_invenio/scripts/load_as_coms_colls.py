@@ -1,19 +1,17 @@
 import csv
 import json
+import os
 import sys
 import re, unicodedata
 
 from invenio_collections.api import CollectionTree, Collection
 from invenio_collections.errors import CollectionTreeNotFound
 from invenio_collections.proxies import current_collections
-from invenio_access.permissions import system_identity
-
+from flask import current_app
+from invenio_app.factory import create_app
 from invenio_db import db
-
 from invenio_communities.proxies import current_communities
-
-
-import os
+from invenio_rdm_records.fixtures.tasks import get_authenticated_identity
 
 from sqlalchemy.exc import IntegrityError
 
@@ -25,7 +23,7 @@ def rel2abs(src, *paths):
     return os.path.abspath(os.path.join(src, *paths))
 
 CSV = rel2abs(__file__, 'com_col_data.csv')
-# COM = "61943e3d-9bf3-40e3-822c-2f3a14557515"
+
 
 def build_nested_dict(csv_path):
     nested = {}
@@ -74,10 +72,12 @@ def build_nested_dict(csv_path):
 
     return nested
 
-def load_structure(structure):
+def load_structure(structure, identity):
 
     communities_service = current_communities.service
     collections_service = current_collections.service
+
+    slug_id_map = {}
 
     for k, v in structure.items():
         # locate a community if one exists, and delete it
@@ -104,8 +104,9 @@ def load_structure(structure):
                     "metadata": v.get("metadata", {"title": k}),
                     "access": v.get("access", {"visibility" : "public"}),
                 },
-                identity=system_identity,
+                identity=identity,
             )
+            slug_id_map[k] = com.id
         except IntegrityError:
             print("Community creation failed (already exists?):", k)
             continue
@@ -124,7 +125,7 @@ def load_structure(structure):
         # create collections in the tree for the community
         for ck, cv in v.get("collections", {}).items():
             collections_service.create(
-                system_identity,
+                identity,
                 com.id,
                 tree_slug=ctree.slug,
                 slug=ck,
@@ -132,6 +133,8 @@ def load_structure(structure):
                 query=cv.get("query"),
                 order=cv.get("order", 10),
             )
+
+    return slug_id_map
 
 def to_com_col_tree(structure):
     tree = {}
@@ -159,6 +162,7 @@ def to_com_col_tree(structure):
 
     return tree
 
+
 def slugify(text):
     text = unicodedata.normalize('NFKD', text)
     text = text.encode('ascii', 'ignore').decode('ascii')
@@ -175,6 +179,7 @@ FIELD_MAP = {
     "resource_type": "resource_type.id.keyword",
 }
 
+
 def child_query_for(rules):
     ands = []
     for k, v in rules.items():
@@ -183,12 +188,14 @@ def child_query_for(rules):
 
     return "(" + ") AND (".join(ands) + ")"
 
+
 def all_child_query_for(rules):
     ors = []
     for set in rules:
         ors.append(child_query_for(set))
 
     return "(" + ") OR (".join(ors) + ")"
+
 
 def parent_query_for(rules):
     default = rules.get("")
@@ -204,22 +211,43 @@ def parent_query_for(rules):
     return "(" + ") OR (".join(ors) + ")"
 
 
-def main(csv_path):
+def main(email_or_identity, csv_path=CSV):
+    if isinstance(email_or_identity, str):
+        # Create application context
+        app = create_app()
+        with app.app_context():
+            # Find the user
+            user_datastore = current_app.extensions["security"].datastore
+            owner = user_datastore.find_user(email=email_or_identity)
+
+            if not owner:
+                print(f"User with email {email_or_identity} not found.")
+                sys.exit(1)
+
+            identity = get_authenticated_identity(owner.id)
+    else:
+        identity = email_or_identity
+
     nested = build_nested_dict(csv_path)
     # print(json.dumps(nested, ensure_ascii=False, indent=2))
     tree = to_com_col_tree(nested)
     # print(json.dumps(tree, ensure_ascii=False, indent=2))
-    load_structure(tree)
+    slug_id_map = load_structure(tree, identity)
+
+    print(slug_id_map)
+
+    return slug_id_map
 
 if __name__ == '__main__':
-    # import argparse
-    #
-    # parser = argparse.ArgumentParser()
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("email")
     # parser.add_argument("community", help="ID of the community to use as root")
     # parser.add_argument("input_csv", help="Path to input CSV file")
-    # args = parser.parse_args()
+    args = parser.parse_args()
 
     # main(args.input_csv, args.community)
-    main(CSV)
+    main(args.email)
     # sys.exit()
 

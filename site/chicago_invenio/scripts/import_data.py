@@ -4,6 +4,9 @@ Make sure the Invenio services have been set up and are running.
 
 Efficiently processes large MARCXML files using streaming XML parsing.
 
+The user used will become the record owner for all imported records. That user
+needs to be an admin user in order for internal notes to work.
+
 To run the script, go to the repository root directory and use the following command:
 
         $ pipenv run invenio shell site/chicago_invenio/scripts/xml_import_data.py <email> <filepath>

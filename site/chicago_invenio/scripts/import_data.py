@@ -2029,17 +2029,21 @@ def process_records_batch(records_batch, identity, community_map) -> list:
             if published is None:
                 raise ValueError("Record publishing failed - service returned None")
 
-            community_id = community_map[slugify(invenio_data['custom_fields']['chicago:center_or_institute'])]
 
-            request_id = current_record_communities_service.add(
-                identity,
-                published.id,
-                dict(communities=[dict(id=community_id, require_review=False)]),
-            )[0][0]["request_id"]
+            # Make community inclusion conditional on field presence
+            if 'chicago:center_or_institute' in invenio_data.get('custom_fields', {}):
+                community_key = invenio_data['custom_fields']['chicago:center_or_institute']
+                community_id = community_map[slugify(community_key)]
 
-            current_requests_service.execute_action(
-                identity, request_id, "accept"
-            )
+                request_id = current_record_communities_service.add(
+                    identity,
+                    published.id,
+                    dict(communities=[dict(id=community_id, require_review=False)]),
+                )[0][0]["request_id"]
+
+                current_requests_service.execute_action(
+                    identity, request_id, "accept"
+                )
 
             results.append(published.id)
 

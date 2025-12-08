@@ -9,7 +9,13 @@ needs to be an admin user in order for internal notes to work.
 
 To run the script, go to the repository root directory and use the following command:
 
-        $ pipenv run invenio shell site/chicago_invenio/scripts/xml_import_data.py <email> <filepath>
+        $ pipenv run invenio shell site/chicago_invenio/scripts/xml_import_data.py <email> <datafile> <filepath>
+
+Where:
+
+    email: Email of the user to assign as record owner
+    datafile: Path to the MARCXML data file to import
+    filepath: Path to the directory where any associated files are stored (they are looked up under their TIND ID)
 """
 from datetime import datetime
 
@@ -33,6 +39,7 @@ from invenio_rdm_records.proxies import (
     current_rdm_records_service,
     current_record_communities_service,
 )
+from invenio_records_resources.services.records.results import RecordItem
 from invenio_requests.proxies import current_requests_service
 
 from load_as_coms_colls import main as get_create_community_collection_structure, slugify
@@ -1839,7 +1846,7 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
     record = {
         'pids': {},
         'metadata': metadata,
-        'files': {'enabled': False},  # Mark as metadata-only record (no files)
+        'files': {'enabled': True},
         'access': {
             'record': 'public',
             'files': 'public'
@@ -1879,7 +1886,7 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
     return record
 
 
-def add_files_to_draft(draft, identity, filepath):
+def add_files_to_draft(draft: RecordItem, identity, filepath: str):
     """Add files to the draft record.
 
     Args:
@@ -1888,27 +1895,29 @@ def add_files_to_draft(draft, identity, filepath):
         filepath: Root filepath for associated files
     """
     try:
-        # Path to the test file
-        record_file_path = '/home/jabbi/PycharmProjects/chicago-invenio/site/chicago_invenio/scripts/test.xml'
+        # Path to the record's file/s 'chicago:tind_id'
+        record_file_path = f'{filepath}/{draft.data.get("custom_fields", {}).get("chicago:tind_id", "")}'
 
         # Check if test file exists
-        if not os.path.exists(test_file_path):
-            logger.warning(f"Test file not found at {test_file_path}, skipping file upload")
+        if not os.path.exists(record_file_path):
+            logger.warning(f"Directory not found at {record_file_path}, skipping file upload")
             return
 
         # Get the draft files service
         draft_file_service = current_rdm_records_service.draft_files
 
         # Initialize file metadata
-        file_data = [{"key": "test.xml"}]
+        file_names = os.listdir(record_file_path)
+        file_data = [{"key": file_name} for file_name in file_names]
         draft_file_service.init_files(identity, draft.id, data=file_data)
 
-        # Upload file content
-        with open(test_file_path, "rb") as f:
-            draft_file_service.set_file_content(identity, draft.id, "test.xml", f)
+        for file_name in file_names:
+            # Upload file content
+            with open(os.path.join(record_file_path, file_name), "rb") as f:
+                draft_file_service.set_file_content(identity, draft.id, file_name, f)
 
-        # Commit the file
-        draft_file_service.commit_file(identity, draft.id, "test.xml")
+            # Commit the file
+            draft_file_service.commit_file(identity, draft.id, file_name)
 
         logger.info(f"Successfully uploaded test.xml to draft {draft.id}")
 
@@ -2017,7 +2026,7 @@ def process_records_batch(records_batch, identity, community_map: dict, filepath
 
             # Add test file to the draft
             error_record["error_stage"] = "add_files"
-            #add_files_to_draft(draft, identity, filepath)
+            add_files_to_draft(draft, identity, filepath)
 
             # Publish the record
             error_record["error_stage"] = "publish"

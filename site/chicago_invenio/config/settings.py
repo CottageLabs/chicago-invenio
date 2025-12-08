@@ -40,7 +40,6 @@ import os
 def _(x):  # needed to avoid start time failure with lazy strings
     return x
 
-
 # Flask
 # =====
 # See https://flask.palletsprojects.com/en/1.1.x/config/
@@ -332,3 +331,5 @@ RDM_RECORDS_IDENTIFIERS_SCHEMES = {**RDM_RECORDS_IDENTIFIERS_SCHEMES,
                                    "patent_application_number": {"label": _("Patent application number"),
                                                                  "validator": lambda x: True},
                                    "patent_number": {"label": _("Patent number"), "validator": lambda x: True}}
+
+COMMUNITIES_SHOW_BROWSE_MENU_ENTRY = True

@@ -12,8 +12,7 @@ from invenio_app.factory import create_app
 from invenio_db import db
 from invenio_communities.proxies import current_communities
 from invenio_rdm_records.fixtures.tasks import get_authenticated_identity
-
-from sqlalchemy.exc import IntegrityError
+from marshmallow import ValidationError
 
 
 def rel2abs(src, *paths):
@@ -106,8 +105,7 @@ def load_structure(structure, identity):
                 },
                 identity=identity,
             )
-            slug_id_map[k] = com.id
-        except IntegrityError:
+        except ValidationError:
             print("Community creation failed (already exists?):", k)
             continue
 
@@ -124,15 +122,21 @@ def load_structure(structure, identity):
 
         # create collections in the tree for the community
         for ck, cv in v.get("collections", {}).items():
-            collections_service.create(
-                identity,
-                com.id,
-                tree_slug=ctree.slug,
-                slug=ck,
-                title=cv.get("title", ck),
-                query=cv.get("query"),
-                order=cv.get("order", 10),
-            )
+            try:
+                collections_service.create(
+                    identity,
+                    com.id,
+                    tree_slug=ctree.slug,
+                    slug=ck,
+                    title=cv.get("title", ck),
+                    query=cv.get("query"),
+                    order=cv.get("order", 10),
+                )
+            except Exception:
+                pass
+
+            if cv.get("title", ck) not in slug_id_map:
+                slug_id_map[cv.get("title", ck)] = com.id
 
     return slug_id_map
 

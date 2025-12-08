@@ -2041,9 +2041,9 @@ def process_records_batch(records_batch, identity, community_map: dict, filepath
 
 
             # Make community inclusion conditional on field presence
-            if 'chicago:center_or_institute' in invenio_data.get('custom_fields', {}):
-                community_key = invenio_data['custom_fields']['chicago:center_or_institute']
-                community_id = community_map[slugify(community_key)]
+            if 'chicago:department' in invenio_data.get('custom_fields', {}):
+                community_key = invenio_data['custom_fields']['chicago:department']
+                community_id = community_map[community_key]
 
                 request_id = current_record_communities_service.add(
                     identity,
@@ -2106,10 +2106,10 @@ def import_data(email: str, data: str, filepath:str, batch_size: int, max_record
         identity = get_authenticated_identity(owner.id)
 
         # Get create community collection structure and get community map
-        try:
-            community_map = get_create_community_collection_structure(identity)
-        except Exception:
-            community_map = {}
+        #try:
+        community_map = get_create_community_collection_structure(identity)
+        #except Exception:
+        # community_map = {}
 
         # Clear the global error log at the start of each import
         global errors_log

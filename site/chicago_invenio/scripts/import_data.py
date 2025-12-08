@@ -22,6 +22,7 @@ from typing import Dict, Any, Optional, Generator
 import xml.etree.ElementTree as ET
 from itertools import islice
 import re
+import os
 import html
 import idutils
 import requests
@@ -503,7 +504,7 @@ def extract_ror_id_from_identifier(identifier: str) -> Optional[str]:
     return None
 
 
-def parse_marc_record(record_elem) -> Dict[str, Any]:
+def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
     """Convert MARCXML record to InvenioRDM format.
 
     Args:
@@ -513,7 +514,7 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
         Dictionary with InvenioRDM record data
     """
     metadata = {}
-    custom_fields = {}
+    custom_fields = {'chicago:tind_id': int(record_identifier)}
 
     # ==================== RESOURCE TYPE ====================
 
@@ -1878,19 +1879,19 @@ def parse_marc_record(record_elem) -> Dict[str, Any]:
     return record
 
 
-def add_test_file_to_draft(draft, identity):
-    """Add test.xml file to the draft record.
+def add_files_to_draft(draft, identity, filepath):
+    """Add files to the draft record.
 
     Args:
         draft: The draft record
         identity: User identity for authentication
+        filepath: Root filepath for associated files
     """
     try:
         # Path to the test file
-        test_file_path = '/home/jabbi/PycharmProjects/chicago-invenio/site/chicago_invenio/scripts/test.xml'
+        record_file_path = '/home/jabbi/PycharmProjects/chicago-invenio/site/chicago_invenio/scripts/test.xml'
 
         # Check if test file exists
-        import os
         if not os.path.exists(test_file_path):
             logger.warning(f"Test file not found at {test_file_path}, skipping file upload")
             return
@@ -1958,7 +1959,7 @@ def stream_marc_records(filepath: str, chunk_size: int = 1000) -> Generator[ET.E
         raise
 
 
-def process_records_batch(records_batch, identity, community_map) -> list:
+def process_records_batch(records_batch, identity, community_map: dict, filepath: str) -> list:
     """Process a batch of records.
 
     Args:
@@ -1992,7 +1993,7 @@ def process_records_batch(records_batch, identity, community_map) -> list:
                 error_record["record_identifier"] = record_identifier
             
             # Convert MARC to InvenioRDM format
-            invenio_data = parse_marc_record(record_elem)
+            invenio_data = parse_marc_record(record_elem, record_identifier)
             error_record["invenio_data"] = invenio_data
             
             # Extract DOI for better identification
@@ -2016,7 +2017,7 @@ def process_records_batch(records_batch, identity, community_map) -> list:
 
             # Add test file to the draft
             error_record["error_stage"] = "add_files"
-            #add_test_file_to_draft(draft, identity)
+            #add_files_to_draft(draft, identity, filepath)
 
             # Publish the record
             error_record["error_stage"] = "publish"
@@ -2069,15 +2070,16 @@ def process_records_batch(records_batch, identity, community_map) -> list:
 
 @click.command("import_data")
 @click.argument("email")
+@click.argument("data")
 @click.argument("filepath")
 @click.option("--batch-size", default=500, help="Number of records to process in each batch")
 @click.option("--max-records", default=3000, type=int, help="Maximum number of records to process (for testing)")
-def import_data(email: str, filepath: str, batch_size: int, max_records: Optional[int]):
+def import_data(email: str, data: str, filepath:str, batch_size: int, max_records: Optional[int]):
     """Import MARCXML bibliographic data into Chicago Invenio.
 
     Args:
         email: Email of the user who will own the records
-        filepath: Path to the MARCXML file
+        data: Path to the MARCXML file
         batch_size: Number of records to process in each batch
         max_records: Maximum number of records to process (optional, for testing)
     """
@@ -2095,7 +2097,10 @@ def import_data(email: str, filepath: str, batch_size: int, max_records: Optiona
         identity = get_authenticated_identity(owner.id)
 
         # Get create community collection structure and get community map
-        community_map = get_create_community_collection_structure(identity)
+        try:
+            community_map = get_create_community_collection_structure(identity)
+        except Exception:
+            community_map = {}
 
         # Clear the global error log at the start of each import
         global errors_log
@@ -2106,7 +2111,8 @@ def import_data(email: str, filepath: str, batch_size: int, max_records: Optiona
             f.write("")  # Clear file
         
         logger.info(f"Starting XML import for user: {email}")
-        logger.info(f"File: {filepath}")
+        logger.info(f"Data file: {data}")
+        logger.info(f"File path: {filepath}")
         logger.info(f"Batch size: {batch_size}")
         logger.info(f"Awards will be logged to awards.txt")
 
@@ -2116,7 +2122,7 @@ def import_data(email: str, filepath: str, batch_size: int, max_records: Optiona
 
         try:
             # Stream records from XML file
-            record_stream = stream_marc_records(filepath)
+            record_stream = stream_marc_records(data)
 
             # Process records in batches
             while True:
@@ -2130,7 +2136,7 @@ def import_data(email: str, filepath: str, batch_size: int, max_records: Optiona
                     #break
 
                 # Process the batch
-                batch_results = process_records_batch(batch, identity, community_map)
+                batch_results = process_records_batch(batch, identity, community_map, filepath)
 
                 total_processed += len(batch)
                 total_created += len(batch_results)

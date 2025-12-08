@@ -33,6 +33,7 @@ from invenio_rdm_records.contrib.meeting import (
 )
 from invenio_records_resources.services.custom_fields import (
     TextCF,
+    IntegerCF
 )
 import os
 
@@ -300,6 +301,7 @@ RDM_CUSTOM_FIELDS = [
     TextCF(name="chicago:division"),
     TextCF(name="chicago:department"),
     TextCF(name="chicago:center_or_institute"),
+    IntegerCF(name="chicago:tind_id"),
 ]
 
 RDM_CUSTOM_FIELDS_UI = [

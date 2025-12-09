@@ -2016,6 +2016,8 @@ def process_records_batch(records_batch, identity, community_map: dict, filepath
             
             errors_log.append(error_record)
             logger.error(f"Error processing record {record_identifier} at stage {error_record['error_stage']}: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
             continue
 
     return results

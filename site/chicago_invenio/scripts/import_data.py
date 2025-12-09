@@ -101,37 +101,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Global counter for publication date sources
-date_source_counts = {
-    '260$c': 0,
-    '260$g (manufacture)': 0,
-    '269$a': 0,
-    '008 (positions 7-14)': 0,
-    '264$c (copyright)': 0,
-    '046$k': 0,
-    'DOI scraping': 0,
-    'DOI volume mapping': 0,
-    'missing': 0
-}
-
-# Global counter for additional description sources
-additional_description_source_counts = {
-    '520$b': 0,
-    '500': 0,
-    '590': 0,
-    '591': 0,
-    '593': 0,
-    '594': 0
-}
-
-# Counter for records with additional descriptions but no main description
-records_with_additional_but_no_main_description = 0
-
-# Track resource types for records missing main descriptions
-resource_types_missing_main_description = {}
 
 # Global error tracking
 errors_log = []
+warnings_log = []
 
 # MARC namespace
 MARC_NS = {'marc': 'http://www.loc.gov/MARC21/slim'}
@@ -951,7 +924,6 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
 
     # ==================== PUBLISHER AND DATES ====================
 
-    date_source = None  # Track where publication date comes from
 
     # Publication info (MARC 260)
     pub_fields_260 = record_elem.findall('.//marc:datafield[@tag="260"]', MARC_NS)
@@ -970,7 +942,6 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
                 date = extract_full_date(pub_c.text.strip())
                 if date:
                     metadata['publication_date'] = date
-                    date_source = '260$c'
                     break  # Stop after finding first valid $c date
 
     # ==================== DATES (ADDITIONAL) ====================
@@ -1037,7 +1008,6 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
             date = extract_full_date(date_a.text.strip())
             if date:
                 metadata['publication_date'] = date
-                date_source = '269$a'
 
     # Additional fallback date sources
     if 'publication_date' not in metadata:
@@ -1050,11 +1020,9 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
             # Use Date 1 if it's a valid 4-digit year
             if date1.isdigit() and 1000 <= int(date1) <= 2100:
                 metadata['publication_date'] = date1
-                date_source = '008 (positions 7-14)'
             # Otherwise try Date 2
             elif date2.isdigit() and 1000 <= int(date2) <= 2100:
                 metadata['publication_date'] = date2
-                date_source = '008 (positions 7-14)'
 
         # Try copyright date (MARC 264 ind2="4")
         if 'publication_date' not in metadata:
@@ -1065,7 +1033,6 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
                     date = extract_full_date(copyright_c.text.strip())
                     if date:
                         metadata['publication_date'] = date
-                        date_source = '264$c (copyright)'
 
         # Try creation date (MARC 046)
         if 'publication_date' not in metadata:
@@ -1076,7 +1043,6 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
                     date = extract_full_date(creation_k.text.strip())
                     if date:
                         metadata['publication_date'] = date
-                        date_source = '046$k'
 
         # Try to extract publication date from DOI scraping (Physical Review journals)
         if 'publication_date' not in metadata and 'identifiers' in metadata:
@@ -1089,7 +1055,6 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
                         scraped_date = scrape_doi_publication_date(doi)
                         if scraped_date:
                             metadata['publication_date'] = scraped_date
-                            date_source = 'DOI scraping'
                             break
 
                     # Fallback: Physical Review D volume mapping if scraping fails
@@ -1100,7 +1065,6 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
                         if volume >= 85:  # Starting from known volume/year
                             year = str(2012 + (volume - 85) // 2)  # ~2 volumes per year
                             metadata['publication_date'] = year
-                            date_source = 'DOI volume mapping'
                             break
 
                     # Other Physical Review journals could be added here
@@ -1802,42 +1766,6 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
                 break
 
 
-    # Update global counters for date sources
-    if date_source:
-        # Handle DOI-related sources
-        if 'DOI scraping' in date_source:
-            date_source_counts['DOI scraping'] += 1
-        elif 'DOI volume mapping' in date_source:
-            date_source_counts['DOI volume mapping'] += 1
-        elif date_source in date_source_counts:
-            date_source_counts[date_source] += 1
-    else:
-        date_source_counts['missing'] += 1
-
-    # Update global counters for additional description sources
-    for source in record_additional_description_sources:
-        if source in additional_description_source_counts:
-            additional_description_source_counts[source] += 1
-
-    # Check if record has additional descriptions but no main description
-    global records_with_additional_but_no_main_description, resource_types_missing_main_description
-    has_main_description = 'description' in metadata
-    has_additional_descriptions = len(record_additional_description_sources) > 0
-
-    if has_additional_descriptions and not has_main_description:
-        records_with_additional_but_no_main_description += 1
-        # Track resource type for this record
-        resource_type_id = resource_type.get('id', 'unknown')
-        if resource_type_id not in resource_types_missing_main_description:
-            resource_types_missing_main_description[resource_type_id] = 0
-        resource_types_missing_main_description[resource_type_id] += 1
-
-    # Enhanced logging with additional description info
-    additional_desc_info = f", Additional descriptions from {', '.join(record_additional_description_sources) if record_additional_description_sources else 'none'}"
-    main_desc_status = "has main description" if has_main_description else "NO MAIN DESCRIPTION"
-
-    logger.info(
-        f"Record {record_doi}: Publication date from {date_source or 'missing'}{additional_desc_info}, {main_desc_status}")
 
     # Log error for records with Unknown creators
     if creators and creators[0].get("person_or_org", {}).get("name") == "Unknown":
@@ -1896,7 +1824,7 @@ def add_files_to_draft(draft: RecordItem, identity, filepath: str):
     """
     try:
         # Path to the record's file/s 'chicago:tind_id'
-        record_file_path = f'{filepath}/{draft.data.get("custom_fields", {}).get("chicago:tind_id", "")}'
+        record_file_path = os.path.join(filepath, draft.data.get("custom_fields", {}).get("chicago:tind_id", ""))
 
         # Check if test file exists
         if not os.path.exists(record_file_path):
@@ -1980,6 +1908,7 @@ def process_records_batch(records_batch, identity, community_map: dict, filepath
         List of created record IDs
     """
     global errors_log
+    global warnings_log
     results = []
 
     for record_elem in records_batch:
@@ -2004,6 +1933,13 @@ def process_records_batch(records_batch, identity, community_map: dict, filepath
             # Convert MARC to InvenioRDM format
             invenio_data = parse_marc_record(record_elem, record_identifier)
             error_record["invenio_data"] = invenio_data
+
+            record_file_path = os.path.join(filepath, record_identifier)
+            add_files = True
+
+            if not os.path.exists(record_file_path):
+                invenio_data['files'] = {'enabled': False}
+                add_files = False
             
             # Extract DOI for better identification
             if 'identifiers' in invenio_data.get('metadata', {}):
@@ -2019,14 +1955,15 @@ def process_records_batch(records_batch, identity, community_map: dict, filepath
                 data=invenio_data,
                 identity=identity
             )
-            
+
             # Check if draft creation was successful
             if draft is None:
                 raise ValueError("Draft record creation failed - service returned None")
 
             # Add test file to the draft
-            error_record["error_stage"] = "add_files"
-            add_files_to_draft(draft, identity, filepath)
+            if add_files:
+                error_record["error_stage"] = "add_files"
+                add_files_to_draft(draft, identity, filepath)
 
             # Publish the record
             error_record["error_stage"] = "publish"
@@ -2043,17 +1980,24 @@ def process_records_batch(records_batch, identity, community_map: dict, filepath
             # Make community inclusion conditional on field presence
             if 'chicago:department' in invenio_data.get('custom_fields', {}):
                 community_key = invenio_data['custom_fields']['chicago:department']
-                community_id = community_map[community_key]
 
-                request_id = current_record_communities_service.add(
-                    identity,
-                    published.id,
-                    dict(communities=[dict(id=community_id, require_review=False)]),
-                )[0][0]["request_id"]
+                if community_key in community_map:
+                    community_id = community_map[community_key]
 
-                current_requests_service.execute_action(
-                    identity, request_id, "accept"
-                )
+                    request_id = current_record_communities_service.add(
+                        identity,
+                        published.id,
+                        dict(communities=[dict(id=community_id, require_review=False)]),
+                    )[0][0]["request_id"]
+
+                    current_requests_service.execute_action(
+                        identity, request_id, "accept"
+                    )
+                else:
+                    error_record["error_stage"] = "publish"
+                    error_record["error_message"] = f"Missing community mapping for key: {community_key}"
+                    warnings_log.append(error_record.copy())
+                    continue
 
             results.append(published.id)
 
@@ -2181,48 +2125,6 @@ def import_data(email: str, data: str, filepath:str, batch_size: int, max_record
             rate = total_processed / elapsed_time
             logger.info(f"Processing rate: {rate:.2f} records/second")
 
-        # Publication date source statistics
-        logger.info("")
-        logger.info("PUBLICATION DATE SOURCE STATISTICS")
-        logger.info("-" * 40)
-        total_date_records = sum(date_source_counts.values())
-        if total_date_records > 0:
-            for source, count in date_source_counts.items():
-                percentage = (count / total_date_records) * 100
-                logger.info(f"MARC {source}: {count} records ({percentage:.1f}%)")
-        else:
-            logger.info("No date source data available")
-
-        # Additional description source statistics
-        logger.info("")
-        logger.info("ADDITIONAL DESCRIPTION SOURCE STATISTICS")
-        logger.info("-" * 45)
-        total_additional_desc_fields = sum(additional_description_source_counts.values())
-        if total_additional_desc_fields > 0:
-            for source, count in additional_description_source_counts.items():
-                percentage = (count / total_additional_desc_fields) * 100
-                logger.info(f"MARC {source}: {count} fields ({percentage:.1f}%)")
-
-            logger.info("")
-            logger.info(
-                f"Records with additional descriptions but NO main description (520$a): {records_with_additional_but_no_main_description}")
-            if total_processed > 0:
-                no_main_desc_percentage = (records_with_additional_but_no_main_description / total_processed) * 100
-                logger.info(
-                    f"Percentage of records with additional descriptions but no main description: {no_main_desc_percentage:.1f}%")
-
-            # Report resource types for records missing main descriptions
-            if resource_types_missing_main_description:
-                logger.info("")
-                logger.info("RESOURCE TYPES FOR RECORDS MISSING MAIN DESCRIPTION")
-                logger.info("-" * 55)
-                for resource_type_id, count in sorted(resource_types_missing_main_description.items(),
-                                                      key=lambda x: x[1], reverse=True):
-                    percentage = (count / records_with_additional_but_no_main_description) * 100
-                    logger.info(f"Resource type '{resource_type_id}': {count} records ({percentage:.1f}%)")
-        else:
-            logger.info("No additional description source data available")
-
         logger.info("=" * 50)
 
         # Write errors to JSON file
@@ -2232,6 +2134,11 @@ def import_data(email: str, data: str, filepath:str, batch_size: int, max_record
             logger.info(f"Wrote {len(errors_log)} errors to errors.json")
         else:
             logger.info("No errors to write - all records processed successfully!")
+
+        if warnings_log:
+            with open("warnings.json", 'w', encoding='utf-8') as f:
+                json.dump(warnings_log, f, indent=2, ensure_ascii=False)
+            logger.info(f"Wrote {len(warnings_log)} warnings to warnings.json")
 
 
 if __name__ == "__main__":

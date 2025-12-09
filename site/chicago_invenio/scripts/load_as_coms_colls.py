@@ -96,6 +96,7 @@ def load_structure(structure, identity):
         # if com is not None:
 
         # create a new community
+        community_id = None
         try:
             com = communities_service.create(
                 data={
@@ -105,15 +106,28 @@ def load_structure(structure, identity):
                 },
                 identity=identity,
             )
+            community_id = com.id
         except ValidationError:
             print("Community creation failed (already exists?):", k)
-            continue
+            # Example search for community by slug
+            params = {
+                'q': f'slug:"{k}"'
+            }
+            results = list(communities_service.search(identity, params).hits)
+
+            if results and len(results) > 0:
+                # print(type(results[0]))
+                # print(results[0]['id'])
+                community_id = results[0]['id']
+
+            else:
+                continue
 
         # create a collection tree in the community
         try:
-            ctree = CollectionTree.resolve(slug=f"{k}-collections", community_id=com.id)
+            ctree = CollectionTree.resolve(slug=f"{k}-collections", community_id=community_id)
         except CollectionTreeNotFound:
-            ctree = CollectionTree.create(title="Collections", slug=f"{k}-collections", community_id=com.id)
+            ctree = CollectionTree.create(title="Collections", slug=f"{k}-collections", community_id=community_id)
 
         # delete any existing collections
         for c in ctree.collections:
@@ -125,7 +139,7 @@ def load_structure(structure, identity):
             try:
                 collections_service.create(
                     identity,
-                    com.id,
+                    community_id,
                     tree_slug=ctree.slug,
                     slug=ck,
                     title=cv.get("title", ck),
@@ -136,7 +150,7 @@ def load_structure(structure, identity):
                 pass
 
             if cv.get("title", ck) not in slug_id_map:
-                slug_id_map[cv.get("title", ck)] = com.id
+                slug_id_map[cv.get("title", ck)] = community_id
 
     return slug_id_map
 

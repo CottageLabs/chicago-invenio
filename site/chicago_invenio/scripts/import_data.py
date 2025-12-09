@@ -1824,7 +1824,7 @@ def add_files_to_draft(draft: RecordItem, identity, filepath: str):
     """
     try:
         # Path to the record's file/s 'chicago:tind_id'
-        record_file_path = os.path.join(filepath, draft.data.get("custom_fields", {}).get("chicago:tind_id", ""))
+        record_file_path = os.path.join(filepath, str(draft.data.get("custom_fields", {}).get("chicago:tind_id", "")))
 
         # Check if test file exists
         if not os.path.exists(record_file_path):

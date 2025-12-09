@@ -901,7 +901,7 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
         url_u = url_field.find('.//marc:subfield[@code="u"]', MARC_NS)
         if url_u is not None:
             url_text = url_u.text.strip()
-            if url_text.startswith('http'):
+            if url_text.startswith('http') and 'knowledge.uchicago.edu' not in url_text:
                 identifiers.append({
                     'identifier': url_text,
                     'scheme': 'url'

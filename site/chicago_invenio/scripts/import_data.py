@@ -1568,9 +1568,9 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
         custom_fields['chicago:division'] = divisions
 
     # Center or Institute information (MARC 692)
-    center_field = record_elem.find('.//marc:datafield[@tag="692"]', MARC_NS)
+    center_fields = record_elem.findall('.//marc:datafield[@tag="692"]', MARC_NS)
     centers_insts = []
-    if center_field is not None:
+    for center_field in center_fields:
         center_a = center_field.find('.//marc:subfield[@code="a"]', MARC_NS)
         if center_a is not None:
             centers_insts.append(center_a.text.strip())

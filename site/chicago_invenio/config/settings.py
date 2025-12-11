@@ -297,11 +297,11 @@ RDM_CUSTOM_FIELDS = [
     *IMPRINT_CUSTOM_FIELDS,
     *MEETING_CUSTOM_FIELDS,
     *THESIS_CUSTOM_FIELDS,
-    TextCF(name="chicago:original_submitter"),
-    TextCF(name="chicago:division"),
-    TextCF(name="chicago:department"),
-    TextCF(name="chicago:center_or_institute"),
-    IntegerCF(name="chicago:tind_id"),
+    TextCF(name="chicago:original_submitter"), # 270.m
+    TextCF(name="chicago:division", multiple=True), # 690.a
+    TextCF(name="chicago:department"), # 691.a
+    TextCF(name="chicago:center_or_institute"), # 692.a
+    IntegerCF(name="chicago:tind_id"), # 001
 ]
 
 RDM_CUSTOM_FIELDS_UI = [

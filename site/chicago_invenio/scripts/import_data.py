@@ -1120,16 +1120,20 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
 
     # LC subject headings (MARC 691)
     all_691_fields = record_elem.findall(f'.//marc:datafield[@tag="691"]', MARC_NS)
+    depts = []
     for lc_field in all_691_fields:
         subfield_1 = lc_field.find('.//marc:subfield[@code="1"]', MARC_NS)
         subfield_a = lc_field.find('.//marc:subfield[@code="a"]', MARC_NS)
         if subfield_1 is not None:
             subjects.append({'subject': subfield_a.text.strip()})
         else:
-            custom_fields['chicago:department'] = subfield_a.text.strip()
+            depts.append(subfield_a.text.strip())
 
     if subjects:
         metadata['subjects'] = subjects
+
+    if depts:
+        custom_fields['chicago:department'] = depts
 
     # ==================== DESCRIPTION/ABSTRACT ====================
     
@@ -1565,10 +1569,14 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
 
     # Center or Institute information (MARC 692)
     center_field = record_elem.find('.//marc:datafield[@tag="692"]', MARC_NS)
+    centers_insts = []
     if center_field is not None:
         center_a = center_field.find('.//marc:subfield[@code="a"]', MARC_NS)
         if center_a is not None:
-            custom_fields['chicago:center_or_institute'] = center_a.text.strip()
+            centers_insts.append(center_a.text.strip())
+
+    if centers_insts:
+        custom_fields['chicago:center_institute'] = centers_insts
 
     # Original submitter information (MARC 270)
     submitter_field = record_elem.find('.//marc:datafield[@tag="270"]', MARC_NS)

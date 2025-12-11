@@ -299,8 +299,8 @@ RDM_CUSTOM_FIELDS = [
     *THESIS_CUSTOM_FIELDS,
     TextCF(name="chicago:original_submitter"), # 270.m
     TextCF(name="chicago:division", multiple=True), # 690.a
-    TextCF(name="chicago:department"), # 691.a
-    TextCF(name="chicago:center_or_institute"), # 692.a
+    TextCF(name="chicago:department", multiple=True), # 691.a
+    TextCF(name="chicago:center_or_institute", multiple=True), # 692.a
     IntegerCF(name="chicago:tind_id"), # 001
 ]
 

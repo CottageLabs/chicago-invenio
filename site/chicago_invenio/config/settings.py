@@ -319,9 +319,65 @@ RDM_CUSTOM_FIELDS_UI = [
     },
     # meeting
     MEETING_CUSTOM_FIELDS_UI,
+    # UChicago institutional fields
+    {
+        "section": _("University of Chicago Information"),
+        "fields": [
+            dict(
+                field="chicago:division",
+                ui_widget="MultiInput",
+                props=dict(
+                    label=_("Division(s)"),
+                    icon="building",
+                    description=_("Academic division(s) (e.g., Arts & Humanities Division, Physical Sciences Division)"),
+                    placeholder=_("Enter division name"),
+                ),
+            ),
+            dict(
+                field="chicago:department",
+                ui_widget="MultiInput",
+                props=dict(
+                    label=_("Department(s)"),
+                    icon="users",
+                    description=_("Academic department(s) or program(s)"),
+                    placeholder=_("Enter department name"),
+                ),
+            ),
+            dict(
+                field="chicago:center_or_institute",
+                ui_widget="MultiInput",
+                props=dict(
+                    label=_("Center(s) or Institute(s)"),
+                    icon="university",
+                    description=_("Research center(s) or institute(s)"),
+                    placeholder=_("Enter center or institute name"),
+                ),
+            ),
+            dict(
+                field="chicago:original_submitter",
+                ui_widget="Input",
+                props=dict(
+                    label=_("Original Submitter"),
+                    icon="envelope",
+                    description=_("Email of the original submitter"),
+                    placeholder=_("submitter@example.com"),
+                ),
+            ),
+            dict(
+                field="chicago:tind_id",
+                ui_widget="Input",
+                props=dict(
+                    label=_("TIND ID"),
+                    icon="barcode",
+                    description=_("Legacy TIND system identifier"),
+                    placeholder=_("Enter numeric TIND ID"),
+                ),
+            ),
+        ],
+    },
 ]
 
-MEETING_CUSTOM_FIELDS_UI["hide_from_landing_page"] = True
+MEETING_CUSTOM_FIELDS_UI["hide_from_landing_page"] = False
 
 # Enable MathJax for rendering mathematical expressions
 THEME_MATHJAX_CDN = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"

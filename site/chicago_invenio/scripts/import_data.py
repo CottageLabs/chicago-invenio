@@ -1576,7 +1576,7 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
             centers_insts.append(center_a.text.strip())
 
     if centers_insts:
-        custom_fields['chicago:center_institute'] = centers_insts
+        custom_fields['chicago:center_or_institute'] = centers_insts
 
     # Original submitter information (MARC 270)
     submitter_field = record_elem.find('.//marc:datafield[@tag="270"]', MARC_NS)

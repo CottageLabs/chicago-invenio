@@ -41,8 +41,8 @@ from invenio_rdm_records.proxies import (
 )
 from invenio_records_resources.services.records.results import RecordItem
 from invenio_requests.proxies import current_requests_service
-
-from load_as_coms_colls import main as get_create_community_collection_structure, slugify
+from load_as_coms_colls import main as get_create_community_collection_structure, CSV
+from chicago_invenio.scripts.community_assignment_algorithm import CommunityAssignmentAlgorithm
 
 
 def strip_html_tags(text):
@@ -90,16 +90,23 @@ def add_pages(resource_type, phys_text):
 
 # Functions moved back to avoid circular import
 
-# Configure logging
+# Configure logging with timestamped filename
+import_timestamp = time.strftime("%Y%m%d_%H%M%S")
+log_filename = f'import_{import_timestamp}.log'
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('output.log'),
+        logging.FileHandler(log_filename),
+        logging.FileHandler('import_latest.log'),  # Always overwrite latest
         logging.StreamHandler()  # Also log to console
     ]
 )
 logger = logging.getLogger(__name__)
+
+# Log the log filename for reference
+logger.info(f"Import logging to: {log_filename}")
 
 
 # Global error tracking
@@ -1908,7 +1915,7 @@ def stream_marc_records(filepath: str, chunk_size: int = 1000) -> Generator[ET.E
         raise
 
 
-def process_records_batch(records_batch, identity, community_map: dict, filepath: str) -> list:
+def process_records_batch(records_batch, identity, community_map: dict, filepath: str, community_algorithm=None) -> list:
     """Process a batch of records.
 
     Args:
@@ -1972,7 +1979,7 @@ def process_records_batch(records_batch, identity, community_map: dict, filepath
             if draft is None:
                 raise ValueError("Draft record creation failed - service returned None")
 
-            # Add test file to the draft
+            # Add files to the draft
             if add_files:
                 error_record["error_stage"] = "add_files"
                 add_files_to_draft(draft, identity, filepath)
@@ -1989,27 +1996,69 @@ def process_records_batch(records_batch, identity, community_map: dict, filepath
                 raise ValueError("Record publishing failed - service returned None")
 
 
-            # Make community inclusion conditional on field presence
-            if 'chicago:department' in invenio_data.get('custom_fields', {}):
-                community_key = invenio_data['custom_fields']['chicago:department']
+            # Use community assignment algorithm to assign ALL possible communities
+            if community_algorithm:
+                
+                # Extract field values from the record
+                custom_fields = invenio_data.get('custom_fields', {})
+                divisions = custom_fields.get('chicago:division', [])
+                departments = custom_fields.get('chicago:department', [])
+                centers = custom_fields.get('chicago:center_or_institute', [])
+                resource_type = invenio_data.get('metadata', {}).get('resource_type', {}).get('id', '')
+                
+                # Ensure fields are lists (handle single values)
+                if isinstance(divisions, str):
+                    divisions = [divisions]
+                if isinstance(departments, str):
+                    departments = [departments]
+                if isinstance(centers, str):
+                    centers = [centers]
+                
+                # Get community assignments
+                assignment_result = community_algorithm.assign_communities(
+                    divisions=divisions,
+                    departments=departments,
+                    centers=centers,
+                    resource_type=resource_type
+                )
+                
+                # Debug logging for community assignment
+                logger.info(f"Record {published.id} field values: divisions={divisions}, departments={departments}, centers={centers}, resource_type={resource_type}")
+                logger.info(f"Algorithm returned {len(assignment_result.get('communities', []))} communities: {assignment_result.get('communities', [])}")
+                
+                # Add record to ALL assigned communities
+                if assignment_result.get('communities'):
+                    for community_name in assignment_result['communities']:
+                        # Map community name to community ID
+                        logger.info(f"Looking up community '{community_name}' in community_map")
+                        if community_name in community_map:
+                            community_id = community_map[community_name]
+                            logger.info(f"Found community '{community_name}' with ID {community_id}")
+                            
+                            try:
+                                request_id = current_record_communities_service.add(
+                                    identity,
+                                    published.id,
+                                    dict(communities=[dict(id=community_id, require_review=False)]),
+                                )[0][0]["request_id"]
 
-                if community_key in community_map:
-                    community_id = community_map[community_key]
-
-                    request_id = current_record_communities_service.add(
-                        identity,
-                        published.id,
-                        dict(communities=[dict(id=community_id, require_review=False)]),
-                    )[0][0]["request_id"]
-
-                    current_requests_service.execute_action(
-                        identity, request_id, "accept"
-                    )
+                                current_requests_service.execute_action(
+                                    identity, request_id, "accept"
+                                )
+                                
+                                logger.info(f"Added record {published.id} to community '{community_name}' (ID: {community_id})")
+                                
+                            except Exception as community_error:
+                                logger.warning(f"Failed to add record {published.id} to community '{community_name}': {community_error}")
+                        else:
+                            logger.warning(f"Community '{community_name}' not found in community_map")
+                    
+                    # Log assignment details
+                    logger.info(f"Record {published.id} assigned to {len(assignment_result['communities'])} communities using method '{assignment_result['method']}'")
                 else:
-                    error_record["error_stage"] = "publish"
-                    error_record["error_message"] = f"Missing community mapping for key: {community_key}"
-                    warnings_log.append(error_record.copy())
-                    continue
+                    logger.info(f"No communities assigned for record {published.id}: {assignment_result.get('method', 'unknown method')}")
+            else:
+                logger.debug(f"Community algorithm not available for record {published.id} - skipping community assignment")
 
             results.append(published.id)
 
@@ -2069,6 +2118,17 @@ def import_data(email: str, data: str, filepath:str, batch_size: int, max_record
         #except Exception:
         # community_map = {}
 
+        # Initialize community assignment algorithm
+        try:
+            community_algorithm = CommunityAssignmentAlgorithm(CSV)
+            logger.info("Community assignment algorithm initialized successfully")
+        except ImportError as e:
+            logger.error(f"Could not import CommunityAssignmentAlgorithm: {e}")
+            community_algorithm = None
+        except Exception as e:
+            logger.error(f"Failed to initialize community assignment algorithm: {e}")
+            community_algorithm = None
+
         # Clear the global error log at the start of each import
         global errors_log
         errors_log = []
@@ -2103,7 +2163,7 @@ def import_data(email: str, data: str, filepath:str, batch_size: int, max_record
                     #break
 
                 # Process the batch
-                batch_results = process_records_batch(batch, identity, community_map, filepath)
+                batch_results = process_records_batch(batch, identity, community_map, filepath, community_algorithm)
 
                 total_processed += len(batch)
                 total_created += len(batch_results)

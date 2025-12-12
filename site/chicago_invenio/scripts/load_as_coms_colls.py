@@ -149,8 +149,10 @@ def load_structure(structure, identity):
             except Exception:
                 pass
 
-            if cv.get("title", ck) not in slug_id_map:
-                slug_id_map[cv.get("title", ck)] = community_id
+        # Map original community title (not slugified) to community ID  
+        community_title = v.get("metadata", {}).get("title", k)
+        if community_title not in slug_id_map:
+            slug_id_map[community_title] = community_id
 
     return slug_id_map
 

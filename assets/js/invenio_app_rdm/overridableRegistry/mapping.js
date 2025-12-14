@@ -8,4 +8,20 @@
  * Add here all the overridden components of your app.
  */
 
-export const overriddenComponents = {}
+import { HiddenField } from "../../chicago_invenio/HiddenField";
+import {
+    ResourceTypeField
+} from "../../chicago_invenio/ResourceTypeField";
+import {VersionField} from "../../chicago_invenio/VersionField";
+import {RDMDepositForm} from "../../chicago_invenio/RDMDepositForm";
+import { parametrize } from "react-overridable";
+
+const ConditionalVersionField = parametrize(VersionField, {
+    showWhenResourceTypes: ['software', 'dataset', 'event']
+});
+
+export const overriddenComponents = {
+    "InvenioAppRdm.Deposit.ResourceTypeField.container": ResourceTypeField,
+    "InvenioAppRdm.Deposit.VersionField.container": ConditionalVersionField,
+    //"InvenioAppRdm.Deposit.RDMDepositForm.layout": HiddenField,
+}

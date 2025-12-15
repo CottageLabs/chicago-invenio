@@ -8,12 +8,12 @@
  * Add here all the overridden components of your app.
  */
 
-import { HiddenField } from "../../chicago_invenio/HiddenField";
+//import { HiddenField } from "../../chicago_invenio/HiddenField";
 import {
     ResourceTypeField
 } from "../../chicago_invenio/ResourceTypeField";
 import {VersionField} from "../../chicago_invenio/VersionField";
-import {RDMDepositForm} from "../../chicago_invenio/RDMDepositForm";
+//import {RDMDepositForm} from "../../chicago_invenio/RDMDepositForm";
 import {ConditionalCustomFields} from "../../chicago_invenio/ConditionalCustomFields";
 import { parametrize } from "react-overridable";
 

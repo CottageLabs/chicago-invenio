@@ -13,24 +13,29 @@ export function ConditionalCustomFields({
 }) {
   const { values } = useFormikContext();
 
-  console.log('ConditionalCustomFields render - _selectedResourceType:', values?._selectedResourceType);
-  console.log('ConditionalCustomFields render - config:', config);
-  console.log('ConditionalCustomFields render - sectionRules:', sectionRules);
+  //console.log('ConditionalCustomFields render - _selectedResourceType:', values?._selectedResourceType);
+  //console.log('ConditionalCustomFields render - config:', config);
+  //console.log('ConditionalCustomFields render - sectionRules:', sectionRules);
 
   const filterSections = () => {
     const selectedResourceType = values?._selectedResourceType;
     
-    if (!selectedResourceType || Object.keys(sectionRules).length === 0) {
-      // If no resource type selected or no rules defined, show all sections
+    if (!selectedResourceType) {
+      // If no resource type selected, hide all sections
+      return [];
+    }
+    
+    if (Object.keys(sectionRules).length === 0) {
+      // If no rules defined, show all sections
       return config;
     }
 
     const resourceTypeId = selectedResourceType.id;
-    console.log('Filtering sections for resource type:', resourceTypeId);
+    //console.log('Filtering sections for resource type:', resourceTypeId);
 
     return config.map(section => {
       const sectionName = section.section;
-      console.log('Processing section:', sectionName);
+      //console.log('Processing section:', sectionName);
 
       // Check if there's a rule for this section
       if (sectionRules[sectionName]) {
@@ -38,7 +43,7 @@ export function ConditionalCustomFields({
         
         // If section has field-level rules, filter the fields
         if (rule.fieldRules) {
-          console.log('Applying field-level rules for section:', sectionName);
+          //console.log('Applying field-level rules for section:', sectionName);
           const filteredFields = section.fields.filter(field => {
             const fieldName = field.field;
             
@@ -47,13 +52,13 @@ export function ConditionalCustomFields({
               
               if (fieldRule.showFor && Array.isArray(fieldRule.showFor)) {
                 const shouldShow = fieldRule.showFor.includes(resourceTypeId);
-                console.log(`Field "${fieldName}": showFor ${fieldRule.showFor}, current type: ${resourceTypeId}, shouldShow: ${shouldShow}`);
+                //console.log(`Field "${fieldName}": showFor ${fieldRule.showFor}, current type: ${resourceTypeId}, shouldShow: ${shouldShow}`);
                 return shouldShow;
               }
               
               if (fieldRule.hideFor && Array.isArray(fieldRule.hideFor)) {
                 const shouldHide = fieldRule.hideFor.includes(resourceTypeId);
-                console.log(`Field "${fieldName}": hideFor ${fieldRule.hideFor}, current type: ${resourceTypeId}, shouldHide: ${shouldHide}`);
+                //console.log(`Field "${fieldName}": hideFor ${fieldRule.hideFor}, current type: ${resourceTypeId}, shouldHide: ${shouldHide}`);
                 return !shouldHide;
               }
             }
@@ -67,7 +72,7 @@ export function ConditionalCustomFields({
           
           // If no fields remain, hide the entire section
           if (filteredFields.length === 0) {
-            console.log(`Section "${sectionName}": hiding section because no fields remain`);
+            //console.log(`Section "${sectionName}": hiding section because no fields remain`);
             return null;
           }
           
@@ -80,32 +85,32 @@ export function ConditionalCustomFields({
         // Section-level rules (hide entire section)
         if (rule.showFor && Array.isArray(rule.showFor)) {
           const shouldShow = rule.showFor.includes(resourceTypeId);
-          console.log(`Section "${sectionName}": showFor ${rule.showFor}, current type: ${resourceTypeId}, shouldShow: ${shouldShow}`);
+          //console.log(`Section "${sectionName}": showFor ${rule.showFor}, current type: ${resourceTypeId}, shouldShow: ${shouldShow}`);
           return shouldShow ? section : null;
         }
         
         if (rule.hideFor && Array.isArray(rule.hideFor)) {
           const shouldHide = rule.hideFor.includes(resourceTypeId);
-          console.log(`Section "${sectionName}": hideFor ${rule.hideFor}, current type: ${resourceTypeId}, shouldHide: ${shouldHide}`);
+          //console.log(`Section "${sectionName}": hideFor ${rule.hideFor}, current type: ${resourceTypeId}, shouldHide: ${shouldHide}`);
           return shouldHide ? null : section;
         }
       }
 
       // If no rule applies to this section, show it by default
-      console.log(`Section "${sectionName}": no rule, showing by default`);
+      //console.log(`Section "${sectionName}": no rule, showing by default`);
       return section;
     }).filter(section => section !== null); // Remove null sections
   };
 
   const filteredConfig = filterSections();
-  console.log('Filtered config:', filteredConfig);
-  console.log('Original config length:', config.length);
-  console.log('Filtered config length:', filteredConfig.length);
+  //console.log('Filtered config:', filteredConfig);
+  //console.log('Original config length:', config.length);
+  //console.log('Filtered config length:', filteredConfig.length);
   
   // Log each section in filtered config
-  filteredConfig.forEach((section, index) => {
-    console.log(`Filtered section ${index}:`, section.section, 'fields:', section.fields?.length || 0);
-  });
+  //filteredConfig.forEach((section, index) => {
+  //  console.log(`Filtered section ${index}:`, section.section, 'fields:', section.fields?.length || 0);
+  //});
 
   return (
     <CustomFields

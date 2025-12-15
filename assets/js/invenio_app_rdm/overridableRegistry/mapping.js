@@ -18,19 +18,20 @@ import {ConditionalCustomFields} from "../../chicago_invenio/ConditionalCustomFi
 import { parametrize } from "react-overridable";
 
 const ConditionalVersionField = parametrize(VersionField, {
-    showWhenResourceTypes: ['software', 'dataset', 'event']
+    showWhenResourceTypes: ['software', 'dataset']
 });
 
 const ConditionalCustomFieldsWithRules = parametrize(ConditionalCustomFields, {
     sectionRules: {
         "Publishing information": {
+            showFor: ['publication-thesis', 'publication-article', 'publication-section', 'publication-book'],
             fieldRules: {
                 // Thesis fields - only show for thesis publications
                 "thesis:thesis": { showFor: ['publication-thesis'] },
-                // Journal fields - hide for thesis, dataset, software
-                "journal:journal": { hideFor: ['publication-thesis', 'dataset', 'software'] },
-                // Imprint fields - hide for thesis, dataset, software  
-                "imprint:imprint": { hideFor: ['publication-thesis', 'dataset', 'software'] }
+                // Journal fields - only show for specific publication types
+                "journal:journal": { showFor: ['publication-article'] },
+                // Imprint fields - only show for specific publication types
+                "imprint:imprint": { showFor: ['publication-section', 'publication-book'] }
             }
         },
         "Meeting": {

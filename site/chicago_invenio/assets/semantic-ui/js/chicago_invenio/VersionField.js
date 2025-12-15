@@ -17,9 +17,9 @@ export function VersionField({ fieldPath, label, labelIcon, placeholder, showWhe
   const { values } = useFormikContext();
   
   // Debug logging
-  console.log('VersionField render - values:', values);
-  console.log('VersionField render - _selectedResourceType:', values?._selectedResourceType);
-  console.log('VersionField render - showWhenResourceTypes:', showWhenResourceTypes);
+  //console.log('VersionField render - values:', values);
+  //console.log('VersionField render - _selectedResourceType:', values?._selectedResourceType);
+  //console.log('VersionField render - showWhenResourceTypes:', showWhenResourceTypes);
   
   const shouldRender = () => {
     if (showWhenResourceTypes.length === 0) {
@@ -29,17 +29,17 @@ export function VersionField({ fieldPath, label, labelIcon, placeholder, showWhe
     const selectedResourceType = values?._selectedResourceType;
     
     if (!selectedResourceType) {
-      console.log('VersionField: No selected resource type, hiding');
+      //console.log('VersionField: No selected resource type, hiding');
       return false;
     }
     
     const shouldShow = showWhenResourceTypes.includes(selectedResourceType.id);
-    console.log('VersionField: Should show?', shouldShow, 'for type:', selectedResourceType.id);
+    //console.log('VersionField: Should show?', shouldShow, 'for type:', selectedResourceType.id);
     return shouldShow;
   };
 
   const renderDecision = shouldRender();
-  console.log('VersionField: Final render decision:', renderDecision);
+  //console.log('VersionField: Final render decision:', renderDecision);
   
   if (!renderDecision) {
     return null;

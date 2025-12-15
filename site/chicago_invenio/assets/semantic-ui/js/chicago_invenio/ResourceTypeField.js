@@ -49,8 +49,8 @@ export class ResourceTypeField extends Component {
         setFieldValue('_resourceTypeName', selectedOption.type_name || '');
         setFieldValue('_resourceTypeSubtype', selectedOption.subtype_name || '');
         
-        console.log('Selected resource type:', selectedOption);
-        console.log(fieldPath);
+        //console.log('Selected resource type:', selectedOption);
+        //console.log(fieldPath);
       }
     }
   };

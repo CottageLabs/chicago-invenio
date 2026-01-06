@@ -1677,7 +1677,6 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
     # Related Item information (MARC 791)
     related_item_fields = record_elem.findall('.//marc:datafield[@tag="791"]', MARC_NS)
     related_items = []
-# patent_applications = re.compile('^US\s+(?:\d{4}\/)?(?:\d{7,11})\s+[AB][12]?$')
     
     for related_field in related_item_fields:
         related_item = {}

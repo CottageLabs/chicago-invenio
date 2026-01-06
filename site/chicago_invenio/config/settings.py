@@ -31,6 +31,8 @@ from invenio_rdm_records.contrib.meeting import (
     MEETING_CUSTOM_FIELDS_UI,
     MEETING_NAMESPACE,
 )
+from invenio_rdm_records.services.schemas.files import MetadataSchema
+from marshmallow import fields
 from invenio_records_resources.services.custom_fields import (
     TextCF,
     IntegerCF
@@ -391,3 +393,10 @@ RDM_RECORDS_IDENTIFIERS_SCHEMES = {**RDM_RECORDS_IDENTIFIERS_SCHEMES,
                                    "patent_number": {"label": _("Patent number"), "validator": lambda x: True}}
 
 COMMUNITIES_SHOW_BROWSE_MENU_ENTRY = True
+
+# Monkey patch to add 'description' field to file metadata schema
+# This allows us to store file descriptions without modifying the installed package
+# Add the description field to the existing MetadataSchema class
+# This is done at the class level so all instances will have this field
+MetadataSchema._declared_fields['description'] = fields.String()
+setattr(MetadataSchema, 'description', fields.String())

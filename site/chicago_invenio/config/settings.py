@@ -9,6 +9,8 @@ https://inveniordm.docs.cern.ch/reference/configuration/.
 
 from datetime import datetime
 from invenio_i18n import lazy_gettext as _
+from invenio_oauthclient.views.client import auto_redirect_login
+from invenio_rdm_records.config import RDM_RECORDS_IDENTIFIERS_SCHEMES
 from invenio_rdm_records.contrib.imprint import (
     IMPRINT_CUSTOM_FIELDS,
     IMPRINT_CUSTOM_FIELDS_UI,
@@ -29,11 +31,15 @@ from invenio_rdm_records.contrib.meeting import (
     MEETING_CUSTOM_FIELDS_UI,
     MEETING_NAMESPACE,
 )
+from invenio_records_resources.services.custom_fields import (
+    TextCF,
+    IntegerCF
+)
 import os
+
 
 def _(x):  # needed to avoid start time failure with lazy strings
     return x
-
 
 # Flask
 # =====
@@ -56,14 +62,12 @@ SECRET_KEY = os.environ.get('INVENIO_SECRET_KEY', "CHANGE_ME")
 # route correct hosts to the application.
 TRUSTED_HOSTS = ['0.0.0.0', 'localhost', '127.0.0.1', 'uchicago.invenio.cottagelabs.com']
 
-
 # Flask-SQLAlchemy
 # ================
 # See https://flask-sqlalchemy.palletsprojects.com/en/2.x/config/
 
 # TODO: Set
 SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://chicago-invenio:chicago-invenio@localhost/chicago-invenio"
-
 
 # Invenio-App
 # ===========
@@ -79,7 +83,8 @@ APP_DEFAULT_SECURE_HEADERS = {
             # Add your own policies here (e.g. analytics)
         ],
         'script-src': [
-            "'self'", "blob:", "'wasm-unsafe-eval'"  # for WASM-based workers
+            "'self'", "blob:", "'wasm-unsafe-eval'", "'unsafe-inline'",  # for WASM-based workers and inline scripts
+            "cdnjs.cloudflare.com"
             # Multipart file uploads use a Web Worker running `hash-wasm` to compute content checksums
             # (e.g., MD5) of uploaded parts. This requires both 'blob:' and 'wasm-unsafe-eval' enabled in `script-src`.
         ],
@@ -95,6 +100,7 @@ APP_DEFAULT_SECURE_HEADERS = {
             "https://www.lib.uchicago.edu",
             "https://fonts.gstatic.com",
             "https://uchicago-brand-fonts.s3.us-east-2.amazonaws.com",
+            "https://cdnjs.cloudflare.com",
             "data:"
         ]
     },
@@ -113,7 +119,6 @@ APP_DEFAULT_SECURE_HEADERS = {
     'strict_transport_security_preload': False,
 }
 
-
 # Flask-Babel
 # ===========
 # See https://python-babel.github.io/flask-babel/#configuration
@@ -122,7 +127,6 @@ APP_DEFAULT_SECURE_HEADERS = {
 BABEL_DEFAULT_LOCALE = 'en'
 # Default time zone
 BABEL_DEFAULT_TIMEZONE = 'America/Chicago'
-
 
 # Invenio-I18N
 # ============
@@ -133,7 +137,6 @@ I18N_LANGUAGES = [
     # ('de', _('German')),
     # ('tr', _('Turkish')),
 ]
-
 
 # Invenio-Theme
 # =============
@@ -217,9 +220,40 @@ SECURITY_LOGIN_WITHOUT_CONFIRMATION = False  # require users to confirm email be
 
 OAUTHCLIENT_REMOTE_APPS = {}  # configure external login providers
 
-from invenio_oauthclient.views.client import auto_redirect_login
 ACCOUNTS_LOGIN_VIEW_FUNCTION = auto_redirect_login  # autoredirect to external login if enabled
 OAUTHCLIENT_AUTO_REDIRECT_TO_EXTERNAL_LOGIN = False  # autoredirect to external login
+
+CHI_OAUTH_CLIENT_ID = os.getenv("CHI_OAUTH_CLIENT_ID")
+CHI_OAUTH_CLIENT_SECRET = os.getenv("CHI_OAUTH_CLIENT_SECRET")
+CHI_OAUTH_WELL_KNOWN_URL = "https://uchicago.okta.com/.well-known/openid-configuration"
+
+CHI_SSO_ENABLED = CHI_OAUTH_CLIENT_ID and CHI_OAUTH_CLIENT_SECRET
+
+if CHI_SSO_ENABLED:
+    OAUTHCLIENT_REMOTE_APPS["chi"] = dict(
+        title="University of Chicago Single Sign On",
+        description="Authentication via membership of the University of Chicago",
+        icon="",
+        params=dict(
+            request_token_params=dict(scope="openid profile"),
+            base_url="",
+            request_token_url=None,
+            access_token_url=f"https://uchicago.okta.com/oauth2/v1/token",
+            access_token_method="POST",
+            authorize_url=f"https://uchicago.okta.com/oauth2/v1/authorize",
+            app_key="CHI_APP_CREDENTIALS",
+        ),
+        authorized_handler="invenio_oauthclient.handlers:authorized_signup_handler",
+        disconnect_handler="invenio_oauthclient.handlers:disconnect_handler",
+        signup_handler=dict(
+            info="chicago_invenio.auth.oauth:info_handler",
+        ),
+        signup_options=dict(auto_confirm=True, send_register_msg=False),
+    )
+    CHI_APP_CREDENTIALS = {
+        "consumer_key": CHI_OAUTH_CLIENT_ID,
+        "consumer_secret": CHI_OAUTH_CLIENT_SECRET,
+    }
 
 # Invenio-UserProfiles
 # --------------------
@@ -240,22 +274,22 @@ OAISERVER_ADMIN_EMAILS = [
 
 SEARCH_INDEX_PREFIX = "chicago-invenio-"
 
-
 # Invenio-Administration
 # ----------------------
 
 from invenio_app_rdm import __version__
+
 ADMINISTRATION_DISPLAY_VERSIONS = [
     ("invenio-app-rdm", f"v{__version__}"),
     ("chicago-invenio", "v1.0.0"),
 ]
-
 
 RDM_NAMESPACES = {
     **JOURNAL_NAMESPACE,
     **IMPRINT_NAMESPACE,
     **THESIS_NAMESPACE,
     **MEETING_NAMESPACE,
+    "chicago": "https://knowledge.uchicago.edu/"
 }
 
 RDM_CUSTOM_FIELDS = [
@@ -263,6 +297,11 @@ RDM_CUSTOM_FIELDS = [
     *IMPRINT_CUSTOM_FIELDS,
     *MEETING_CUSTOM_FIELDS,
     *THESIS_CUSTOM_FIELDS,
+    TextCF(name="chicago:original_submitter"), # 270.m
+    TextCF(name="chicago:division", multiple=True), # 690.a
+    TextCF(name="chicago:department", multiple=True), # 691.a
+    TextCF(name="chicago:center_or_institute", multiple=True), # 692.a
+    IntegerCF(name="chicago:tind_id"), # 001
 ]
 
 RDM_CUSTOM_FIELDS_UI = [
@@ -280,6 +319,75 @@ RDM_CUSTOM_FIELDS_UI = [
     },
     # meeting
     MEETING_CUSTOM_FIELDS_UI,
+    # UChicago institutional fields
+    {
+        "section": _("University of Chicago Information"),
+        "fields": [
+            dict(
+                field="chicago:division",
+                ui_widget="MultiInput",
+                props=dict(
+                    label=_("Division(s)"),
+                    icon="building",
+                    description=_("Academic division(s) (e.g., Arts & Humanities Division, Physical Sciences Division)"),
+                    placeholder=_("Enter division name"),
+                ),
+            ),
+            dict(
+                field="chicago:department",
+                ui_widget="MultiInput",
+                props=dict(
+                    label=_("Department(s)"),
+                    icon="users",
+                    description=_("Academic department(s) or program(s)"),
+                    placeholder=_("Enter department name"),
+                ),
+            ),
+            dict(
+                field="chicago:center_or_institute",
+                ui_widget="MultiInput",
+                props=dict(
+                    label=_("Center(s) or Institute(s)"),
+                    icon="university",
+                    description=_("Research center(s) or institute(s)"),
+                    placeholder=_("Enter center or institute name"),
+                ),
+            ),
+            dict(
+                field="chicago:original_submitter",
+                ui_widget="Input",
+                props=dict(
+                    label=_("Original Submitter"),
+                    icon="envelope",
+                    description=_("Email of the original submitter"),
+                    placeholder=_("submitter@example.com"),
+                ),
+            ),
+            dict(
+                field="chicago:tind_id",
+                ui_widget="Input",
+                props=dict(
+                    label=_("TIND ID"),
+                    icon="barcode",
+                    description=_("Legacy TIND system identifier"),
+                    placeholder=_("Enter numeric TIND ID"),
+                ),
+            ),
+        ],
+    },
 ]
 
-MEETING_CUSTOM_FIELDS_UI["hide_from_landing_page"] = True
+MEETING_CUSTOM_FIELDS_UI["hide_from_landing_page"] = False
+
+# Enable MathJax for rendering mathematical expressions
+THEME_MATHJAX_CDN = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"
+
+# Add custom identifiers
+# patent_applications = re.compile('^US\s+(?:\d{4}\/)?(?:\d{7,11})\s+[AB][12]?$')
+
+RDM_RECORDS_IDENTIFIERS_SCHEMES = {**RDM_RECORDS_IDENTIFIERS_SCHEMES,
+                                   "patent_application_number": {"label": _("Patent application number"),
+                                                                 "validator": lambda x: True},
+                                   "patent_number": {"label": _("Patent number"), "validator": lambda x: True}}
+
+COMMUNITIES_SHOW_BROWSE_MENU_ENTRY = True

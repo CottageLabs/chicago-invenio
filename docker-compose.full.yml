@@ -51,6 +51,7 @@ services:
     volumes:
       - static_data:/opt/invenio/var/instance/static
       - /etc/letsencrypt:/etc/letsencrypt
+      - /etc/nginx/htpasswd:/etc/nginx/htpasswd
     depends_on:
       - web-ui
       - web-api
@@ -68,7 +69,7 @@ services:
       - "5000"
     volumes:
       - static_data:/opt/invenio/var/instance/static
-      - uploaded_data:/opt/invenio/var/instance/data
+      - /mnt/volume_nyc3_01/data:/opt/invenio/var/instance/data
       - archived_data:/opt/invenio/var/instance/archive
 
   # API Rest Application
@@ -81,7 +82,7 @@ services:
     ports:
       - "5000"
     volumes:
-      - uploaded_data:/opt/invenio/var/instance/data
+      - /mnt/volume_nyc3_01/data:/opt/invenio/var/instance/data
       - archived_data:/opt/invenio/var/instance/archive
 
   # Worker
@@ -92,7 +93,7 @@ services:
     command: ["celery -A invenio_app.celery worker --beat --loglevel=INFO"]
     image: chicago-invenio:latest
     volumes:
-      - uploaded_data:/opt/invenio/var/instance/data
+      - /mnt/volume_nyc3_01/data:/opt/invenio/var/instance/data
     depends_on:
       search:
         condition: service_started
@@ -117,5 +118,5 @@ services:
         condition: service_started
 volumes:
   static_data:
-  uploaded_data:
+  # uploaded_data:
   archived_data:

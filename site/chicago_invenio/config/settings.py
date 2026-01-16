@@ -193,10 +193,10 @@ SITE_API_URL = SITE_UI_URL + "/api"
 # Invenio-RDM-Records
 # ===================
 # See https://inveniordm.docs.cern.ch/customize/dois/
-DATACITE_ENABLED = False
+DATACITE_ENABLED = True
 DATACITE_USERNAME = ""
 DATACITE_PASSWORD = ""
-DATACITE_PREFIX = ""
+DATACITE_PREFIX = "10.70047"
 DATACITE_TEST_MODE = True
 DATACITE_DATACENTER_SYMBOL = ""
 

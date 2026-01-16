@@ -22,6 +22,8 @@ services:
       - "INVENIO_RATELIMIT_STORAGE_URL=redis://cache:6379/3"
       - "CHI_OAUTH_CLIENT_ID=${CHI_OAUTH_CLIENT_ID}"
       - "CHI_OAUTH_CLIENT_SECRET=${CHI_OAUTH_CLIENT_SECRET}"
+      - "INVENIO_DATACITE_USERNAME=${INVENIO_DATACITE_USERNAME}"
+      - "INVENIO_DATACITE_PASSWORD=${INVENIO_DATACITE_PASSWORD}"
   frontend:
     build: ./docker/nginx/
     image: chicago-invenio-frontend

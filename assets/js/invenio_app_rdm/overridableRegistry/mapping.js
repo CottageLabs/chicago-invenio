@@ -8,42 +8,31 @@
  * Add here all the overridden components of your app.
  */
 
-//import { HiddenField } from "../../chicago_invenio/HiddenField";
-import {
-    ResourceTypeField
-} from "../../chicago_invenio/ResourceTypeField";
-import {VersionField} from "../../chicago_invenio/VersionField";
-//import {RDMDepositForm} from "../../chicago_invenio/RDMDepositForm";
+import {ResourceTypeField} from "../../chicago_invenio/ResourceTypeField";
 import {ConditionalCustomFields} from "../../chicago_invenio/ConditionalCustomFields";
 import { parametrize } from "react-overridable";
-
-const ConditionalVersionField = parametrize(VersionField, {
-    showWhenResourceTypes: ['software', 'dataset']
-});
 
 const ConditionalCustomFieldsWithRules = parametrize(ConditionalCustomFields, {
     sectionRules: {
         "Publishing information": {
-            showFor: ['publication-thesis', 'publication-article', 'publication-section', 'publication-book'],
+            showFor: ['publication-thesis', 'publication-article', 'publication-section', 'publication-book', 'publication-journal'],
             fieldRules: {
                 // Thesis fields - only show for thesis publications
                 "thesis:thesis": { showFor: ['publication-thesis'] },
                 // Journal fields - only show for specific publication types
-                "journal:journal": { showFor: ['publication-article'] },
+                "journal:journal": { showFor: ['publication-article', 'publication-journal'] },
                 // Imprint fields - only show for specific publication types
                 "imprint:imprint": { showFor: ['publication-section', 'publication-book'] }
             }
         },
-        "Meeting": {
-            showFor: ['event', 'conference']
-        }
+        "Conference": {
+            showFor: ['publication-conferenceproceeding', 'publication-conferencepaper']
+        },
         // University of Chicago Information section will show for all types (no rule)
     }
 });
 
 export const overriddenComponents = {
     "InvenioAppRdm.Deposit.ResourceTypeField.container": ResourceTypeField,
-    "InvenioAppRdm.Deposit.VersionField.container": ConditionalVersionField,
     "InvenioAppRdm.Deposit.CustomFields.container": ConditionalCustomFieldsWithRules,
-    //"InvenioAppRdm.Deposit.RDMDepositForm.layout": HiddenField,
 }

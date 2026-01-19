@@ -353,26 +353,7 @@ RDM_CUSTOM_FIELDS_UI = [
                     placeholder=_("Enter center or institute name"),
                 ),
             ),
-            dict(
-                field="chicago:original_submitter",
-                ui_widget="Input",
-                props=dict(
-                    label=_("Original Submitter"),
-                    icon="envelope",
-                    description=_("Email of the original submitter"),
-                    placeholder=_("submitter@example.com"),
-                ),
-            ),
-            dict(
-                field="chicago:tind_id",
-                ui_widget="Input",
-                props=dict(
-                    label=_("TIND ID"),
-                    icon="barcode",
-                    description=_("Legacy TIND system identifier"),
-                    placeholder=_("Enter numeric TIND ID"),
-                ),
-            ),
+
         ],
     },
 ]

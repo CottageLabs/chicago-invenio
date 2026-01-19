@@ -32,6 +32,7 @@ import os
 import html
 import idutils
 import requests
+from urllib.parse import unquote
 from flask import current_app
 from invenio_app.factory import create_app
 from invenio_rdm_records.fixtures.tasks import get_authenticated_identity
@@ -921,7 +922,7 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
             else:
                 # File description (MARC 856$y)
                 url_y = url_field.find('.//marc:subfield[@code="y"]', MARC_NS)
-                file_name = url_text.split('/')[-1]  # Extract file name from URL
+                file_name = unquote(url_text.split('/')[-1])  # Extract file name from URL
                 logger.info(f"Extracted filename: {file_name}")
 
                 if url_y is not None:

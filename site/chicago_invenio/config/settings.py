@@ -381,22 +381,24 @@ COMMUNITIES_SHOW_BROWSE_MENU_ENTRY = True
 
 
 #### Invenio curations
+# Comment out to disable curations feature, the initial import needs to run
+# with curations disabled.
 
 # enable sending of notifications when something's happening in the review
-NOTIFICATIONS_BUILDERS = {
-    **NOTIFICATIONS_BUILDERS,
-    # Curation request
-    **CURATIONS_NOTIFICATIONS_BUILDERS
-}
+# NOTIFICATIONS_BUILDERS = {
+#    **NOTIFICATIONS_BUILDERS,
+#    # Curation request
+#    **CURATIONS_NOTIFICATIONS_BUILDERS
+# }
 
 # NOTE: the curation component should be added at the end
-RDM_RECORDS_SERVICE_COMPONENTS = DefaultRecordsComponents + [
-    CurationComponent,
-]
+# RDM_RECORDS_SERVICE_COMPONENTS = DefaultRecordsComponents + [
+#    CurationComponent,
+# ]
 
-REQUESTS_PERMISSION_POLICY = CurationRDMRequestsPermissionPolicy
-RDM_PERMISSION_POLICY = CurationRDMRecordPermissionPolicy
-
+# REQUESTS_PERMISSION_POLICY = CurationRDMRequestsPermissionPolicy
+# RDM_PERMISSION_POLICY = CurationRDMRecordPermissionPolicy
+# CURATIONS_MODERATION_ROLE = "record-curator"
 
 # Enable community requirement
 RDM_COMMUNITY_REQUIRED_TO_PUBLISH = True

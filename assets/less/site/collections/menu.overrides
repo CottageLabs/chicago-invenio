@@ -77,7 +77,6 @@
       flex-direction: column;
       margin-left: unset !important;
       padding: 0.8em 1.5rem !important;
-      border-left: 2px solid #d9d9d9;
 
       a {
         color: @primaryColor !important;
@@ -95,6 +94,11 @@
         display: flex;
         flex-direction: column;
         margin-top: 0 !important;
+        gap: 1rem;
+        .ui.button.auth-button,
+        .ui.button.signup {
+            border: 1px solid maroon;
+        }
       }
     }
 
@@ -142,11 +146,6 @@
   #header-search-bar {
     display: flex;
     justify-content: center;
-    border-radius: 3px;
-    border: 2px solid #737373;
-    border-radius: 3px;
-    letter-spacing: 0.5px;
-    font-size: 16px;
 
     .ui.fluid.search {
       margin: 7rem 0;

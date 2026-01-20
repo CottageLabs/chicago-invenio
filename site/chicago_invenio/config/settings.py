@@ -31,15 +31,13 @@ from invenio_rdm_records.contrib.meeting import (
     MEETING_CUSTOM_FIELDS_UI,
     MEETING_NAMESPACE,
 )
-from invenio_records_resources.services.custom_fields import (
-    TextCF,
-    IntegerCF
-)
+from invenio_records_resources.services.custom_fields import TextCF, IntegerCF
 import os
 
 
 def _(x):  # needed to avoid start time failure with lazy strings
     return x
+
 
 # Flask
 # =====
@@ -54,37 +52,47 @@ SEND_FILE_MAX_AGE_DEFAULT = 300
 # SECURITY WARNING: keep the secret key used in production secret!
 # Do not commit it to a source code repository.
 # TODO: Set
-SECRET_KEY = os.environ.get('INVENIO_SECRET_KEY', "CHANGE_ME")
+SECRET_KEY = os.environ.get("INVENIO_SECRET_KEY", "CHANGE_ME")
 
 # Since HAProxy and Nginx route all requests no matter the host header
 # provided, the trusted hosts variable is set to localhost. In production it
 # should be set to the correct host and it is strongly recommended to only
 # route correct hosts to the application.
-TRUSTED_HOSTS = ['0.0.0.0', 'localhost', '127.0.0.1', 'uchicago.invenio.cottagelabs.com']
+TRUSTED_HOSTS = [
+    "0.0.0.0",
+    "localhost",
+    "127.0.0.1",
+    "uchicago.invenio.cottagelabs.com",
+]
 
 # Flask-SQLAlchemy
 # ================
 # See https://flask-sqlalchemy.palletsprojects.com/en/2.x/config/
 
 # TODO: Set
-SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://chicago-invenio:chicago-invenio@localhost/chicago-invenio"
+SQLALCHEMY_DATABASE_URI = (
+    "postgresql+psycopg2://chicago-invenio:chicago-invenio@localhost/chicago-invenio"
+)
 
 # Invenio-App
 # ===========
 # See https://invenio-app.readthedocs.io/en/latest/configuration.html
 
 APP_DEFAULT_SECURE_HEADERS = {
-    'content_security_policy': {
-        'default-src': [
+    "content_security_policy": {
+        "default-src": [
             "'self'",
-            'data:',  # for fonts
+            "data:",  # for fonts
             "'unsafe-inline'",  # for inline scripts and styles
             "blob:",  # for pdf preview
             # Add your own policies here (e.g. analytics)
         ],
-        'script-src': [
-            "'self'", "blob:", "'wasm-unsafe-eval'", "'unsafe-inline'",  # for WASM-based workers and inline scripts
-            "cdnjs.cloudflare.com"
+        "script-src": [
+            "'self'",
+            "blob:",
+            "'wasm-unsafe-eval'",
+            "'unsafe-inline'",  # for WASM-based workers and inline scripts
+            "cdnjs.cloudflare.com",
             # Multipart file uploads use a Web Worker running `hash-wasm` to compute content checksums
             # (e.g., MD5) of uploaded parts. This requires both 'blob:' and 'wasm-unsafe-eval' enabled in `script-src`.
         ],
@@ -93,7 +101,7 @@ APP_DEFAULT_SECURE_HEADERS = {
             "https://www.lib.uchicago.edu",
             "https://fonts.googleapis.com",
             "https://uchicago-brand-fonts.s3.us-east-2.amazonaws.com",
-            "'unsafe-inline'"
+            "'unsafe-inline'",
         ],
         "font-src": [
             "'self'",
@@ -101,22 +109,22 @@ APP_DEFAULT_SECURE_HEADERS = {
             "https://fonts.gstatic.com",
             "https://uchicago-brand-fonts.s3.us-east-2.amazonaws.com",
             "https://cdnjs.cloudflare.com",
-            "data:"
-        ]
+            "data:",
+        ],
     },
-    'content_security_policy_report_only': False,
-    'content_security_policy_report_uri': None,
-    'force_file_save': False,
-    'force_https': True,
-    'force_https_permanent': False,
-    'frame_options': 'sameorigin',
-    'frame_options_allow_from': None,
-    'session_cookie_http_only': True,
-    'session_cookie_secure': True,
-    'strict_transport_security': True,
-    'strict_transport_security_include_subdomains': True,
-    'strict_transport_security_max_age': 31556926,  # One year in seconds
-    'strict_transport_security_preload': False,
+    "content_security_policy_report_only": False,
+    "content_security_policy_report_uri": None,
+    "force_file_save": False,
+    "force_https": True,
+    "force_https_permanent": False,
+    "frame_options": "sameorigin",
+    "frame_options_allow_from": None,
+    "session_cookie_http_only": True,
+    "session_cookie_secure": True,
+    "strict_transport_security": True,
+    "strict_transport_security_include_subdomains": True,
+    "strict_transport_security_max_age": 31556926,  # One year in seconds
+    "strict_transport_security_preload": False,
 }
 
 # Flask-Babel
@@ -124,9 +132,9 @@ APP_DEFAULT_SECURE_HEADERS = {
 # See https://python-babel.github.io/flask-babel/#configuration
 
 # Default locale (language)
-BABEL_DEFAULT_LOCALE = 'en'
+BABEL_DEFAULT_LOCALE = "en"
 # Default time zone
-BABEL_DEFAULT_TIMEZONE = 'America/Chicago'
+BABEL_DEFAULT_TIMEZONE = "America/Chicago"
 
 # Invenio-I18N
 # ============
@@ -147,8 +155,8 @@ THEME_SITENAME = "UChicago Knowledge"
 # Frontpage title
 THEME_FRONTPAGE_TITLE = "UChicago Knowledge"
 # Header logo
-THEME_LOGO = 'images/logo-background.svg'
-THEME_LOGO_MOBILE = 'images/logo-background-mobile.svg'
+THEME_LOGO = "images/logo-background.svg"
+THEME_LOGO_MOBILE = "images/logo-background-mobile.svg"
 
 THEME_SHOW_FRONTPAGE_INTRO_SECTION = False
 
@@ -157,7 +165,7 @@ THEME_SHOW_FRONTPAGE_INTRO_SECTION = False
 # See https://github.com/inveniosoftware/invenio-app-rdm/blob/master/invenio_app_rdm/config.py
 
 # Instance's theme entrypoint file. Path relative to the ``assets/`` folder.
-INSTANCE_THEME_FILE = './less/theme.less'
+INSTANCE_THEME_FILE = "./less/theme.less"
 
 # Email address for administrator emails (like file checksum alerts)
 APP_RDM_ADMIN_EMAIL_RECIPIENT = "info@invenio.uchicago.edu"
@@ -169,24 +177,26 @@ APP_RDM_DEPOSIT_FORM_DEFAULTS = {
         {
             "id": "cc-by-4.0",
             "title": "Creative Commons Attribution 4.0 International",
-            "description": ("The Creative Commons Attribution license allows "
-                            "re-distribution and re-use of a licensed work "
-                            "on the condition that the creator is "
-                            "appropriately credited."),
+            "description": (
+                "The Creative Commons Attribution license allows "
+                "re-distribution and re-use of a licensed work "
+                "on the condition that the creator is "
+                "appropriately credited."
+            ),
             "link": "https://creativecommons.org/licenses/by/4.0/legalcode",
         }
     ],
     "publisher": "Chicago Invenio",
 }
 
-APP_RDM_DEPOSIT_FORM_AUTOCOMPLETE_NAMES = 'search'  # "search_only" or "off"
+APP_RDM_DEPOSIT_FORM_AUTOCOMPLETE_NAMES = "search"  # "search_only" or "off"
 
 # Invenio-Records-Resources
 # =========================
 # See https://github.com/inveniosoftware/invenio-records-resources/blob/master/invenio_records_resources/config.py
 
 # TODO: Set with your own hostname when deploying to production
-SITE_UI_URL = os.environ.get('INVENIO_SITE_UI_URL', "https://127.0.0.1")
+SITE_UI_URL = os.environ.get("INVENIO_SITE_UI_URL", "https://127.0.0.1")
 
 SITE_API_URL = SITE_UI_URL + "/api"
 
@@ -212,7 +222,9 @@ SECURITY_REGISTERABLE = True  # local login: allow users to register
 SECURITY_RECOVERABLE = True  # local login: allow users to reset the password
 SECURITY_CHANGEABLE = True  # local login: allow users to change psw
 SECURITY_CONFIRMABLE = True  # local login: users can confirm e-mail address
-SECURITY_LOGIN_WITHOUT_CONFIRMATION = False  # require users to confirm email before being able to login
+SECURITY_LOGIN_WITHOUT_CONFIRMATION = (
+    False  # require users to confirm email before being able to login
+)
 
 # Invenio-OAuthclient
 # -------------------
@@ -220,7 +232,9 @@ SECURITY_LOGIN_WITHOUT_CONFIRMATION = False  # require users to confirm email be
 
 OAUTHCLIENT_REMOTE_APPS = {}  # configure external login providers
 
-ACCOUNTS_LOGIN_VIEW_FUNCTION = auto_redirect_login  # autoredirect to external login if enabled
+ACCOUNTS_LOGIN_VIEW_FUNCTION = (
+    auto_redirect_login  # autoredirect to external login if enabled
+)
 OAUTHCLIENT_AUTO_REDIRECT_TO_EXTERNAL_LOGIN = False  # autoredirect to external login
 
 CHI_OAUTH_CLIENT_ID = os.getenv("CHI_OAUTH_CLIENT_ID")
@@ -257,7 +271,9 @@ if CHI_SSO_ENABLED:
 
 # Invenio-UserProfiles
 # --------------------
-USERPROFILES_READ_ONLY = False  # allow users to change profile info (name, email, etc...)
+USERPROFILES_READ_ONLY = (
+    False  # allow users to change profile info (name, email, etc...)
+)
 
 # OAI-PMH
 # =======
@@ -289,7 +305,7 @@ RDM_NAMESPACES = {
     **IMPRINT_NAMESPACE,
     **THESIS_NAMESPACE,
     **MEETING_NAMESPACE,
-    "chicago": "https://knowledge.uchicago.edu/"
+    "chicago": "https://knowledge.uchicago.edu/",
 }
 
 RDM_CUSTOM_FIELDS = [
@@ -297,11 +313,11 @@ RDM_CUSTOM_FIELDS = [
     *IMPRINT_CUSTOM_FIELDS,
     *MEETING_CUSTOM_FIELDS,
     *THESIS_CUSTOM_FIELDS,
-    TextCF(name="chicago:original_submitter"), # 270.m
-    TextCF(name="chicago:division", multiple=True), # 690.a
-    TextCF(name="chicago:department", multiple=True), # 691.a
-    TextCF(name="chicago:center_or_institute", multiple=True), # 692.a
-    IntegerCF(name="chicago:tind_id"), # 001
+    TextCF(name="chicago:original_submitter"),  # 270.m
+    TextCF(name="chicago:division", multiple=True),  # 690.a
+    TextCF(name="chicago:department", multiple=True),  # 691.a
+    TextCF(name="chicago:center_or_institute", multiple=True),  # 692.a
+    IntegerCF(name="chicago:tind_id"),  # 001
 ]
 
 RDM_CUSTOM_FIELDS_UI = [
@@ -329,7 +345,9 @@ RDM_CUSTOM_FIELDS_UI = [
                 props=dict(
                     label=_("Division(s)"),
                     icon="building",
-                    description=_("Academic division(s) (e.g., Arts & Humanities Division, Physical Sciences Division)"),
+                    description=_(
+                        "Academic division(s) (e.g., Arts & Humanities Division, Physical Sciences Division)"
+                    ),
                     placeholder=_("Enter division name"),
                 ),
             ),
@@ -380,14 +398,20 @@ RDM_CUSTOM_FIELDS_UI = [
 MEETING_CUSTOM_FIELDS_UI["hide_from_landing_page"] = False
 
 # Enable MathJax for rendering mathematical expressions
-THEME_MATHJAX_CDN = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"
+THEME_MATHJAX_CDN = (
+    "https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"
+)
 
 # Add custom identifiers
 # patent_applications = re.compile('^US\s+(?:\d{4}\/)?(?:\d{7,11})\s+[AB][12]?$')
 
-RDM_RECORDS_IDENTIFIERS_SCHEMES = {**RDM_RECORDS_IDENTIFIERS_SCHEMES,
-                                   "patent_application_number": {"label": _("Patent application number"),
-                                                                 "validator": lambda x: True},
-                                   "patent_number": {"label": _("Patent number"), "validator": lambda x: True}}
+RDM_RECORDS_IDENTIFIERS_SCHEMES = {
+    **RDM_RECORDS_IDENTIFIERS_SCHEMES,
+    "patent_application_number": {
+        "label": _("Patent application number"),
+        "validator": lambda x: True,
+    },
+    "patent_number": {"label": _("Patent number"), "validator": lambda x: True},
+}
 
 COMMUNITIES_SHOW_BROWSE_MENU_ENTRY = True

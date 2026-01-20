@@ -72,11 +72,11 @@
       margin-left: unset !important;
       padding: 0.8em 1.5rem !important;
       border-left: 2px solid #d9d9d9;
-      
+
       a {
         color: @primaryColor !important;
         font-weight: bold;
-        
+
         &:hover {
           background-color: transparent;
           color: @primaryColor;

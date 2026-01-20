@@ -10,9 +10,11 @@ from invenio_access.permissions import system_identity
 from invenio_db import db
 
 from invenio_communities.proxies import current_communities
+
 svc = current_communities.service
 
 import os
+
 
 def rel2abs(src, *paths):
     src = os.path.realpath(src)
@@ -20,15 +22,17 @@ def rel2abs(src, *paths):
         src = os.path.dirname(src)
     return os.path.abspath(os.path.join(src, *paths))
 
-CSV = rel2abs(__file__, 'com_col_data.csv')
+
+CSV = rel2abs(__file__, "com_col_data.csv")
 COM = "61943e3d-9bf3-40e3-822c-2f3a14557515"
 
 # from invenio_rdm_records.proxies import current_record_communities_service
 # from invenio_communities.proxies import current_communities
 
+
 def build_nested_dict(csv_path):
     nested = {}
-    with open(csv_path, newline='', encoding='utf-8') as fh:
+    with open(csv_path, newline="", encoding="utf-8") as fh:
         reader = csv.reader(fh)
         # skip header
         try:
@@ -38,7 +42,7 @@ def build_nested_dict(csv_path):
 
         for row in reader:
             # Ensure row has at least 6 columns
-            row = row + [''] * (6 - len(row))
+            row = row + [""] * (6 - len(row))
             # indices: 0..5 correspond to columns 1..6
             division = row[0].strip()
             department = row[1].strip()
@@ -64,24 +68,26 @@ def build_nested_dict(csv_path):
                     target_dict[key_name] = value
 
             child_settings = {}
-            set_if_present(child_settings, 'division', division)
-            set_if_present(child_settings, 'department', department)
-            set_if_present(child_settings, 'center', center)
-            set_if_present(child_settings, 'resource_type', resource_type)
+            set_if_present(child_settings, "division", division)
+            set_if_present(child_settings, "department", department)
+            set_if_present(child_settings, "center", center)
+            set_if_present(child_settings, "resource_type", resource_type)
 
             parent[child_key].append(child_settings)
 
     return nested
 
+
 def load_collections(structure, community_id):
     ctree = CollectionTree.resolve(slug="collections", community_id=community_id)
     if ctree is None:
-        ctree = CollectionTree.create(title="Collections", slug="collections", community_id=community_id)
+        ctree = CollectionTree.create(
+            title="Collections", slug="collections", community_id=community_id
+        )
 
     for c in ctree.collections:
         db.session.delete(c.model)
     db.session.commit()
-
 
     collections_service = current_collections.service
 
@@ -106,6 +112,7 @@ def load_collections(structure, community_id):
                 order=cv.get("order", 10),
             )
 
+
 def to_collection_tree(structure, community_id):
     tree = {}
     po = 10
@@ -116,7 +123,7 @@ def to_collection_tree(structure, community_id):
             "title": k,
             "query": parent_query_for(v),
             "order": po,
-            "children": {}
+            "children": {},
         }
         po += 10
 
@@ -128,20 +135,22 @@ def to_collection_tree(structure, community_id):
                 ctx[slug1] = {
                     "title": k1,
                     "query": all_child_query_for(v1),
-                    "order": co
+                    "order": co,
                 }
                 co += 10
 
     return tree
 
+
 def slugify(text):
-    text = unicodedata.normalize('NFKD', text)
-    text = text.encode('ascii', 'ignore').decode('ascii')
+    text = unicodedata.normalize("NFKD", text)
+    text = text.encode("ascii", "ignore").decode("ascii")
     # remove punctuation (keep letters, numbers, whitespace and hyphens)
-    text = re.sub(r'[^\w\s-]', '', text)
+    text = re.sub(r"[^\w\s-]", "", text)
     # replace whitespace/underscores with hyphens and collapse consecutive hyphens
-    text = re.sub(r'[\s_]+', '-', text.strip().lower())
-    return text.strip('-')
+    text = re.sub(r"[\s_]+", "-", text.strip().lower())
+    return text.strip("-")
+
 
 FIELD_MAP = {
     "division": "custom_fields.division.keyword",
@@ -149,6 +158,7 @@ FIELD_MAP = {
     "center": "custom_fields.center_or_institute.keyword",
     "resource_type": "resource_type.id.keyword",
 }
+
 
 def child_query_for(rules):
     ands = []
@@ -158,12 +168,14 @@ def child_query_for(rules):
 
     return "(" + ") AND (".join(ands) + ")"
 
+
 def all_child_query_for(rules):
     ors = []
     for set in rules:
         ors.append(child_query_for(set))
 
     return "(" + ") OR (".join(ors) + ")"
+
 
 def parent_query_for(rules):
     default = rules.get("")
@@ -186,7 +198,8 @@ def main(csv_path, community_id):
     # print(json.dumps(tree, ensure_ascii=False, indent=2))
     load_collections(tree, community_id)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # import argparse
     #
     # parser = argparse.ArgumentParser()
@@ -197,4 +210,3 @@ if __name__ == '__main__':
     # main(args.input_csv, args.community)
     main(CSV, COM)
     # sys.exit()
-

@@ -11,6 +11,8 @@
 import {ResourceTypeField} from "../../chicago_invenio/ResourceTypeField";
 import {ConditionalCustomFields} from "../../chicago_invenio/ConditionalCustomFields";
 import { parametrize } from "react-overridable";
+import { curationComponentOverrides } from "@js/invenio_curations/requests";
+import { DepositBox } from "@js/invenio_curations/deposit/DepositBox";
 
 const ConditionalCustomFieldsWithRules = parametrize(ConditionalCustomFields, {
     sectionRules: {
@@ -33,6 +35,8 @@ const ConditionalCustomFieldsWithRules = parametrize(ConditionalCustomFields, {
 });
 
 export const overriddenComponents = {
+    ...curationComponentOverrides,
+    "InvenioAppRdm.Deposit.CardDepositStatusBox.container": DepositBox, // Invenio-Curations deposit box
     "InvenioAppRdm.Deposit.ResourceTypeField.container": ResourceTypeField,
     "InvenioAppRdm.Deposit.CustomFields.container": ConditionalCustomFieldsWithRules,
 }

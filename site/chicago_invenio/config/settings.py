@@ -33,6 +33,15 @@ from invenio_records_resources.services.custom_fields import (
 )
 import os
 
+# Invenio Curations components
+from invenio_app_rdm.config import NOTIFICATIONS_BUILDERS
+from invenio_curations.config import CURATIONS_NOTIFICATIONS_BUILDERS
+from invenio_curations.services.components import CurationComponent
+from invenio_rdm_records.services.components import DefaultRecordsComponents
+from chicago_invenio.config.curations_requests_permission_policy import CurationRDMRequestsPermissionPolicy
+from chicago_invenio.config.custom_communities_permission_policy import CustomCommunitiesPermissionPolicy
+from invenio_curations.services.permissions import CurationRDMRecordPermissionPolicy
+
 from chicago_invenio.config.meeting_cf_organizer import MEETING_ORG_CUSTOM_FIELDS, MEETING_ORG_CUSTOM_FIELDS_UI
 
 
@@ -369,3 +378,29 @@ RDM_RECORDS_IDENTIFIERS_SCHEMES = {**RDM_RECORDS_IDENTIFIERS_SCHEMES,
                                    "patent_number": {"label": _("Patent number"), "validator": lambda x: True}}
 
 COMMUNITIES_SHOW_BROWSE_MENU_ENTRY = True
+
+
+#### Invenio curations
+
+# enable sending of notifications when something's happening in the review
+NOTIFICATIONS_BUILDERS = {
+    **NOTIFICATIONS_BUILDERS,
+    # Curation request
+    **CURATIONS_NOTIFICATIONS_BUILDERS
+}
+
+# NOTE: the curation component should be added at the end
+RDM_RECORDS_SERVICE_COMPONENTS = DefaultRecordsComponents + [
+    CurationComponent,
+]
+
+REQUESTS_PERMISSION_POLICY = CurationRDMRequestsPermissionPolicy
+RDM_PERMISSION_POLICY = CurationRDMRecordPermissionPolicy
+
+
+# Enable community requirement
+RDM_COMMUNITY_REQUIRED_TO_PUBLISH = True
+
+# Apply custom permissions
+COMMUNITIES_PERMISSION_POLICY = CustomCommunitiesPermissionPolicy
+COMMUNITY_CREATOR_ROLE = "community-curator"  # Customizable role name

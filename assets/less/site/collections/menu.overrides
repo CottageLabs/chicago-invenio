@@ -31,6 +31,12 @@
       }
     }
   }
+  .logotype {
+    color: white;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+  }
 
   a.ui.button.auth-button,
   a.ui.button.signup {
@@ -136,6 +142,11 @@
   #header-search-bar {
     display: flex;
     justify-content: center;
+    border-radius: 3px;
+    border: 2px solid #737373;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+    font-size: 16px;
 
     .ui.fluid.search {
       margin: 7rem 0;
@@ -172,6 +183,11 @@
           padding: 1rem 1.5rem;
           border: @secondaryColor solid 2px;
           border-radius: 0;
+          &:focus,
+          &:focus-visible,
+          &:hover {
+            background-color: maroon;
+          }
         }
       }
     }

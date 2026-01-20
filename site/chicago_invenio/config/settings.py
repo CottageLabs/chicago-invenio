@@ -26,16 +26,14 @@ from invenio_rdm_records.contrib.thesis import (
     THESIS_CUSTOM_FIELDS_UI,
     THESIS_NAMESPACE,
 )
-from invenio_rdm_records.contrib.meeting import (
-    MEETING_CUSTOM_FIELDS,
-    MEETING_CUSTOM_FIELDS_UI,
-    MEETING_NAMESPACE,
-)
+from invenio_rdm_records.contrib.meeting import MEETING_NAMESPACE
 from invenio_records_resources.services.custom_fields import (
     TextCF,
     IntegerCF
 )
 import os
+
+from chicago_invenio.config.meeting_cf_organizer import MEETING_ORG_CUSTOM_FIELDS, MEETING_ORG_CUSTOM_FIELDS_UI
 
 
 def _(x):  # needed to avoid start time failure with lazy strings
@@ -295,12 +293,13 @@ RDM_NAMESPACES = {
 RDM_CUSTOM_FIELDS = [
     *JOURNAL_CUSTOM_FIELDS,
     *IMPRINT_CUSTOM_FIELDS,
-    *MEETING_CUSTOM_FIELDS,
+    *MEETING_ORG_CUSTOM_FIELDS,
     *THESIS_CUSTOM_FIELDS,
     TextCF(name="chicago:original_submitter"), # 270.m
     TextCF(name="chicago:division", multiple=True), # 690.a
     TextCF(name="chicago:department", multiple=True), # 691.a
     TextCF(name="chicago:center_or_institute", multiple=True), # 692.a
+    #TextCF(name="meeting:organizer"), # 711.u
     IntegerCF(name="chicago:tind_id"), # 001
 ]
 
@@ -318,7 +317,7 @@ RDM_CUSTOM_FIELDS_UI = [
         ],
     },
     # meeting
-    MEETING_CUSTOM_FIELDS_UI,
+    MEETING_ORG_CUSTOM_FIELDS_UI,
     # UChicago institutional fields
     {
         "section": _("University of Chicago Information"),
@@ -357,8 +356,6 @@ RDM_CUSTOM_FIELDS_UI = [
         ],
     },
 ]
-
-MEETING_CUSTOM_FIELDS_UI["hide_from_landing_page"] = False
 
 # Enable MathJax for rendering mathematical expressions
 THEME_MATHJAX_CDN = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"

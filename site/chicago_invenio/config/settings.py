@@ -26,13 +26,23 @@ from invenio_rdm_records.contrib.thesis import (
     THESIS_CUSTOM_FIELDS_UI,
     THESIS_NAMESPACE,
 )
-from invenio_rdm_records.contrib.meeting import (
-    MEETING_CUSTOM_FIELDS,
-    MEETING_CUSTOM_FIELDS_UI,
-    MEETING_NAMESPACE,
+from invenio_rdm_records.contrib.meeting import MEETING_NAMESPACE
+from invenio_records_resources.services.custom_fields import (
+    TextCF,
+    IntegerCF
 )
-from invenio_records_resources.services.custom_fields import TextCF, IntegerCF
 import os
+
+# Invenio Curations components
+from invenio_app_rdm.config import NOTIFICATIONS_BUILDERS
+from invenio_curations.config import CURATIONS_NOTIFICATIONS_BUILDERS
+from invenio_curations.services.components import CurationComponent
+from invenio_rdm_records.services.components import DefaultRecordsComponents
+from chicago_invenio.config.curations_requests_permission_policy import CurationRDMRequestsPermissionPolicy
+from chicago_invenio.config.custom_communities_permission_policy import CustomCommunitiesPermissionPolicy
+from invenio_curations.services.permissions import CurationRDMRecordPermissionPolicy
+
+from chicago_invenio.config.meeting_cf_organizer import MEETING_ORG_CUSTOM_FIELDS, MEETING_ORG_CUSTOM_FIELDS_UI
 
 
 def _(x):  # needed to avoid start time failure with lazy strings
@@ -203,10 +213,10 @@ SITE_API_URL = SITE_UI_URL + "/api"
 # Invenio-RDM-Records
 # ===================
 # See https://inveniordm.docs.cern.ch/customize/dois/
-DATACITE_ENABLED = False
+DATACITE_ENABLED = True
 DATACITE_USERNAME = ""
 DATACITE_PASSWORD = ""
-DATACITE_PREFIX = ""
+DATACITE_PREFIX = "10.70047"
 DATACITE_TEST_MODE = True
 DATACITE_DATACENTER_SYMBOL = ""
 
@@ -311,7 +321,7 @@ RDM_NAMESPACES = {
 RDM_CUSTOM_FIELDS = [
     *JOURNAL_CUSTOM_FIELDS,
     *IMPRINT_CUSTOM_FIELDS,
-    *MEETING_CUSTOM_FIELDS,
+    *MEETING_ORG_CUSTOM_FIELDS,
     *THESIS_CUSTOM_FIELDS,
     TextCF(name="chicago:original_submitter"),  # 270.m
     TextCF(name="chicago:division", multiple=True),  # 690.a
@@ -334,7 +344,7 @@ RDM_CUSTOM_FIELDS_UI = [
         ],
     },
     # meeting
-    MEETING_CUSTOM_FIELDS_UI,
+    MEETING_ORG_CUSTOM_FIELDS_UI,
     # UChicago institutional fields
     {
         "section": _("University of Chicago Information"),
@@ -371,31 +381,10 @@ RDM_CUSTOM_FIELDS_UI = [
                     placeholder=_("Enter center or institute name"),
                 ),
             ),
-            dict(
-                field="chicago:original_submitter",
-                ui_widget="Input",
-                props=dict(
-                    label=_("Original Submitter"),
-                    icon="envelope",
-                    description=_("Email of the original submitter"),
-                    placeholder=_("submitter@example.com"),
-                ),
-            ),
-            dict(
-                field="chicago:tind_id",
-                ui_widget="Input",
-                props=dict(
-                    label=_("TIND ID"),
-                    icon="barcode",
-                    description=_("Legacy TIND system identifier"),
-                    placeholder=_("Enter numeric TIND ID"),
-                ),
-            ),
+
         ],
     },
 ]
-
-MEETING_CUSTOM_FIELDS_UI["hide_from_landing_page"] = False
 
 # Enable MathJax for rendering mathematical expressions
 THEME_MATHJAX_CDN = (
@@ -415,3 +404,31 @@ RDM_RECORDS_IDENTIFIERS_SCHEMES = {
 }
 
 COMMUNITIES_SHOW_BROWSE_MENU_ENTRY = True
+
+
+#### Invenio curations
+# Comment out to disable curations feature, the initial import needs to run
+# with curations disabled.
+
+# enable sending of notifications when something's happening in the review
+# NOTIFICATIONS_BUILDERS = {
+#    **NOTIFICATIONS_BUILDERS,
+#    # Curation request
+#    **CURATIONS_NOTIFICATIONS_BUILDERS
+# }
+
+# NOTE: the curation component should be added at the end
+# RDM_RECORDS_SERVICE_COMPONENTS = DefaultRecordsComponents + [
+#    CurationComponent,
+# ]
+
+# REQUESTS_PERMISSION_POLICY = CurationRDMRequestsPermissionPolicy
+# RDM_PERMISSION_POLICY = CurationRDMRecordPermissionPolicy
+# CURATIONS_MODERATION_ROLE = "record-curator"
+
+# Enable community requirement
+RDM_COMMUNITY_REQUIRED_TO_PUBLISH = True
+
+# Apply custom permissions
+COMMUNITIES_PERMISSION_POLICY = CustomCommunitiesPermissionPolicy
+COMMUNITY_CREATOR_ROLE = "community-curator"  # Customizable role name

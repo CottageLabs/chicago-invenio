@@ -8,4 +8,35 @@
  * Add here all the overridden components of your app.
  */
 
-export const overriddenComponents = {}
+import {ResourceTypeField} from "../../chicago_invenio/ResourceTypeField";
+import {ConditionalCustomFields} from "../../chicago_invenio/ConditionalCustomFields";
+import { parametrize } from "react-overridable";
+import { curationComponentOverrides } from "@js/invenio_curations/requests";
+import { DepositBox } from "@js/invenio_curations/deposit/DepositBox";
+
+const ConditionalCustomFieldsWithRules = parametrize(ConditionalCustomFields, {
+    sectionRules: {
+        "Publishing information": {
+            showFor: ['publication-thesis', 'publication-article', 'publication-section', 'publication-book', 'publication-journal'],
+            fieldRules: {
+                // Thesis fields - only show for thesis publications
+                "thesis:thesis": { showFor: ['publication-thesis'] },
+                // Journal fields - only show for specific publication types
+                "journal:journal": { showFor: ['publication-article', 'publication-journal'] },
+                // Imprint fields - only show for specific publication types
+                "imprint:imprint": { showFor: ['publication-section', 'publication-book'] }
+            }
+        },
+        "Conference": {
+            showFor: ['publication-conferenceproceeding', 'publication-conferencepaper']
+        },
+        // University of Chicago Information section will show for all types (no rule)
+    }
+});
+
+export const overriddenComponents = {
+    //...curationComponentOverrides,
+    //"InvenioAppRdm.Deposit.CardDepositStatusBox.container": DepositBox, // Invenio-Curations deposit box
+    "InvenioAppRdm.Deposit.ResourceTypeField.container": ResourceTypeField,
+    "InvenioAppRdm.Deposit.CustomFields.container": ConditionalCustomFieldsWithRules,
+}

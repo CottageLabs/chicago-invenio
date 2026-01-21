@@ -35,8 +35,8 @@ const ConditionalCustomFieldsWithRules = parametrize(ConditionalCustomFields, {
 });
 
 export const overriddenComponents = {
-    ...curationComponentOverrides,
-    "InvenioAppRdm.Deposit.CardDepositStatusBox.container": DepositBox, // Invenio-Curations deposit box
+    //...curationComponentOverrides,
+    //"InvenioAppRdm.Deposit.CardDepositStatusBox.container": DepositBox, // Invenio-Curations deposit box
     "InvenioAppRdm.Deposit.ResourceTypeField.container": ResourceTypeField,
     "InvenioAppRdm.Deposit.CustomFields.container": ConditionalCustomFieldsWithRules,
 }

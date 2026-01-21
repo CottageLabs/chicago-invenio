@@ -82,7 +82,23 @@
         </div>
 
     </div>
-    <div id="navbar-bottom">
+    <div id="navbar-middle" class="ui menu borderless mobile-hidden">
+            <div class="content">
+                {%- block navbar_header %}
+                {%- block brand %}
+                <div class="text">
+                        <h1 class="frontpage-title" role="logo">
+                            <a href="/">
+                                <span style="color: #800000">UChicago </span>
+                                <span style="color: #585858">Knowledge</span>
+                            </a>
+                        </h1>
+                </div>
+                {%- endblock brand %}
+                {%- endblock navbar_header %}
+            </div>
+    </div>
+    <div id="navbar-bottom" class="navbar-bottom--homepage">
         <div class="ui container menu borderless p-0">
             {%- block navbar_search %}
                 {%- include "invenio_app_rdm/searchbar.html" %}

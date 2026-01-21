@@ -131,6 +131,14 @@
       }
     }
 
+    #rdm-burger-toggle {
+      font-size: 20px;
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
     #rdm-close-burger-menu-icon{
       .navicon:before,
       .navicon:after {

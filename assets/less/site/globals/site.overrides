@@ -103,7 +103,7 @@
             }
         }
     }
-  .footer-bottom.subfooter {
+  .footer-bottom, .subfooter {
         color: @footerTextLightColor;
         a {
             color: @footerTextLightColor;

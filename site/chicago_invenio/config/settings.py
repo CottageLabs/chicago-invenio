@@ -33,6 +33,8 @@ from invenio_records_resources.services.custom_fields import (
 )
 import os
 
+from invenio_communities.config import COMMUNITIES_SORT_OPTIONS
+
 # Invenio Curations components
 from invenio_app_rdm.config import NOTIFICATIONS_BUILDERS
 from invenio_curations.config import CURATIONS_NOTIFICATIONS_BUILDERS
@@ -406,3 +408,13 @@ RDM_COMMUNITY_REQUIRED_TO_PUBLISH = True
 # Apply custom permissions
 COMMUNITIES_PERMISSION_POLICY = CustomCommunitiesPermissionPolicy
 COMMUNITY_CREATOR_ROLE = "community-curator"  # Customizable role name
+
+# It is not possible to sort by title because it's a text field and not a keyword
+# sorting by slug is a sufficient substitute
+
+COMMUNITIES_SORT_OPTIONS = {
+    **COMMUNITIES_SORT_OPTIONS,
+    "title": dict(
+        title=_("Title"),
+        fields=["slug"],
+    ), }

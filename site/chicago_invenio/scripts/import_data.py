@@ -35,6 +35,8 @@ import requests
 from flask import current_app
 from invenio_app.factory import create_app
 from invenio_rdm_records.fixtures.tasks import get_authenticated_identity
+from flask_principal import Identity, RoleNeed, UserNeed
+from invenio_access.permissions import any_user, authenticated_user
 from invenio_rdm_records.proxies import (
     current_rdm_records_service,
     current_record_communities_service,
@@ -43,6 +45,24 @@ from invenio_records_resources.services.records.results import RecordItem
 from invenio_requests.proxies import current_requests_service
 from load_as_coms_colls import main as get_create_community_collection_structure, CSV
 from chicago_invenio.scripts.community_assignment_algorithm import CommunityAssignmentAlgorithm
+
+
+def get_identity_with_roles(user):
+    """Create an identity that includes the user's roles.
+
+    The default get_authenticated_identity() doesn't load roles,
+    so admin/curator permissions don't work.
+    """
+    identity = Identity(user.id)
+    identity.provides.add(UserNeed(user.id))
+    identity.provides.add(authenticated_user)
+    identity.provides.add(any_user)
+
+    # Add all user roles
+    for role in user.roles:
+        identity.provides.add(RoleNeed(role.name))
+
+    return identity
 
 
 def strip_html_tags(text):
@@ -2096,6 +2116,8 @@ def import_data(email: str, data: str, filepath:str, batch_size: int, max_record
     Args:
         email: Email of the user who will own the records
         data: Path to the MARCXML file
+        filepath: Root filepath for associated files, files will be looked for in subfolders named by record ID
+                  if that subfolder does not exist, files will not be added to that record
         batch_size: Number of records to process in each batch
         max_records: Maximum number of records to process (optional, for testing)
     """
@@ -2110,7 +2132,7 @@ def import_data(email: str, data: str, filepath:str, batch_size: int, max_record
             click.secho(f"User with email {email} not found.", fg="red")
             sys.exit(1)
 
-        identity = get_authenticated_identity(owner.id)
+        identity = get_identity_with_roles(owner)
 
         # Get create community collection structure and get community map
         #try:

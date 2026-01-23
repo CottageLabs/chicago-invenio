@@ -24,7 +24,7 @@ import logging
 import sys
 import time
 import json
-from typing import Dict, Any, Optional, Generator
+from typing import Dict, Any, Optional, Generator, Tuple, List
 import xml.etree.ElementTree as ET
 from itertools import islice
 import re
@@ -32,6 +32,7 @@ import os
 import html
 import idutils
 import requests
+from urllib.parse import unquote
 from flask import current_app
 from invenio_app.factory import create_app
 from invenio_rdm_records.fixtures.tasks import get_authenticated_identity
@@ -511,7 +512,7 @@ def extract_ror_id_from_identifier(identifier: str) -> Optional[str]:
     return None
 
 
-def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
+def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], List[Dict]]:
     """Convert MARCXML record to InvenioRDM format.
 
     Args:
@@ -924,15 +925,33 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
 
     # Electronic location/URLs (MARC 856)
     url_fields = record_elem.findall('.//marc:datafield[@tag="856"]', MARC_NS)
+    file_information = []
+    logger.info(f"Found {len(url_fields)} URL fields (856) in record")
     for url_field in url_fields:
         url_u = url_field.find('.//marc:subfield[@code="u"]', MARC_NS)
         if url_u is not None:
             url_text = url_u.text.strip()
+            logger.info(f"Processing URL: {url_text}")
+            # Add as identifier If this is a valid URL and not a UChicago knowledge base link
             if url_text.startswith('http') and 'knowledge.uchicago.edu' not in url_text:
                 identifiers.append({
                     'identifier': url_text,
                     'scheme': 'url'
                 })
+                logger.info(f"Added as external identifier")
+            else:
+                # File description (MARC 856$y)
+                url_y = url_field.find('.//marc:subfield[@code="y"]', MARC_NS)
+                file_name = unquote(url_text.split('/')[-1])  # Extract file name from URL
+                logger.info(f"Extracted filename: {file_name}")
+
+                if url_y is not None:
+                    description = url_y.text.strip()
+                    # Collect file information for file description handling
+                    file_information.append({'url': file_name, 'description': description})
+                    logger.info(f"Added file info - filename: {file_name}, description: {description[:50]}...")
+                else:
+                    logger.info(f"No description (subfield y) found for {file_name}")
 
     # OAI identifiers (MARC 909CO)
     oai_fields = record_elem.findall('.//marc:datafield[@tag="909"][@ind1="C"][@ind2="O"]', MARC_NS)
@@ -1850,22 +1869,23 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
     if custom_fields:
         record['custom_fields'] = custom_fields
 
-    return record
+    return record, file_information
 
 
-def add_files_to_draft(draft: RecordItem, identity, filepath: str):
+def add_files_to_draft(draft: RecordItem, identity, filepath: str, file_information):
     """Add files to the draft record.
 
     Args:
         draft: The draft record
         identity: User identity for authentication
         filepath: Root filepath for associated files
+        file_information: Additional file information to match file descriptions
     """
     try:
         # Path to the record's file/s 'chicago:tind_id'
         record_file_path = os.path.join(filepath, str(draft.data.get("custom_fields", {}).get("chicago:tind_id", "")))
 
-        # Check if test file exists
+        # Check if file\s exists
         if not os.path.exists(record_file_path):
             logger.warning(f"Directory not found at {record_file_path}, skipping file upload")
             return
@@ -1876,6 +1896,10 @@ def add_files_to_draft(draft: RecordItem, identity, filepath: str):
         # Initialize file metadata
         file_names = os.listdir(record_file_path)
         file_data = [{"key": file_name} for file_name in file_names]
+
+        logger.info(f"Processing {len(file_names)} files for draft {draft.id}")
+        logger.info(f"File information available: {file_information}")
+
         draft_file_service.init_files(identity, draft.id, data=file_data)
 
         for file_name in file_names:
@@ -1886,7 +1910,21 @@ def add_files_to_draft(draft: RecordItem, identity, filepath: str):
             # Commit the file
             draft_file_service.commit_file(identity, draft.id, file_name)
 
-        logger.info(f"Successfully uploaded test.xml to draft {draft.id}")
+            # Update file metadata if description is available
+            match = next((info for info in file_information if info.get('url') == file_name), None)
+            if match:
+                # Try wrapping in metadata key
+                data = {'metadata': {'description': match['description']}}
+                logger.info(f"Attempting to update metadata for file {file_name} with data: {data}")
+                try:
+                    draft_file_service.update_file_metadata(identity, draft.id, file_name, data)
+                    logger.info(f"Successfully updated metadata for file {file_name}")
+                except Exception as e:
+                    logger.error(f"Failed to update metadata for {file_name}: {e}")
+            else:
+                logger.info(f"No description found for file {file_name}")
+
+        logger.info(f"Successfully uploaded {len(file_names)} files to draft {draft.id}")
 
     except Exception as e:
         logger.error(f"Error uploading file to draft {draft.id}: {e}")
@@ -1935,13 +1973,15 @@ def stream_marc_records(filepath: str, chunk_size: int = 1000) -> Generator[ET.E
         raise
 
 
-def process_records_batch(records_batch, identity, community_map: dict, filepath: str, community_algorithm=None) -> list:
+def process_records_batch(records_batch, identity, community_map: dict, file_path: str, community_algorithm=None) -> list:
     """Process a batch of records.
 
     Args:
         records_batch: List of XML record elements
         identity: ID of the record owner
         community_map: Mapping of community slugs to IDs
+        file_path: Root filepath for associated files
+        community_algorithm: Community assignment algorithm instance
 
     Returns:
         List of created record IDs
@@ -1970,10 +2010,10 @@ def process_records_batch(records_batch, identity, community_map: dict, filepath
                 error_record["record_identifier"] = record_identifier
             
             # Convert MARC to InvenioRDM format
-            invenio_data = parse_marc_record(record_elem, record_identifier)
+            invenio_data, file_information = parse_marc_record(record_elem, record_identifier)
             error_record["invenio_data"] = invenio_data
 
-            record_file_path = os.path.join(filepath, record_identifier)
+            record_file_path = os.path.join(file_path, record_identifier)
             add_files = True
 
             if not os.path.exists(record_file_path):
@@ -2002,7 +2042,7 @@ def process_records_batch(records_batch, identity, community_map: dict, filepath
             # Add files to the draft
             if add_files:
                 error_record["error_stage"] = "add_files"
-                add_files_to_draft(draft, identity, filepath)
+                add_files_to_draft(draft, identity, file_path, file_information)
 
             # Publish the record
             error_record["error_stage"] = "publish"
@@ -2107,10 +2147,10 @@ def process_records_batch(records_batch, identity, community_map: dict, filepath
 @click.command("import_data")
 @click.argument("email")
 @click.argument("data")
-@click.argument("filepath")
+@click.argument("file_path")
 @click.option("--batch-size", default=500, help="Number of records to process in each batch")
 @click.option("--max-records", default=3000, type=int, help="Maximum number of records to process (for testing)")
-def import_data(email: str, data: str, filepath:str, batch_size: int, max_records: Optional[int]):
+def import_data(email: str, data: str, file_path:str, batch_size: int, max_records: Optional[int]):
     """Import MARCXML bibliographic data into Chicago Invenio.
 
     Args:
@@ -2135,10 +2175,7 @@ def import_data(email: str, data: str, filepath:str, batch_size: int, max_record
         identity = get_identity_with_roles(owner)
 
         # Get create community collection structure and get community map
-        #try:
         community_map = get_create_community_collection_structure(identity)
-        #except Exception:
-        # community_map = {}
 
         # Initialize community assignment algorithm
         try:
@@ -2161,7 +2198,7 @@ def import_data(email: str, data: str, filepath:str, batch_size: int, max_record
         
         logger.info(f"Starting XML import for user: {email}")
         logger.info(f"Data file: {data}")
-        logger.info(f"File path: {filepath}")
+        logger.info(f"File path: {file_path}")
         logger.info(f"Batch size: {batch_size}")
         logger.info(f"Awards will be logged to awards.txt")
 
@@ -2185,7 +2222,7 @@ def import_data(email: str, data: str, filepath:str, batch_size: int, max_record
                     #break
 
                 # Process the batch
-                batch_results = process_records_batch(batch, identity, community_map, filepath, community_algorithm)
+                batch_results = process_records_batch(batch, identity, community_map, file_path, community_algorithm)
 
                 total_processed += len(batch)
                 total_created += len(batch_results)

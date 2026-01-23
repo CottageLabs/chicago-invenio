@@ -27,6 +27,8 @@ from invenio_rdm_records.contrib.thesis import (
     THESIS_NAMESPACE,
 )
 from invenio_rdm_records.contrib.meeting import MEETING_NAMESPACE
+from invenio_rdm_records.services.schemas.files import MetadataSchema
+from marshmallow import fields
 from invenio_records_resources.services.custom_fields import (
     TextCF,
     IntegerCF
@@ -418,3 +420,10 @@ COMMUNITIES_SORT_OPTIONS = {
         title=_("Title"),
         fields=["slug"],
     ), }
+
+# Monkey patch to add 'description' field to file metadata schema
+# This allows us to store file descriptions without modifying the installed package
+# Add the description field to the existing MetadataSchema class
+# This is done at the class level so all instances will have this field
+MetadataSchema._declared_fields['description'] = fields.String()
+setattr(MetadataSchema, 'description', fields.String())

@@ -1977,6 +1977,35 @@ def stream_marc_records(filepath: str, chunk_size: int = 1000) -> Generator[ET.E
         raise
 
 
+def get_default_preview(file_information: list) -> str:
+    """Get the default preview file from file information.
+
+    Most common 856$y combinations:
+    ----------------------------------------
+    1463 records: Article | Supporting information
+    616 records: Approval Form | Dissertation
+    255 records: Article | Supplementary materials
+    185 records: Approval | Thesis
+    149 records: Article | Supplemental material
+    147 records: Article | Supplementary material
+    135 records: Article | Supplementary information
+    135 records: Article | Supplemental files
+    113 records: Additional files | Article
+    89 records: Article | Supplementary data
+
+
+    Args:
+        file_information: List of file information dictionaries
+
+    Returns:
+        Filename of the default preview file or empty string
+    """
+    for file_info in file_information:
+        if file_info.get('description', '').lower() in ['article', 'dissertation', 'thesis']:
+            return file_info.get('url', '')
+    return ''
+
+
 def process_records_batch(records_batch, identity, community_map: dict, file_path: str, community_algorithm=None) -> list:
     """Process a batch of records.
 
@@ -2047,6 +2076,17 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
             if add_files:
                 error_record["error_stage"] = "add_files"
                 add_files_to_draft(draft, identity, file_path, file_information)
+
+                # Set default preview after files are uploaded and committed
+                default_preview = get_default_preview(file_information)
+                if default_preview:
+                    error_record["error_stage"] = "set_default_preview"
+                    invenio_data['files']['default_preview'] = default_preview
+                    current_rdm_records_service.update_draft(
+                        identity=identity,
+                        id_=draft.id,
+                        data=invenio_data
+                    )
 
             # Publish the record
             error_record["error_stage"] = "publish"

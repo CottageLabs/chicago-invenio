@@ -2134,7 +2134,9 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
             }
             
             # Try to extract more detailed error information
-            if hasattr(e, 'errors'):
+            if hasattr(e, 'messages'):
+                error_record["error_details"]["validation_errors"] = e.messages
+            elif hasattr(e, 'errors'):
                 error_record["error_details"]["validation_errors"] = e.errors
             elif hasattr(e, 'description'):
                 error_record["error_details"]["description"] = e.description
@@ -2267,7 +2269,7 @@ def import_data(email: str, data: str, file_path:str, batch_size: int, max_recor
         # Write errors to JSON file
         if errors_log:
             with open("errors.json", 'w', encoding='utf-8') as f:
-                json.dump(errors_log, f, indent=2, ensure_ascii=False)
+                json.dump(errors_log, f, indent=2, ensure_ascii=False, default=str)
             logger.info(f"Wrote {len(errors_log)} errors to errors.json")
         else:
             logger.info("No errors to write - all records processed successfully!")

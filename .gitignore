@@ -84,3 +84,5 @@ celerybeat-schedule
 *.swo
 *~
 .DS_Store
+
+tmp/

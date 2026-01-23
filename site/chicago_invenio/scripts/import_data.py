@@ -1817,13 +1817,17 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
 
     # Log creator sources for this record
     record_doi = "No DOI"
+    has_doi = False
     if 'identifiers' in metadata:
         for identifier in metadata['identifiers']:
             if identifier.get('scheme') == 'doi':
                 record_doi = identifier['identifier']
+                has_doi = True
                 break
 
-
+    # Default publisher for records with DOI but no publisher
+    if has_doi and 'publisher' not in metadata:
+        metadata['publisher'] = "University of Chicago"
 
     # Log error for records with Unknown creators
     if creators and creators[0].get("person_or_org", {}).get("name") == "Unknown":

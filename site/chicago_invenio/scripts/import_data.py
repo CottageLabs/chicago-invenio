@@ -1830,8 +1830,8 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
                 has_doi = True
                 break
 
-    # Default publisher for records with DOI but no publisher
-    if has_doi and 'publisher' not in metadata:
+    # Default publisher for records with no publisher
+    if 'publisher' not in metadata:
         metadata['publisher'] = "University of Chicago"
 
     # Log error for records with Unknown creators

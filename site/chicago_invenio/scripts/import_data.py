@@ -1544,13 +1544,6 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
             if award_number is not None:
                 funding_info['award'] = {'number': award_number.text.strip()}
 
-            # Award title
-            award_title = funding_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-            if award_title is not None:
-                if 'award' not in funding_info:
-                    funding_info['award'] = {}
-                funding_info['award']['title'] = {'en': award_title.text.strip()}
-
             # Award identifier (536$c) - write to file but don't add to metadata
             award_id = funding_field.find('.//marc:subfield[@code="c"]', MARC_NS)
             if award_id is not None:
@@ -1560,6 +1553,18 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
                     f.write(f"{award_id_text}\n")
                 logger.debug(f"Logged award ID to awards.txt: {award_id_text}")
                 # Note: Not adding award to funding_info to avoid validation errors
+
+            # Award title
+            award_title = funding_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+            if award_title is not None:
+                if 'award' not in funding_info:
+                    funding_info['award'] = {}
+                funding_info['award']['title'] = {'en': award_title.text.strip()}
+            elif award_id is not None:
+                # Award id as fallback title if title is absent
+                if 'award' not in funding_info:
+                    funding_info['award'] = {}
+                funding_info['award']['title'] = {'en': award_id.text.strip()}
 
             # Funder identifier - use the validated ROR ID as vocabulary reference
             if ror_id:

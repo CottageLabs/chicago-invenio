@@ -103,6 +103,7 @@ def load_structure(structure, identity):
                     "slug": k,
                     "metadata": v.get("metadata", {"title": k}),
                     "access": v.get("access", {"visibility" : "public"}),
+                    "children": {"allow": True}
                 },
                 identity=identity,
             )

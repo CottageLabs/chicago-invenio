@@ -421,6 +421,11 @@ COMMUNITIES_SORT_OPTIONS = {
         fields=["slug"],
     ), }
 
+COMMUNITIES_SEARCH = {
+    "facets": [], # ["type", "visibility"],
+    "sort": ["title", "bestmatch", "newest", "oldest"],
+}
+
 # Monkey patch to add 'description' field to file metadata schema
 # This allows us to store file descriptions without modifying the installed package
 # Add the description field to the existing MetadataSchema class

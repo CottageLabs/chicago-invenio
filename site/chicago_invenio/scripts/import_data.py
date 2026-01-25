@@ -43,6 +43,7 @@ from invenio_rdm_records.proxies import (
     current_record_communities_service,
 )
 from invenio_records_resources.services.records.results import RecordItem
+from invenio_records_resources.proxies import current_service_registry
 from invenio_requests.proxies import current_requests_service
 from load_as_coms_colls import main as get_create_community_collection_structure, CSV
 from chicago_invenio.scripts.community_assignment_algorithm import CommunityAssignmentAlgorithm
@@ -512,11 +513,14 @@ def extract_ror_id_from_identifier(identifier: str) -> Optional[str]:
     return None
 
 
-def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], List[Dict]]:
+def parse_marc_record(record_elem, record_identifier, identity=None, funders_service=None) -> Tuple[Dict[str, Any], List[Dict]]:
     """Convert MARCXML record to InvenioRDM format.
 
     Args:
         record_elem: XML element containing a MARC record
+        record_identifier: The record identifier (TIND ID)
+        identity: User identity for service calls
+        funders_service: Funders vocabulary service for name lookups
 
     Returns:
         Dictionary with InvenioRDM record data
@@ -1571,6 +1575,23 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
                 # Use only the ROR ID when available (omit name to avoid vocabulary conflicts)
                 funding_info['funder'] = {'id': ror_id}
                 logger.debug(f"Setting funder ID to: '{ror_id}'")
+
+                # Compare source funder name with vocabulary name and add note if different
+                source_funder_name_field = funding_field.find('.//marc:subfield[@code="o"]', MARC_NS)
+                if source_funder_name_field is not None and funders_service and identity:
+                    source_funder_name = source_funder_name_field.text.strip()
+                    try:
+                        funder_record = funders_service.read(identity, ror_id)
+                        vocab_funder_name = funder_record.data.get('name')
+                        if vocab_funder_name and source_funder_name.lower() != vocab_funder_name.lower():
+                            additional_descriptions.append({
+                                'description': f'Source record describes funder {ror_id} as: "{source_funder_name}"',
+                                'type': {'id': 'notes', 'title': {'en': 'Notes'}}
+                            })
+                            record_additional_description_sources.append('536$o (funder name mismatch)')
+                            logger.debug(f"Funder name mismatch: source='{source_funder_name}', vocab='{vocab_funder_name}'")
+                    except Exception as e:
+                        logger.debug(f"Could not look up funder {ror_id} for name comparison: {e}")
             else:
                 # Fall back to funder name only when no ROR ID is available
                 funder_name = funding_field.find('.//marc:subfield[@code="o"]', MARC_NS)
@@ -2033,6 +2054,9 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
     global warnings_log
     results = []
 
+    # Get funders service for vocabulary lookups
+    funders_service = current_service_registry.get("funders")
+
     for record_elem in records_batch:
         invenio_data = None
         record_identifier = "Unknown"
@@ -2053,7 +2077,7 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
                 error_record["record_identifier"] = record_identifier
             
             # Convert MARC to InvenioRDM format
-            invenio_data, file_information = parse_marc_record(record_elem, record_identifier)
+            invenio_data, file_information = parse_marc_record(record_elem, record_identifier, identity, funders_service)
             error_record["invenio_data"] = invenio_data
 
             record_file_path = os.path.join(file_path, record_identifier)

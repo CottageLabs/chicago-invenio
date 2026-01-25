@@ -2008,6 +2008,11 @@ def get_default_preview(file_information: list) -> str:
     for file_info in file_information:
         if file_info.get('description', '').lower() in ['article', 'dissertation', 'thesis']:
             return file_info.get('url', '')
+
+    # Fallback: first non-license file
+    for file_info in [f for f in file_information if 'license' not in f.get('url', '').lower()]:
+        return file_info.get('url', '')
+
     return ''
 
 

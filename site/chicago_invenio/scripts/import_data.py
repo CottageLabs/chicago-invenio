@@ -955,7 +955,9 @@ def parse_marc_record(record_elem, record_identifier, identity=None, funders_ser
                     file_information.append({'url': file_name, 'description': description})
                     logger.info(f"Added file info - filename: {file_name}, description: {description[:50]}...")
                 else:
-                    logger.info(f"No description (subfield y) found for {file_name}")
+                    # Still add to file_information without description for default preview logic
+                    file_information.append({'url': file_name, 'description': ''})
+                    logger.info(f"Added file info without description: {file_name}")
 
     # OAI identifiers (MARC 909CO)
     oai_fields = record_elem.findall('.//marc:datafield[@tag="909"][@ind1="C"][@ind2="O"]', MARC_NS)

@@ -47,6 +47,7 @@ from chicago_invenio.config.custom_communities_permission_policy import CustomCo
 from invenio_curations.services.permissions import CurationRDMRecordPermissionPolicy
 
 from chicago_invenio.config.meeting_cf_organizer import MEETING_ORG_CUSTOM_FIELDS, MEETING_ORG_CUSTOM_FIELDS_UI
+from chicago_invenio.config.related_item_cf import RelatedItem
 
 
 def _(x):  # needed to avoid start time failure with lazy strings
@@ -314,6 +315,7 @@ RDM_CUSTOM_FIELDS = [
     TextCF(name="chicago:center_or_institute", multiple=True), # 692.a
     #TextCF(name="meeting:organizer"), # 711.u
     IntegerCF(name="chicago:tind_id"), # 001
+    RelatedItem(name="chicago:related_items", multiple=True), # 791
 ]
 
 RDM_CUSTOM_FIELDS_UI = [

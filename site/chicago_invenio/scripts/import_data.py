@@ -1720,9 +1720,7 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
         # Relation Type (791$e)
         relation_type = related_field.find('.//marc:subfield[@code="e"]', MARC_NS)
         if relation_type is not None:
-            related_item['relation_type'] = {
-                'title': {'en': relation_type.text.strip()}
-            }
+            related_item['relation_type'] = relation_type.text.strip()
         
         # Related Item Title (791$t)
         related_title = related_field.find('.//marc:subfield[@code="t"]', MARC_NS)
@@ -1740,7 +1738,7 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
             related_items.append(related_item)
     
     if related_items:
-        custom_fields['related_item'] = related_items
+        custom_fields['chicago:related_items'] = related_items
 
     # ==================== LOCATIONS/GEOGRAPHIC DATA ====================
 

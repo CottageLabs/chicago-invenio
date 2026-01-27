@@ -194,10 +194,21 @@ def slugify(text):
     return text.strip('-')
 
 FIELD_MAP = {
-    "division": "custom_fields.division.keyword",
-    "department": "custom_fields.department.keyword",
-    "center": "custom_fields.center_or_institute.keyword",
-    "resource_type": "resource_type.id.keyword",
+    "division": "custom_fields.chicago\\:division",
+    "department": "custom_fields.chicago\\:department",
+    "center": "custom_fields.chicago\\:center_or_institute",
+    "resource_type": "metadata.resource_type.id",
+}
+
+# Map human-readable resource type names to InvenioRDM resource_type IDs
+RESOURCE_TYPE_MAP = {
+    "Dissertation": "publication-dissertation",
+    "Thesis": "publication-thesis",
+    "Article": "publication-article",
+    "Book": "publication-book",
+    "Report": "publication-report",
+    "Dataset": "dataset",
+    "Patent": "publication-patent",
 }
 
 
@@ -205,6 +216,9 @@ def child_query_for(rules):
     ands = []
     for k, v in rules.items():
         field = FIELD_MAP[k]
+        # Translate resource_type values to InvenioRDM IDs
+        if k == "resource_type" and v in RESOURCE_TYPE_MAP:
+            v = RESOURCE_TYPE_MAP[v]
         ands.append(f'{field}:"{v}"')
 
     return "(" + ") AND (".join(ands) + ")"

@@ -369,8 +369,6 @@ def extract_full_date(date_text: str) -> Optional[str]:
     # YYYY/MM format
     match = re.search(r'(19|20)\d{2}/(\d{2})', date_text)
     if match:
-        date_parts = match.group().split('/')
-        return f"{date_parts[0]}-{date_parts[1]}"
         month = match.group(2)
         if is_valid_month(month):
             date_parts = match.group().split('/')

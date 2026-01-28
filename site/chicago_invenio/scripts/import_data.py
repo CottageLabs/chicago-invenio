@@ -1830,23 +1830,6 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
     if locations:
         metadata['locations'] = locations
 
-    # Log creator sources for this record
-    record_doi = "No DOI"
-    has_doi = False
-    if 'identifiers' in metadata:
-        for identifier in metadata['identifiers']:
-            if identifier.get('scheme') == 'doi':
-                record_doi = identifier['identifier']
-                has_doi = True
-                break
-
-    # Default publisher for records with no publisher
-    if 'publisher' not in metadata:
-        metadata['publisher'] = "University of Chicago"
-
-    # Log error for records with Unknown creators
-    if creators and creators[0].get("person_or_org", {}).get("name") == "Unknown":
-        logger.error(f"No creator information found for record: {record_doi}")
 
     record = {
         'pids': {},

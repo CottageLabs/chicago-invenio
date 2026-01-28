@@ -916,10 +916,10 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
             # Validate DOI using idutils
             if idutils.is_doi(doi_value):
                 datacite_prefix = current_app.config["DATACITE_PREFIX"]
-                # Assign Chicago-specific DOIs as external PID
+                # Assign DOIs with our prefix as managed by DataCite
                 if doi_value.startswith(datacite_prefix):
-                    pids['doi'] = { 'identifier': doi_value,
-                                    'provider': 'datacite',}
+                    pids['doi'] = {'identifier': doi_value,
+                                   'provider': 'datacite',}
                 else:
                     identifiers.append({
                         'identifier': doi_value,

@@ -925,6 +925,18 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
                     'scheme': 'patent_application_number'
                 })
 
+    # ISSN (MARC 022$a)
+    issn_fields = record_elem.findall('.//marc:datafield[@tag="022"]', MARC_NS)
+    for issn_field in issn_fields:
+        issn_a = issn_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if issn_a is not None:
+            issn_value = issn_a.text.strip()
+            if issn_value and not any(existing['identifier'] == issn_value for existing in identifiers):
+                identifiers.append({
+                    'identifier': issn_value,
+                    'scheme': 'issn'
+                })
+
     # Electronic location/URLs (MARC 856)
     url_fields = record_elem.findall('.//marc:datafield[@tag="856"]', MARC_NS)
     file_information = []

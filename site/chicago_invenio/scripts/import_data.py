@@ -661,7 +661,9 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
 
             # Check for special roles based on indicators
             if contrib_field.get('ind1') == '1':
-                if contrib_field.get('ind2') == '2':
+                if contrib_field.get('ind2') == '1':
+                    role = 'editor'  # Editor
+                elif contrib_field.get('ind2') == '2':
                     role = 'advisor'  # Advisor
                 elif contrib_field.get('ind2') == '4':
                     role = 'committeemember'  # Committee member

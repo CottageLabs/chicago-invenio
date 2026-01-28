@@ -523,6 +523,7 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
     """
     metadata = {'publisher': "University of Chicago"}
     custom_fields = {'chicago:tind_id': int(record_identifier)}
+    pids = {}
 
     # ==================== RESOURCE TYPE ====================
 
@@ -890,10 +891,16 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
             doi_value = subfield_a.text.strip()
             # Validate DOI using idutils
             if idutils.is_doi(doi_value):
-                identifiers.append({
-                    'identifier': doi_value,
-                    'scheme': 'doi'
-                })
+                datacite_prefix = current_app.config["DATACITE_PREFIX"]
+                # Assign Chicago-specific DOIs as external PID
+                if doi_value.startswith(datacite_prefix):
+                    pids['doi'] = { 'identifier': doi_value,
+                                    'provider': 'datacite',}
+                else:
+                    identifiers.append({
+                        'identifier': doi_value,
+                        'scheme': 'doi'
+                    })
             else:
                 logger.error(f"Invalid DOI found: {doi_value}")
 
@@ -1832,7 +1839,7 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
 
 
     record = {
-        'pids': {},
+        'pids': pids,
         'metadata': metadata,
         'files': {'enabled': True},
         'access': {

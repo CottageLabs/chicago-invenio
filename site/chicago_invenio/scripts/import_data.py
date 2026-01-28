@@ -327,28 +327,54 @@ def extract_full_date(date_text: str) -> Optional[str]:
     # Clean up the date text
     date_text = date_text.strip()
 
+    def is_valid_month(month_str: str) -> bool:
+        """Check if month string is valid (01-12)."""
+        try:
+            month = int(month_str)
+            return 1 <= month <= 12
+        except ValueError:
+            return False
+
+    def is_valid_day(day_str: str) -> bool:
+        """Check if day string is valid (01-31)."""
+        try:
+            day = int(day_str)
+            return 1 <= day <= 31
+        except ValueError:
+            return False
+
     # Try to match various date formats
     # YYYY-MM-DD format
-    match = re.search(r'(19|20)\d{2}-\d{2}-\d{2}', date_text)
+    match = re.search(r'(19|20)\d{2}-(\d{2})-(\d{2})', date_text)
     if match:
-        return match.group()
+        month, day = match.group(2), match.group(3)
+        if is_valid_month(month) and is_valid_day(day):
+            return match.group()
 
     # YYYY/MM/DD format
-    match = re.search(r'(19|20)\d{2}/\d{2}/\d{2}', date_text)
+    match = re.search(r'(19|20)\d{2}/(\d{2})/(\d{2})', date_text)
     if match:
-        date_parts = match.group().split('/')
-        return f"{date_parts[0]}-{date_parts[1]}-{date_parts[2]}"
+        month, day = match.group(2), match.group(3)
+        if is_valid_month(month) and is_valid_day(day):
+            date_parts = match.group().split('/')
+            return f"{date_parts[0]}-{date_parts[1]}-{date_parts[2]}"
 
     # YYYY-MM format
-    match = re.search(r'(19|20)\d{2}-\d{2}', date_text)
+    match = re.search(r'(19|20)\d{2}-(\d{2})', date_text)
     if match:
-        return match.group()
+        month = match.group(2)
+        if is_valid_month(month):
+            return match.group()
 
     # YYYY/MM format
-    match = re.search(r'(19|20)\d{2}/\d{2}', date_text)
+    match = re.search(r'(19|20)\d{2}/(\d{2})', date_text)
     if match:
         date_parts = match.group().split('/')
         return f"{date_parts[0]}-{date_parts[1]}"
+        month = match.group(2)
+        if is_valid_month(month):
+            date_parts = match.group().split('/')
+            return f"{date_parts[0]}-{date_parts[1]}"
 
     # Month YYYY format (e.g., "June 2020")
     month_names = {

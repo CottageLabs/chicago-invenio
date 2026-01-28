@@ -1591,14 +1591,18 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
             # Use only the ROR ID when available (omit name to avoid vocabulary conflicts)
             funding_info['funder'] = {'id': ror_id}
             logger.debug(f"Setting funder ID to: '{ror_id}'")
-        else:
+        elif funder_name is not None:
             # Fall back to funder name only when no ROR ID is available
-            if funder_name is not None:
-                funding_info['funder'] = {'name': funder_name.text.strip()}
-                logger.debug(f"Setting funder name to: '{funder_name.text.strip()}'")
+            funding_info['funder'] = {'name': funder_name.text.strip()}
+            logger.debug(f"Setting funder name to: '{funder_name.text.strip()}'")
+        elif 'award' in funding_info:
+            # If we have award info but no funder, use unknown funder
+            funding_info['funder'] = {'name': 'Unknown funder'}
+            logger.debug("No funder info available, using 'Unknown funder'")
 
-            if funding_info:
-                funding_list.append(funding_info)
+        # Only add to funding list if we have a funder (required field)
+        if 'funder' in funding_info:
+            funding_list.append(funding_info)
 
     if funding_list:
         metadata['funding'] = funding_list

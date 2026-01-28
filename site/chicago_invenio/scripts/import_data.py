@@ -521,7 +521,7 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
     Returns:
         Dictionary with InvenioRDM record data
     """
-    metadata = {}
+    metadata = {'publisher': "University of Chicago"}
     custom_fields = {'chicago:tind_id': int(record_identifier)}
 
     # ==================== RESOURCE TYPE ====================
@@ -988,11 +988,11 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
     # Publication info (MARC 260)
     pub_fields_260 = record_elem.findall('.//marc:datafield[@tag="260"]', MARC_NS)
     for pub_field_260 in pub_fields_260:
-        # Publisher name (from first field that has it)
-        if 'publisher' not in metadata:
-            pub_b = pub_field_260.find('.//marc:subfield[@code="b"]', MARC_NS)
-            if pub_b is not None:
-                metadata['publisher'] = pub_b.text.strip()
+        # Publisher name (from first field that has it) - overrides default
+        pub_b = pub_field_260.find('.//marc:subfield[@code="b"]', MARC_NS)
+        if pub_b is not None:
+            metadata['publisher'] = pub_b.text.strip()
+            break  # Use first publisher found
 
         # Publication date - prioritize $c for patents, skip for others to avoid interference
         pub_c = pub_field_260.find('.//marc:subfield[@code="c"]', MARC_NS)

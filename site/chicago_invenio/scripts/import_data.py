@@ -1542,6 +1542,7 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
     funding_list = []
     for funding_field in funding_fields:
         funding_info = {}
+        funder_name = funding_field.find('.//marc:subfield[@code="o"]', MARC_NS)
 
         # First check if there's a valid ROR ID in the funder identifier (536$q)
         funder_id_field = funding_field.find('.//marc:subfield[@code="q"]', MARC_NS)
@@ -1551,46 +1552,43 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
             ror_id = extract_ror_id_from_identifier(original_id)
             logger.debug(f"Funder ID processing: '{original_id}' -> '{ror_id}'")
 
-        # Only process this funding entry if it has a valid ROR ID
-        if ror_id is not None:
-            # Award number
-            award_number = funding_field.find('.//marc:subfield[@code="1"]', MARC_NS)
-            if award_number is not None:
-                funding_info['award'] = {'number': award_number.text.strip()}
+        # Award number
+        award_number = funding_field.find('.//marc:subfield[@code="1"]', MARC_NS)
+        if award_number is not None:
+            funding_info['award'] = {'number': award_number.text.strip()}
 
-            # Award identifier (536$c) - write to file but don't add to metadata
-            award_id = funding_field.find('.//marc:subfield[@code="c"]', MARC_NS)
-            if award_id is not None:
-                # Write award ID to awards.txt file for later processing
-                award_id_text = award_id.text.strip()
-                with open('awards.txt', 'a') as f:
-                    f.write(f"{award_id_text}\n")
-                logger.debug(f"Logged award ID to awards.txt: {award_id_text}")
-                # Note: Not adding award to funding_info to avoid validation errors
+        # Award identifier (536$c) - write to file but don't add to metadata
+        award_id = funding_field.find('.//marc:subfield[@code="c"]', MARC_NS)
+        if award_id is not None:
+            # Write award ID to awards.txt file for later processing
+            award_id_text = award_id.text.strip()
+            with open('awards.txt', 'a') as f:
+                f.write(f"{award_id_text}\n")
+            logger.debug(f"Logged award ID to awards.txt: {award_id_text}")
+            # Note: Not adding award to funding_info to avoid validation errors
 
-            # Award title
-            award_title = funding_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-            if award_title is not None:
-                if 'award' not in funding_info:
-                    funding_info['award'] = {}
-                funding_info['award']['title'] = {'en': award_title.text.strip()}
-            elif award_id is not None:
-                # Award id as fallback title if title is absent
-                if 'award' not in funding_info:
-                    funding_info['award'] = {}
-                funding_info['award']['title'] = {'en': award_id.text.strip()}
+        # Award title
+        award_title = funding_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if award_title is not None:
+            if 'award' not in funding_info:
+                funding_info['award'] = {}
+            funding_info['award']['title'] = {'en': award_title.text.strip()}
+        elif award_id is not None:
+            # Award id as fallback title if title is absent
+            if 'award' not in funding_info:
+                funding_info['award'] = {}
+            funding_info['award']['title'] = {'en': award_id.text.strip()}
 
-            # Funder identifier - use the validated ROR ID as vocabulary reference
-            if ror_id:
-                # Use only the ROR ID when available (omit name to avoid vocabulary conflicts)
-                funding_info['funder'] = {'id': ror_id}
-                logger.debug(f"Setting funder ID to: '{ror_id}'")
-            else:
-                # Fall back to funder name only when no ROR ID is available
-                funder_name = funding_field.find('.//marc:subfield[@code="o"]', MARC_NS)
-                if funder_name is not None:
-                    funding_info['funder'] = {'name': funder_name.text.strip()}
-                    logger.debug(f"Setting funder name to: '{funder_name.text.strip()}'")
+        # Funder identifier - use the validated ROR ID as vocabulary reference
+        if ror_id:
+            # Use only the ROR ID when available (omit name to avoid vocabulary conflicts)
+            funding_info['funder'] = {'id': ror_id}
+            logger.debug(f"Setting funder ID to: '{ror_id}'")
+        else:
+            # Fall back to funder name only when no ROR ID is available
+            if funder_name is not None:
+                funding_info['funder'] = {'name': funder_name.text.strip()}
+                logger.debug(f"Setting funder name to: '{funder_name.text.strip()}'")
 
             if funding_info:
                 funding_list.append(funding_info)

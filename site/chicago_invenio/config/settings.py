@@ -27,11 +27,15 @@ from invenio_rdm_records.contrib.thesis import (
     THESIS_NAMESPACE,
 )
 from invenio_rdm_records.contrib.meeting import MEETING_NAMESPACE
+from invenio_rdm_records.services.schemas.files import MetadataSchema
+from marshmallow import fields
 from invenio_records_resources.services.custom_fields import (
     TextCF,
     IntegerCF
 )
 import os
+
+from invenio_communities.config import COMMUNITIES_SORT_OPTIONS
 
 # Invenio Curations components
 from invenio_app_rdm.config import NOTIFICATIONS_BUILDERS
@@ -43,6 +47,7 @@ from chicago_invenio.config.custom_communities_permission_policy import CustomCo
 from invenio_curations.services.permissions import CurationRDMRecordPermissionPolicy
 
 from chicago_invenio.config.meeting_cf_organizer import MEETING_ORG_CUSTOM_FIELDS, MEETING_ORG_CUSTOM_FIELDS_UI
+from chicago_invenio.config.related_item_cf import RelatedItem
 
 
 def _(x):  # needed to avoid start time failure with lazy strings
@@ -310,6 +315,7 @@ RDM_CUSTOM_FIELDS = [
     TextCF(name="chicago:center_or_institute", multiple=True), # 692.a
     #TextCF(name="meeting:organizer"), # 711.u
     IntegerCF(name="chicago:tind_id"), # 001
+    RelatedItem(name="chicago:related_items", multiple=True), # 791
 ]
 
 RDM_CUSTOM_FIELDS_UI = [
@@ -406,3 +412,25 @@ RDM_COMMUNITY_REQUIRED_TO_PUBLISH = True
 # Apply custom permissions
 COMMUNITIES_PERMISSION_POLICY = CustomCommunitiesPermissionPolicy
 COMMUNITY_CREATOR_ROLE = "community-curator"  # Customizable role name
+
+# It is not possible to sort by title because it's a text field and not a keyword
+# sorting by slug is a sufficient substitute
+
+COMMUNITIES_SORT_OPTIONS = {
+    **COMMUNITIES_SORT_OPTIONS,
+    "title": dict(
+        title=_("Title"),
+        fields=["slug"],
+    ), }
+
+COMMUNITIES_SEARCH = {
+    "facets": [], # ["type", "visibility"],
+    "sort": ["title", "bestmatch", "newest", "oldest"],
+}
+
+# Monkey patch to add 'description' field to file metadata schema
+# This allows us to store file descriptions without modifying the installed package
+# Add the description field to the existing MetadataSchema class
+# This is done at the class level so all instances will have this field
+MetadataSchema._declared_fields['description'] = fields.String()
+setattr(MetadataSchema, 'description', fields.String())

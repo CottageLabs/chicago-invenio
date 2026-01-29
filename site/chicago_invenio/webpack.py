@@ -9,7 +9,7 @@ theme = WebpackThemeBundle(
     themes={
         "semantic-ui": dict(
             entry={
-                # Add your webpack entrypoints
+                "chicago-communities-frontpage": "./js/chicago_invenio/communities/frontpage.js",
             },
         ),
     },

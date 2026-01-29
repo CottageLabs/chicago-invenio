@@ -24,7 +24,7 @@ import logging
 import sys
 import time
 import json
-from typing import Dict, Any, Optional, Generator
+from typing import Dict, Any, Optional, Generator, Tuple, List
 import xml.etree.ElementTree as ET
 from itertools import islice
 import re
@@ -32,9 +32,12 @@ import os
 import html
 import idutils
 import requests
+from urllib.parse import unquote
 from flask import current_app
 from invenio_app.factory import create_app
 from invenio_rdm_records.fixtures.tasks import get_authenticated_identity
+from flask_principal import Identity, RoleNeed, UserNeed
+from invenio_access.permissions import any_user, authenticated_user
 from invenio_rdm_records.proxies import (
     current_rdm_records_service,
     current_record_communities_service,
@@ -43,6 +46,24 @@ from invenio_records_resources.services.records.results import RecordItem
 from invenio_requests.proxies import current_requests_service
 from load_as_coms_colls import main as get_create_community_collection_structure, CSV
 from chicago_invenio.scripts.community_assignment_algorithm import CommunityAssignmentAlgorithm
+
+
+def get_identity_with_roles(user):
+    """Create an identity that includes the user's roles.
+
+    The default get_authenticated_identity() doesn't load roles,
+    so admin/curator permissions don't work.
+    """
+    identity = Identity(user.id)
+    identity.provides.add(UserNeed(user.id))
+    identity.provides.add(authenticated_user)
+    identity.provides.add(any_user)
+
+    # Add all user roles
+    for role in user.roles:
+        identity.provides.add(RoleNeed(role.name))
+
+    return identity
 
 
 def strip_html_tags(text):
@@ -306,28 +327,52 @@ def extract_full_date(date_text: str) -> Optional[str]:
     # Clean up the date text
     date_text = date_text.strip()
 
+    def is_valid_month(month_str: str) -> bool:
+        """Check if month string is valid (01-12)."""
+        try:
+            month = int(month_str)
+            return 1 <= month <= 12
+        except ValueError:
+            return False
+
+    def is_valid_day(day_str: str) -> bool:
+        """Check if day string is valid (01-31)."""
+        try:
+            day = int(day_str)
+            return 1 <= day <= 31
+        except ValueError:
+            return False
+
     # Try to match various date formats
     # YYYY-MM-DD format
-    match = re.search(r'(19|20)\d{2}-\d{2}-\d{2}', date_text)
+    match = re.search(r'(19|20)\d{2}-(\d{2})-(\d{2})', date_text)
     if match:
-        return match.group()
+        month, day = match.group(2), match.group(3)
+        if is_valid_month(month) and is_valid_day(day):
+            return match.group()
 
     # YYYY/MM/DD format
-    match = re.search(r'(19|20)\d{2}/\d{2}/\d{2}', date_text)
+    match = re.search(r'(19|20)\d{2}/(\d{2})/(\d{2})', date_text)
     if match:
-        date_parts = match.group().split('/')
-        return f"{date_parts[0]}-{date_parts[1]}-{date_parts[2]}"
+        month, day = match.group(2), match.group(3)
+        if is_valid_month(month) and is_valid_day(day):
+            date_parts = match.group().split('/')
+            return f"{date_parts[0]}-{date_parts[1]}-{date_parts[2]}"
 
     # YYYY-MM format
-    match = re.search(r'(19|20)\d{2}-\d{2}', date_text)
+    match = re.search(r'(19|20)\d{2}-(\d{2})', date_text)
     if match:
-        return match.group()
+        month = match.group(2)
+        if is_valid_month(month):
+            return match.group()
 
     # YYYY/MM format
-    match = re.search(r'(19|20)\d{2}/\d{2}', date_text)
+    match = re.search(r'(19|20)\d{2}/(\d{2})', date_text)
     if match:
-        date_parts = match.group().split('/')
-        return f"{date_parts[0]}-{date_parts[1]}"
+        month = match.group(2)
+        if is_valid_month(month):
+            date_parts = match.group().split('/')
+            return f"{date_parts[0]}-{date_parts[1]}"
 
     # Month YYYY format (e.g., "June 2020")
     month_names = {
@@ -491,7 +536,7 @@ def extract_ror_id_from_identifier(identifier: str) -> Optional[str]:
     return None
 
 
-def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
+def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], List[Dict]]:
     """Convert MARCXML record to InvenioRDM format.
 
     Args:
@@ -500,8 +545,9 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
     Returns:
         Dictionary with InvenioRDM record data
     """
-    metadata = {}
+    metadata = {'publisher': "University of Chicago"}
     custom_fields = {'chicago:tind_id': int(record_identifier)}
+    pids = {}
 
     # ==================== RESOURCE TYPE ====================
 
@@ -640,7 +686,9 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
 
             # Check for special roles based on indicators
             if contrib_field.get('ind1') == '1':
-                if contrib_field.get('ind2') == '2':
+                if contrib_field.get('ind2') == '1':
+                    role = 'editor'  # Editor
+                elif contrib_field.get('ind2') == '2':
                     role = 'advisor'  # Advisor
                 elif contrib_field.get('ind2') == '4':
                     role = 'committeemember'  # Committee member
@@ -867,10 +915,18 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
             doi_value = subfield_a.text.strip()
             # Validate DOI using idutils
             if idutils.is_doi(doi_value):
-                identifiers.append({
-                    'identifier': doi_value,
-                    'scheme': 'doi'
-                })
+                datacite_prefix = current_app.config["DATACITE_PREFIX"]
+                # Assign DOIs with our prefix as managed by DataCite
+                if doi_value.startswith(datacite_prefix):
+                    pids['doi'] = {'identifier': doi_value,
+                                   'provider': 'datacite',}
+                    with open('doi_mapping.txt', 'a') as f:
+                        f.write(f"{record_identifier},{doi_value}\n")
+                else:
+                    identifiers.append({
+                        'identifier': doi_value,
+                        'scheme': 'doi'
+                    })
             else:
                 logger.error(f"Invalid DOI found: {doi_value}")
 
@@ -902,17 +958,47 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
                     'scheme': 'patent_application_number'
                 })
 
+    # ISSN (MARC 022$a)
+    #issn_fields = record_elem.findall('.//marc:datafield[@tag="022"]', MARC_NS)
+    #for issn_field in issn_fields:
+    #    issn_a = issn_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+    #    if issn_a is not None:
+    #        issn_value = issn_a.text.strip()
+    #        if issn_value and not any(existing['identifier'] == issn_value for existing in identifiers):
+    #            identifiers.append({
+    #                'identifier': issn_value,
+    #                'scheme': 'issn'
+    #            })
+
     # Electronic location/URLs (MARC 856)
     url_fields = record_elem.findall('.//marc:datafield[@tag="856"]', MARC_NS)
+    file_information = []
+    logger.info(f"Found {len(url_fields)} URL fields (856) in record")
     for url_field in url_fields:
         url_u = url_field.find('.//marc:subfield[@code="u"]', MARC_NS)
         if url_u is not None:
             url_text = url_u.text.strip()
+            logger.info(f"Processing URL: {url_text}")
+            # Add as identifier If this is a valid URL and not a UChicago knowledge base link
             if url_text.startswith('http') and 'knowledge.uchicago.edu' not in url_text:
                 identifiers.append({
                     'identifier': url_text,
                     'scheme': 'url'
                 })
+                logger.info(f"Added as external identifier")
+            else:
+                # File description (MARC 856$y)
+                url_y = url_field.find('.//marc:subfield[@code="y"]', MARC_NS)
+                file_name = unquote(url_text.split('/')[-1])  # Extract file name from URL
+                logger.info(f"Extracted filename: {file_name}")
+
+                if url_y is not None:
+                    description = url_y.text.strip()
+                    # Collect file information for file description handling
+                    file_information.append({'url': file_name, 'description': description})
+                    logger.info(f"Added file info - filename: {file_name}, description: {description[:50]}...")
+                else:
+                    logger.info(f"No description (subfield y) found for {file_name}")
 
     # OAI identifiers (MARC 909CO)
     oai_fields = record_elem.findall('.//marc:datafield[@tag="909"][@ind1="C"][@ind2="O"]', MARC_NS)
@@ -935,11 +1021,11 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
     # Publication info (MARC 260)
     pub_fields_260 = record_elem.findall('.//marc:datafield[@tag="260"]', MARC_NS)
     for pub_field_260 in pub_fields_260:
-        # Publisher name (from first field that has it)
-        if 'publisher' not in metadata:
-            pub_b = pub_field_260.find('.//marc:subfield[@code="b"]', MARC_NS)
-            if pub_b is not None:
-                metadata['publisher'] = pub_b.text.strip()
+        # Publisher name (from first field that has it) - overrides default
+        pub_b = pub_field_260.find('.//marc:subfield[@code="b"]', MARC_NS)
+        if pub_b is not None:
+            metadata['publisher'] = pub_b.text.strip()
+            break  # Use first publisher found
 
         # Publication date - prioritize $c for patents, skip for others to avoid interference
         pub_c = pub_field_260.find('.//marc:subfield[@code="c"]', MARC_NS)
@@ -1489,6 +1575,7 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
     funding_list = []
     for funding_field in funding_fields:
         funding_info = {}
+        funder_name = funding_field.find('.//marc:subfield[@code="o"]', MARC_NS)
 
         # First check if there's a valid ROR ID in the funder identifier (536$q)
         funder_id_field = funding_field.find('.//marc:subfield[@code="q"]', MARC_NS)
@@ -1498,44 +1585,50 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
             ror_id = extract_ror_id_from_identifier(original_id)
             logger.debug(f"Funder ID processing: '{original_id}' -> '{ror_id}'")
 
-        # Only process this funding entry if it has a valid ROR ID
-        if ror_id is not None:
-            # Award number
-            award_number = funding_field.find('.//marc:subfield[@code="1"]', MARC_NS)
-            if award_number is not None:
-                funding_info['award'] = {'number': award_number.text.strip()}
+        # Award number
+        award_number = funding_field.find('.//marc:subfield[@code="1"]', MARC_NS)
+        if award_number is not None:
+            funding_info['award'] = {'number': award_number.text.strip()}
 
-            # Award title
-            award_title = funding_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-            if award_title is not None:
-                if 'award' not in funding_info:
-                    funding_info['award'] = {}
-                funding_info['award']['title'] = {'en': award_title.text.strip()}
+        # Award identifier (536$c) - write to file but don't add to metadata
+        award_id = funding_field.find('.//marc:subfield[@code="c"]', MARC_NS)
+        if award_id is not None:
+            # Write award ID to awards.txt file for later processing
+            award_id_text = award_id.text.strip()
+            with open('awards.txt', 'a') as f:
+                f.write(f"{record_identifier}, {award_id_text}\n")
+            logger.debug(f"Logged award ID to awards.txt: {award_id_text}")
+            # Note: Not adding award to funding_info to avoid validation errors
 
-            # Award identifier (536$c) - write to file but don't add to metadata
-            award_id = funding_field.find('.//marc:subfield[@code="c"]', MARC_NS)
-            if award_id is not None:
-                # Write award ID to awards.txt file for later processing
-                award_id_text = award_id.text.strip()
-                with open('awards.txt', 'a') as f:
-                    f.write(f"{award_id_text}\n")
-                logger.debug(f"Logged award ID to awards.txt: {award_id_text}")
-                # Note: Not adding award to funding_info to avoid validation errors
+        # Award title
+        award_title = funding_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        if award_title is not None:
+            if 'award' not in funding_info:
+                funding_info['award'] = {}
+            funding_info['award']['title'] = {'en': award_title.text.strip()}
+        elif award_id is not None:
+            # Award id as fallback title if title is absent
+            if 'award' not in funding_info:
+                funding_info['award'] = {}
+            funding_info['award']['title'] = {'en': award_id.text.strip()}
 
-            # Funder identifier - use the validated ROR ID as vocabulary reference
-            if ror_id:
-                # Use only the ROR ID when available (omit name to avoid vocabulary conflicts)
-                funding_info['funder'] = {'id': ror_id}
-                logger.debug(f"Setting funder ID to: '{ror_id}'")
-            else:
-                # Fall back to funder name only when no ROR ID is available
-                funder_name = funding_field.find('.//marc:subfield[@code="o"]', MARC_NS)
-                if funder_name is not None:
-                    funding_info['funder'] = {'name': funder_name.text.strip()}
-                    logger.debug(f"Setting funder name to: '{funder_name.text.strip()}'")
+        # Funder identifier - use the validated ROR ID as vocabulary reference
+        if ror_id:
+            # Use only the ROR ID when available (omit name to avoid vocabulary conflicts)
+            funding_info['funder'] = {'id': ror_id}
+            logger.debug(f"Setting funder ID to: '{ror_id}'")
+        elif funder_name is not None:
+            # Fall back to funder name only when no ROR ID is available
+            funding_info['funder'] = {'name': funder_name.text.strip()}
+            logger.debug(f"Setting funder name to: '{funder_name.text.strip()}'")
+        elif 'award' in funding_info:
+            # If we have award info but no funder, use unknown funder
+            funding_info['funder'] = {'name': 'Unknown funder'}
+            logger.debug("No funder info available, using 'Unknown funder'")
 
-            if funding_info:
-                funding_list.append(funding_info)
+        # Only add to funding list if we have a funder (required field)
+        if 'funder' in funding_info:
+            funding_list.append(funding_info)
 
     if funding_list:
         metadata['funding'] = funding_list
@@ -1676,9 +1769,7 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
         # Relation Type (791$e)
         relation_type = related_field.find('.//marc:subfield[@code="e"]', MARC_NS)
         if relation_type is not None:
-            related_item['relation_type'] = {
-                'title': {'en': relation_type.text.strip()}
-            }
+            related_item['relation_type'] = relation_type.text.strip()
         
         # Related Item Title (791$t)
         related_title = related_field.find('.//marc:subfield[@code="t"]', MARC_NS)
@@ -1696,7 +1787,7 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
             related_items.append(related_item)
     
     if related_items:
-        custom_fields['related_item'] = related_items
+        custom_fields['chicago:related_items'] = related_items
 
     # ==================== LOCATIONS/GEOGRAPHIC DATA ====================
 
@@ -1776,22 +1867,9 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
     if locations:
         metadata['locations'] = locations
 
-    # Log creator sources for this record
-    record_doi = "No DOI"
-    if 'identifiers' in metadata:
-        for identifier in metadata['identifiers']:
-            if identifier.get('scheme') == 'doi':
-                record_doi = identifier['identifier']
-                break
-
-
-
-    # Log error for records with Unknown creators
-    if creators and creators[0].get("person_or_org", {}).get("name") == "Unknown":
-        logger.error(f"No creator information found for record: {record_doi}")
 
     record = {
-        'pids': {},
+        'pids': pids,
         'metadata': metadata,
         'files': {'enabled': True},
         'access': {
@@ -1830,22 +1908,23 @@ def parse_marc_record(record_elem, record_identifier) -> Dict[str, Any]:
     if custom_fields:
         record['custom_fields'] = custom_fields
 
-    return record
+    return record, file_information
 
 
-def add_files_to_draft(draft: RecordItem, identity, filepath: str):
+def add_files_to_draft(draft: RecordItem, identity, filepath: str, file_information):
     """Add files to the draft record.
 
     Args:
         draft: The draft record
         identity: User identity for authentication
         filepath: Root filepath for associated files
+        file_information: Additional file information to match file descriptions
     """
     try:
         # Path to the record's file/s 'chicago:tind_id'
         record_file_path = os.path.join(filepath, str(draft.data.get("custom_fields", {}).get("chicago:tind_id", "")))
 
-        # Check if test file exists
+        # Check if file\s exists
         if not os.path.exists(record_file_path):
             logger.warning(f"Directory not found at {record_file_path}, skipping file upload")
             return
@@ -1856,6 +1935,10 @@ def add_files_to_draft(draft: RecordItem, identity, filepath: str):
         # Initialize file metadata
         file_names = os.listdir(record_file_path)
         file_data = [{"key": file_name} for file_name in file_names]
+
+        logger.info(f"Processing {len(file_names)} files for draft {draft.id}")
+        logger.info(f"File information available: {file_information}")
+
         draft_file_service.init_files(identity, draft.id, data=file_data)
 
         for file_name in file_names:
@@ -1866,7 +1949,21 @@ def add_files_to_draft(draft: RecordItem, identity, filepath: str):
             # Commit the file
             draft_file_service.commit_file(identity, draft.id, file_name)
 
-        logger.info(f"Successfully uploaded test.xml to draft {draft.id}")
+            # Update file metadata if description is available
+            match = next((info for info in file_information if info.get('url') == file_name), None)
+            if match:
+                # Try wrapping in metadata key
+                data = {'metadata': {'description': match['description']}}
+                logger.info(f"Attempting to update metadata for file {file_name} with data: {data}")
+                try:
+                    draft_file_service.update_file_metadata(identity, draft.id, file_name, data)
+                    logger.info(f"Successfully updated metadata for file {file_name}")
+                except Exception as e:
+                    logger.error(f"Failed to update metadata for {file_name}: {e}")
+            else:
+                logger.info(f"No description found for file {file_name}")
+
+        logger.info(f"Successfully uploaded {len(file_names)} files to draft {draft.id}")
 
     except Exception as e:
         logger.error(f"Error uploading file to draft {draft.id}: {e}")
@@ -1915,13 +2012,49 @@ def stream_marc_records(filepath: str, chunk_size: int = 1000) -> Generator[ET.E
         raise
 
 
-def process_records_batch(records_batch, identity, community_map: dict, filepath: str, community_algorithm=None) -> list:
+def get_default_preview(file_information: list) -> str:
+    """Get the default preview file from file information.
+
+    Most common 856$y combinations:
+    ----------------------------------------
+    1463 records: Article | Supporting information
+    616 records: Approval Form | Dissertation
+    255 records: Article | Supplementary materials
+    185 records: Approval | Thesis
+    149 records: Article | Supplemental material
+    147 records: Article | Supplementary material
+    135 records: Article | Supplementary information
+    135 records: Article | Supplemental files
+    113 records: Additional files | Article
+    89 records: Article | Supplementary data
+
+
+    Args:
+        file_information: List of file information dictionaries
+
+    Returns:
+        Filename of the default preview file or empty string
+    """
+    for file_info in file_information:
+        if file_info.get('description', '').lower() in ['article', 'dissertation', 'thesis']:
+            return file_info.get('url', '')
+
+    # Fallback: first non-license file
+    for file_info in [f for f in file_information if 'license' not in f.get('url', '').lower()]:
+        return file_info.get('url', '')
+
+    return ''
+
+
+def process_records_batch(records_batch, identity, community_map: dict, file_path: str, community_algorithm=None) -> list:
     """Process a batch of records.
 
     Args:
         records_batch: List of XML record elements
         identity: ID of the record owner
         community_map: Mapping of community slugs to IDs
+        file_path: Root filepath for associated files
+        community_algorithm: Community assignment algorithm instance
 
     Returns:
         List of created record IDs
@@ -1950,10 +2083,10 @@ def process_records_batch(records_batch, identity, community_map: dict, filepath
                 error_record["record_identifier"] = record_identifier
             
             # Convert MARC to InvenioRDM format
-            invenio_data = parse_marc_record(record_elem, record_identifier)
+            invenio_data, file_information = parse_marc_record(record_elem, record_identifier)
             error_record["invenio_data"] = invenio_data
 
-            record_file_path = os.path.join(filepath, record_identifier)
+            record_file_path = os.path.join(file_path, record_identifier)
             add_files = True
 
             if not os.path.exists(record_file_path):
@@ -1982,7 +2115,18 @@ def process_records_batch(records_batch, identity, community_map: dict, filepath
             # Add files to the draft
             if add_files:
                 error_record["error_stage"] = "add_files"
-                add_files_to_draft(draft, identity, filepath)
+                add_files_to_draft(draft, identity, file_path, file_information)
+
+                # Set default preview after files are uploaded and committed
+                default_preview = get_default_preview(file_information)
+                if default_preview:
+                    error_record["error_stage"] = "set_default_preview"
+                    invenio_data['files']['default_preview'] = default_preview
+                    current_rdm_records_service.update_draft(
+                        identity=identity,
+                        id_=draft.id,
+                        data=invenio_data
+                    )
 
             # Publish the record
             error_record["error_stage"] = "publish"
@@ -2070,7 +2214,9 @@ def process_records_batch(records_batch, identity, community_map: dict, filepath
             }
             
             # Try to extract more detailed error information
-            if hasattr(e, 'errors'):
+            if hasattr(e, 'messages'):
+                error_record["error_details"]["validation_errors"] = e.messages
+            elif hasattr(e, 'errors'):
                 error_record["error_details"]["validation_errors"] = e.errors
             elif hasattr(e, 'description'):
                 error_record["error_details"]["description"] = e.description
@@ -2087,15 +2233,17 @@ def process_records_batch(records_batch, identity, community_map: dict, filepath
 @click.command("import_data")
 @click.argument("email")
 @click.argument("data")
-@click.argument("filepath")
+@click.argument("file_path")
 @click.option("--batch-size", default=500, help="Number of records to process in each batch")
 @click.option("--max-records", default=3000, type=int, help="Maximum number of records to process (for testing)")
-def import_data(email: str, data: str, filepath:str, batch_size: int, max_records: Optional[int]):
+def import_data(email: str, data: str, file_path:str, batch_size: int, max_records: Optional[int]):
     """Import MARCXML bibliographic data into Chicago Invenio.
 
     Args:
         email: Email of the user who will own the records
         data: Path to the MARCXML file
+        filepath: Root filepath for associated files, files will be looked for in subfolders named by record ID
+                  if that subfolder does not exist, files will not be added to that record
         batch_size: Number of records to process in each batch
         max_records: Maximum number of records to process (optional, for testing)
     """
@@ -2110,13 +2258,10 @@ def import_data(email: str, data: str, filepath:str, batch_size: int, max_record
             click.secho(f"User with email {email} not found.", fg="red")
             sys.exit(1)
 
-        identity = get_authenticated_identity(owner.id)
+        identity = get_identity_with_roles(owner)
 
         # Get create community collection structure and get community map
-        #try:
         community_map = get_create_community_collection_structure(identity)
-        #except Exception:
-        # community_map = {}
 
         # Initialize community assignment algorithm
         try:
@@ -2139,7 +2284,7 @@ def import_data(email: str, data: str, filepath:str, batch_size: int, max_record
         
         logger.info(f"Starting XML import for user: {email}")
         logger.info(f"Data file: {data}")
-        logger.info(f"File path: {filepath}")
+        logger.info(f"File path: {file_path}")
         logger.info(f"Batch size: {batch_size}")
         logger.info(f"Awards will be logged to awards.txt")
 
@@ -2163,7 +2308,7 @@ def import_data(email: str, data: str, filepath:str, batch_size: int, max_record
                     #break
 
                 # Process the batch
-                batch_results = process_records_batch(batch, identity, community_map, filepath, community_algorithm)
+                batch_results = process_records_batch(batch, identity, community_map, file_path, community_algorithm)
 
                 total_processed += len(batch)
                 total_created += len(batch_results)
@@ -2204,7 +2349,7 @@ def import_data(email: str, data: str, filepath:str, batch_size: int, max_record
         # Write errors to JSON file
         if errors_log:
             with open("errors.json", 'w', encoding='utf-8') as f:
-                json.dump(errors_log, f, indent=2, ensure_ascii=False)
+                json.dump(errors_log, f, indent=2, ensure_ascii=False, default=str)
             logger.info(f"Wrote {len(errors_log)} errors to errors.json")
         else:
             logger.info("No errors to write - all records processed successfully!")

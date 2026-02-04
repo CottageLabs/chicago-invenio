@@ -44,7 +44,7 @@ from invenio_curations.services.components import CurationComponent
 from invenio_rdm_records.services.components import DefaultRecordsComponents
 from chicago_invenio.config.curations_requests_permission_policy import CurationRDMRequestsPermissionPolicy
 from chicago_invenio.config.custom_communities_permission_policy import CustomCommunitiesPermissionPolicy
-from invenio_curations.services.permissions import CurationRDMRecordPermissionPolicy
+from chicago_invenio.config.chicago_record_permission_policy import ChicagoRDMRecordPermissionPolicy
 
 from chicago_invenio.config.meeting_cf_organizer import MEETING_ORG_CUSTOM_FIELDS, MEETING_ORG_CUSTOM_FIELDS_UI
 from chicago_invenio.config.related_item_cf import RelatedItem
@@ -406,7 +406,7 @@ if CHI_ENABLE_CURATIONS and CHI_ENABLE_CURATIONS.lower() in ['1', 'true', 'yes']
      ]
 
      REQUESTS_PERMISSION_POLICY = CurationRDMRequestsPermissionPolicy
-     RDM_PERMISSION_POLICY = CurationRDMRecordPermissionPolicy
+     RDM_PERMISSION_POLICY = ChicagoRDMRecordPermissionPolicy
      CURATIONS_MODERATION_ROLE = "record-curator"
 
 # Enable community requirement

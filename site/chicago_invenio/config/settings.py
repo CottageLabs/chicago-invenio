@@ -40,8 +40,10 @@ from invenio_communities.config import COMMUNITIES_SORT_OPTIONS
 # Invenio Curations components
 from invenio_app_rdm.config import NOTIFICATIONS_BUILDERS
 from invenio_curations.config import CURATIONS_NOTIFICATIONS_BUILDERS
+from invenio_curations.requests.curation import CurationRequest
 from invenio_curations.services.components import CurationComponent
 from invenio_rdm_records.services.components import DefaultRecordsComponents
+from chicago_invenio.config.chicago_curation_request import ChicagoCurationAcceptAction
 from chicago_invenio.config.curations_requests_permission_policy import CurationRDMRequestsPermissionPolicy
 from chicago_invenio.config.custom_communities_permission_policy import CustomCommunitiesPermissionPolicy
 from chicago_invenio.config.chicago_record_permission_policy import ChicagoRDMRecordPermissionPolicy
@@ -408,6 +410,14 @@ if CHI_ENABLE_CURATIONS and CHI_ENABLE_CURATIONS.lower() in ['1', 'true', 'yes']
      REQUESTS_PERMISSION_POLICY = CurationRDMRequestsPermissionPolicy
      RDM_PERMISSION_POLICY = ChicagoRDMRecordPermissionPolicy
      CURATIONS_MODERATION_ROLE = "record-curator"
+
+     # Auto-submit to community after curation acceptance
+     # When enabled, accepting a curation request will automatically submit
+     # the record to the selected community for review
+     CHI_AUTO_SUBMIT_COMMUNITY_ON_CURATION = True
+
+     # Monkey-patch the CurationRequest to use our custom accept action
+     CurationRequest.available_actions["accept"] = ChicagoCurationAcceptAction
 
 # Enable community requirement
 RDM_COMMUNITY_REQUIRED_TO_PUBLISH = True

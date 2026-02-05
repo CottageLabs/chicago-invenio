@@ -311,16 +311,24 @@ RDM_CUSTOM_FIELDS = [
     *MEETING_ORG_CUSTOM_FIELDS,
     *THESIS_CUSTOM_FIELDS,
     TextCF(name="chicago:original_submitter"), # 270.m
-    # TextCF(name="chicago:division", multiple=True), # 690.a
     VocabularyCF( # 690.a
         name="chicago:division",
         vocabulary_id="divisions",
-        dump_options=True,  # all values visible
+        dump_options=True,  # all values visible, only 22 for divisions
         multiple=True,
     ),
-    TextCF(name="chicago:department", multiple=True), # 691.a
-    TextCF(name="chicago:center_or_institute", multiple=True), # 692.a
-    #TextCF(name="meeting:organizer"), # 711.u
+    VocabularyCF( # 691.a
+        name="chicago:department",
+        vocabulary_id="department",
+        dump_options=False,
+        multiple=True,
+    ),
+    VocabularyCF( # 692.a
+        name="chicago:center_or_institute",
+        vocabulary_id="centerinstitutes",
+        dump_options=False,
+        multiple=True,
+    ),
     IntegerCF(name="chicago:tind_id"), # 001
     RelatedItem(name="chicago:related_items", multiple=True), # 791
 ]
@@ -357,22 +365,24 @@ RDM_CUSTOM_FIELDS_UI = [
             ),
             dict(
                 field="chicago:department",
-                ui_widget="MultiInput",
+                ui_widget="AutocompleteDropdown",
                 props=dict(
                     label=_("Department(s)"),
                     icon="users",
                     description=_("Academic department(s) or program(s)"),
-                    placeholder=_("Enter department name"),
+                    autocompleteFrom="/api/vocabularies/departments",
+                    multiple=True,
                 ),
             ),
             dict(
                 field="chicago:center_or_institute",
-                ui_widget="MultiInput",
+                ui_widget="AutocompleteDropdown",
                 props=dict(
                     label=_("Center(s) or Institute(s)"),
                     icon="university",
                     description=_("Research center(s) or institute(s)"),
-                    placeholder=_("Enter center or institute name"),
+                    autocompleteFrom="/api/vocabularies/centerinstitutes",
+                    multiple=True,
                 ),
             ),
 

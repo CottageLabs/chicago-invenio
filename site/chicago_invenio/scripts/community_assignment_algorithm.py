@@ -30,11 +30,10 @@ class CommunityAssignmentAlgorithm:
         with open(self.csv_file_path, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
-                # Slugify 690 to match vocabulary IDs from import (VocabularyCF)
+                # Slugify field values to match vocabulary IDs from import (VocabularyCF)
                 field_690 = slugify(row['690__a'].strip()) if row['690__a'].strip() else ''
-                # 691 and 692 remain as plain text (TextCF)
-                field_691 = row['691__a'].strip()
-                field_692 = row['692__a'].strip()
+                field_691 = slugify(row['691__a'].strip()) if row['691__a'].strip() else ''
+                field_692 = slugify(row['692__a'].strip()) if row['692__a'].strip() else ''
                 field_336 = row['336__a'].strip()
                 community = row['Community'].strip()
                 collection = row['Collection'].strip()
@@ -223,13 +222,13 @@ def test_algorithm():
     csv_path = "/home/jabbi/PycharmProjects/chicago-invenio/site/chicago_invenio/scripts/com_col_data.csv"
     algorithm = CommunityAssignmentAlgorithm(csv_path)
     
-    # Test cases - divisions use slugified values (VocabularyCF), others use plain text
+    # Test cases - all use slugified values to match VocabularyCF format
     test_cases = [
         # Case 1: Exact department match
         {
             'input': {
                 'divisions': ['arts-humanities-division'],
-                'departments': ['Philosophy'],
+                'departments': ['philosophy'],
                 'centers': [],
                 'resource_type': None
             },
@@ -239,7 +238,7 @@ def test_algorithm():
         {
             'input': {
                 'divisions': [],
-                'departments': ['Philosophy'],
+                'departments': ['philosophy'],
                 'centers': [],
                 'resource_type': 'Dissertation'
             },
@@ -250,7 +249,7 @@ def test_algorithm():
             'input': {
                 'divisions': [],
                 'departments': [],
-                'centers': ['Enrico Fermi Institute'],
+                'centers': ['enrico-fermi-institute'],
                 'resource_type': None
             },
             'expected': 'Centers and Institutes'
@@ -259,7 +258,7 @@ def test_algorithm():
         {
             'input': {
                 'divisions': [],
-                'departments': ['Gaming Islam', 'Middle Eastern Studies'],
+                'departments': ['gaming-islam', 'middle-eastern-studies'],
                 'centers': [],
                 'resource_type': None
             },
@@ -269,8 +268,8 @@ def test_algorithm():
         {
             'input': {
                 'divisions': ['physical-sciences-division'],
-                'departments': ['Physics'],
-                'centers': ['Enrico Fermi Institute'],
+                'departments': ['physics'],
+                'centers': ['enrico-fermi-institute'],
                 'resource_type': None
             },
             'expected': ['Physical Sciences Division', 'Centers and Institutes']  # Should find both

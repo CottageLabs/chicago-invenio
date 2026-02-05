@@ -1222,7 +1222,8 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
         if subfield_1 is not None:
             subjects.append({'subject': subfield_a.text.strip()})
         else:
-            depts.append(subfield_a.text.strip())
+            # Convert to vocabulary ID format using slugify
+            depts.append({"id": slugify(subfield_a.text.strip())})
 
     if subjects:
         metadata['subjects'] = subjects
@@ -1677,7 +1678,8 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
     for center_field in center_fields:
         center_a = center_field.find('.//marc:subfield[@code="a"]', MARC_NS)
         if center_a is not None:
-            centers_insts.append(center_a.text.strip())
+            # Convert to vocabulary ID format using slugify
+            centers_insts.append({"id": slugify(center_a.text.strip())})
 
     if centers_insts:
         custom_fields['chicago:center_or_institute'] = centers_insts

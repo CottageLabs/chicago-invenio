@@ -14,6 +14,7 @@ the record to the community after curation is approved.
 from flask import current_app
 from flask_principal import Identity
 from invenio_access.permissions import system_identity
+from invenio_access.utils import get_identity
 from invenio_curations.requests.curation import CurationAcceptAction
 from invenio_records_resources.services.uow import UnitOfWork
 from invenio_requests import current_events_service, current_requests_service
@@ -69,9 +70,17 @@ class ChicagoCurationAcceptAction(CurationAcceptAction):
         if status != "created":
             return
 
-        # Submit the community submission request
+        # Get the record owner's identity to submit on their behalf
+        owner = draft.parent.access.owner.resolve()
+        if not owner:
+            # Fall back to system identity if owner cannot be resolved
+            owner_identity = system_identity
+        else:
+            owner_identity = get_identity(owner)
+
+        # Submit the community submission request as the record owner
         current_requests_service.execute_action(
-            system_identity,
+            owner_identity,
             request_id,
             "submit",
             uow=uow,

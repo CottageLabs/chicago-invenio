@@ -2,7 +2,6 @@ import csv
 import json
 import os
 import sys
-import re, unicodedata
 
 from invenio_collections.api import CollectionTree, Collection
 from invenio_collections.errors import CollectionTreeNotFound
@@ -13,6 +12,8 @@ from invenio_db import db
 from invenio_communities.proxies import current_communities
 from invenio_rdm_records.fixtures.tasks import get_authenticated_identity
 from marshmallow import ValidationError
+
+from chicago_invenio.scripts.utils import slugify
 
 
 def rel2abs(src, *paths):
@@ -182,16 +183,6 @@ def to_com_col_tree(structure):
                 co += 10
 
     return tree
-
-
-def slugify(text):
-    text = unicodedata.normalize('NFKD', text)
-    text = text.encode('ascii', 'ignore').decode('ascii')
-    # remove punctuation (keep letters, numbers, whitespace and hyphens)
-    text = re.sub(r'[^\w\s-]', '', text)
-    # replace whitespace/underscores with hyphens and collapse consecutive hyphens
-    text = re.sub(r'[\s_]+', '-', text.strip().lower())
-    return text.strip('-')
 
 FIELD_MAP = {
     "division": "custom_fields.chicago\\:division",

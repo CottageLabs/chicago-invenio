@@ -20,6 +20,9 @@ descriptiontypes:
 datetypes:
   pid-type: dat
   data-file: vocabularies/date_types.yaml
+divisions:
+  pid-type: div
+  data-file: vocabularies/divisions.yaml
 # Minimal example vocabularies
 # can be used for quick testing, or a basis for building your own customized vocabularies.
 #names:

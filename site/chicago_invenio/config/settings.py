@@ -28,6 +28,7 @@ from invenio_rdm_records.contrib.thesis import (
 )
 from invenio_rdm_records.contrib.meeting import MEETING_NAMESPACE
 from invenio_rdm_records.services.schemas.files import MetadataSchema
+from invenio_vocabularies.services.custom_fields import VocabularyCF
 from marshmallow import fields
 from invenio_records_resources.services.custom_fields import (
     TextCF,
@@ -310,7 +311,13 @@ RDM_CUSTOM_FIELDS = [
     *MEETING_ORG_CUSTOM_FIELDS,
     *THESIS_CUSTOM_FIELDS,
     TextCF(name="chicago:original_submitter"), # 270.m
-    TextCF(name="chicago:division", multiple=True), # 690.a
+    # TextCF(name="chicago:division", multiple=True), # 690.a
+    VocabularyCF( # 690.a
+        name="chicago:division",
+        vocabulary_id="divisions",
+        dump_options=True,  # all values visible
+        multiple=True,
+    ),
     TextCF(name="chicago:department", multiple=True), # 691.a
     TextCF(name="chicago:center_or_institute", multiple=True), # 692.a
     #TextCF(name="meeting:organizer"), # 711.u
@@ -339,12 +346,13 @@ RDM_CUSTOM_FIELDS_UI = [
         "fields": [
             dict(
                 field="chicago:division",
-                ui_widget="MultiInput",
+                ui_widget="AutocompleteDropdown",
                 props=dict(
                     label=_("Division(s)"),
                     icon="building",
                     description=_("Academic division(s) (e.g., Arts & Humanities Division, Physical Sciences Division)"),
-                    placeholder=_("Enter division name"),
+                    autocompleteFrom="/api/vocabularies/divisions",
+                    multiple=True,
                 ),
             ),
             dict(

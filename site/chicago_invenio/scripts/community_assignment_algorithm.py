@@ -3,21 +3,10 @@
 Community Assignment Algorithm based on com_col_data.csv
 """
 import csv
-import re
-import unicodedata
-from typing import List, Dict, Tuple, Optional, Set
+from typing import List, Dict, Optional
 from collections import defaultdict
 
-
-def slugify(text):
-    """Convert text to slug format (same as load_as_coms_colls.py)."""
-    text = unicodedata.normalize('NFKD', text)
-    text = text.encode('ascii', 'ignore').decode('ascii')
-    # remove punctuation (keep letters, numbers, whitespace and hyphens)
-    text = re.sub(r'[^\w\s-]', '', text)
-    # replace whitespace/underscores with hyphens and collapse consecutive hyphens
-    text = re.sub(r'[\s_]+', '-', text.strip().lower())
-    return text.strip('-')
+from chicago_invenio.scripts.utils import slugify
 
 
 class CommunityAssignmentAlgorithm:
@@ -41,7 +30,9 @@ class CommunityAssignmentAlgorithm:
         with open(self.csv_file_path, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             for row in reader:
-                field_690 = row['690__a'].strip()
+                # Slugify 690 to match vocabulary IDs from import (VocabularyCF)
+                field_690 = slugify(row['690__a'].strip()) if row['690__a'].strip() else ''
+                # 691 and 692 remain as plain text (TextCF)
                 field_691 = row['691__a'].strip()
                 field_692 = row['692__a'].strip()
                 field_336 = row['336__a'].strip()
@@ -232,12 +223,12 @@ def test_algorithm():
     csv_path = "/home/jabbi/PycharmProjects/chicago-invenio/site/chicago_invenio/scripts/com_col_data.csv"
     algorithm = CommunityAssignmentAlgorithm(csv_path)
     
-    # Test cases
+    # Test cases - divisions use slugified values (VocabularyCF), others use plain text
     test_cases = [
         # Case 1: Exact department match
         {
             'input': {
-                'divisions': ['Arts & Humanities Division'],
+                'divisions': ['arts-humanities-division'],
                 'departments': ['Philosophy'],
                 'centers': [],
                 'resource_type': None
@@ -277,7 +268,7 @@ def test_algorithm():
         # Case 5: Record with division, department AND center (should find ALL)
         {
             'input': {
-                'divisions': ['Physical Sciences Division'],
+                'divisions': ['physical-sciences-division'],
                 'departments': ['Physics'],
                 'centers': ['Enrico Fermi Institute'],
                 'resource_type': None

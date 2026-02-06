@@ -319,7 +319,7 @@ RDM_CUSTOM_FIELDS = [
     ),
     VocabularyCF( # 691.a
         name="chicago:department",
-        vocabulary_id="department",
+        vocabulary_id="departments",
         dump_options=False,
         multiple=True,
     ),

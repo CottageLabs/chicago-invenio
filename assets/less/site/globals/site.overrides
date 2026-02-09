@@ -47,7 +47,7 @@
 
 #navbar-top {
     background-color: @primaryColor;
-    border-radius: 0; 
+    border-radius: 0;
     margin-bottom: 0;
     .nav-logo {
         justify-content: flex-start;
@@ -62,13 +62,13 @@
 }
 
 #navbar-middle {
-    background-color: white; 
+    background-color: white;
     display: flex;
-    justify-content: center; 
+    justify-content: center;
     align-items: center;
     height: 10rem;
-    box-shadow: none; 
-    border-radius: 0; 
+    box-shadow: none;
+    border-radius: 0;
     padding: 1em;
     .content {
         display: flex;
@@ -81,13 +81,13 @@
 }
 
 #navbar-bottom {
-    border-top: solid 1px #e0e0e0; 
-    border-bottom: solid 1px #e0e0e0; 
-    background-color: @primaryHighlightColor; 
+    border-top: solid 1px #e0e0e0;
+    border-bottom: solid 1px #e0e0e0;
+    background-color: @primaryHighlightColor;
     margin-bottom: 3rem;
     .ui.container.menu {
-        border-radius: 0; 
-        box-shadow: none; 
+        border-radius: 0;
+        box-shadow: none;
         background-color: @primaryHighlightColor;
     }
 }
@@ -103,7 +103,7 @@
             }
         }
     }
-  .footer-bottom.subfooter {
+  .footer-bottom, .subfooter {
         color: @footerTextLightColor;
         a {
             color: @footerTextLightColor;

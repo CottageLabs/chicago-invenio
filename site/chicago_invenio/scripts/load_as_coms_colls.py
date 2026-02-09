@@ -21,13 +21,12 @@ def rel2abs(src, *paths):
         src = os.path.dirname(src)
     return os.path.abspath(os.path.join(src, *paths))
 
-
-CSV = rel2abs(__file__, "com_col_data.csv")
+CSV = rel2abs(__file__, 'com_col_data.csv')
 
 
 def build_nested_dict(csv_path):
     nested = {}
-    with open(csv_path, newline="", encoding="utf-8") as fh:
+    with open(csv_path, newline='', encoding='utf-8') as fh:
         reader = csv.reader(fh)
         # skip header
         try:
@@ -37,7 +36,7 @@ def build_nested_dict(csv_path):
 
         for row in reader:
             # Ensure row has at least 6 columns
-            row = row + [""] * (6 - len(row))
+            row = row + [''] * (6 - len(row))
             # indices: 0..5 correspond to columns 1..6
             division = row[0].strip()
             department = row[1].strip()
@@ -63,17 +62,17 @@ def build_nested_dict(csv_path):
                     target_dict[key_name] = value
 
             child_settings = {}
-            set_if_present(child_settings, "division", division)
-            set_if_present(child_settings, "department", department)
-            set_if_present(child_settings, "center", center)
-            set_if_present(child_settings, "resource_type", resource_type)
+            set_if_present(child_settings, 'division', division)
+            set_if_present(child_settings, 'department', department)
+            set_if_present(child_settings, 'center', center)
+            set_if_present(child_settings, 'resource_type', resource_type)
 
             parent[child_key].append(child_settings)
 
     return nested
 
-
 def load_structure(structure, identity):
+
     communities_service = current_communities.service
     collections_service = current_collections.service
 
@@ -103,7 +102,8 @@ def load_structure(structure, identity):
                 data={
                     "slug": k,
                     "metadata": v.get("metadata", {"title": k}),
-                    "access": v.get("access", {"visibility": "public"}),
+                    "access": v.get("access", {"visibility" : "public"}),
+                    "children": {"allow": True}
                 },
                 identity=identity,
             )
@@ -111,26 +111,24 @@ def load_structure(structure, identity):
         except ValidationError:
             print("Community creation failed (already exists?):", k)
             # Example search for community by slug
-            params = {"q": f'slug:"{k}"'}
+            params = {
+                'q': f'slug:"{k}"'
+            }
             results = list(communities_service.search(identity, params).hits)
 
             if results and len(results) > 0:
                 # print(type(results[0]))
                 # print(results[0]['id'])
-                community_id = results[0]["id"]
+                community_id = results[0]['id']
 
             else:
                 continue
 
         # create a collection tree in the community
         try:
-            ctree = CollectionTree.resolve(
-                slug=f"{k}-collections", community_id=community_id
-            )
+            ctree = CollectionTree.resolve(slug=f"{k}-collections", community_id=community_id)
         except CollectionTreeNotFound:
-            ctree = CollectionTree.create(
-                title="Collections", slug=f"{k}-collections", community_id=community_id
-            )
+            ctree = CollectionTree.create(title="Collections", slug=f"{k}-collections", community_id=community_id)
 
         # delete any existing collections
         for c in ctree.collections:
@@ -152,22 +150,23 @@ def load_structure(structure, identity):
             except Exception:
                 pass
 
-        # Map original community title (not slugified) to community ID
+        # Map original community title (not slugified) to community ID  
         community_title = v.get("metadata", {}).get("title", k)
         if community_title not in slug_id_map:
             slug_id_map[community_title] = community_id
 
     return slug_id_map
 
-
 def to_com_col_tree(structure):
     tree = {}
     for k, v in structure.items():
         slug = slugify(k)
         tree[slug] = {
-            "metadata": {"title": k},
+            "metadata": {
+                "title": k
+            },
             "access": {"visibility": "public"},
-            "collections": {},
+            "collections": {}
         }
 
         co = 10
@@ -178,7 +177,7 @@ def to_com_col_tree(structure):
                 ctx[slug1] = {
                     "title": k1,
                     "query": all_child_query_for(v1),
-                    "order": co,
+                    "order": co
                 }
                 co += 10
 
@@ -186,20 +185,30 @@ def to_com_col_tree(structure):
 
 
 def slugify(text):
-    text = unicodedata.normalize("NFKD", text)
-    text = text.encode("ascii", "ignore").decode("ascii")
+    text = unicodedata.normalize('NFKD', text)
+    text = text.encode('ascii', 'ignore').decode('ascii')
     # remove punctuation (keep letters, numbers, whitespace and hyphens)
-    text = re.sub(r"[^\w\s-]", "", text)
+    text = re.sub(r'[^\w\s-]', '', text)
     # replace whitespace/underscores with hyphens and collapse consecutive hyphens
-    text = re.sub(r"[\s_]+", "-", text.strip().lower())
-    return text.strip("-")
-
+    text = re.sub(r'[\s_]+', '-', text.strip().lower())
+    return text.strip('-')
 
 FIELD_MAP = {
-    "division": "custom_fields.division.keyword",
-    "department": "custom_fields.department.keyword",
-    "center": "custom_fields.center_or_institute.keyword",
-    "resource_type": "resource_type.id.keyword",
+    "division": "custom_fields.chicago\\:division",
+    "department": "custom_fields.chicago\\:department",
+    "center": "custom_fields.chicago\\:center_or_institute",
+    "resource_type": "metadata.resource_type.id",
+}
+
+# Map human-readable resource type names to InvenioRDM resource_type IDs
+RESOURCE_TYPE_MAP = {
+    "Dissertation": "publication-dissertation",
+    "Thesis": "publication-thesis",
+    "Article": "publication-article",
+    "Book": "publication-book",
+    "Report": "publication-report",
+    "Dataset": "dataset",
+    "Patent": "publication-patent",
 }
 
 
@@ -207,6 +216,9 @@ def child_query_for(rules):
     ands = []
     for k, v in rules.items():
         field = FIELD_MAP[k]
+        # Translate resource_type values to InvenioRDM IDs
+        if k == "resource_type" and v in RESOURCE_TYPE_MAP:
+            v = RESOURCE_TYPE_MAP[v]
         ands.append(f'{field}:"{v}"')
 
     return "(" + ") AND (".join(ands) + ")"
@@ -261,8 +273,7 @@ def main(email_or_identity, csv_path=CSV):
 
     return slug_id_map
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
@@ -274,3 +285,4 @@ if __name__ == "__main__":
     # main(args.input_csv, args.community)
     main(args.email)
     # sys.exit()
+

@@ -28,6 +28,7 @@ from invenio_rdm_records.contrib.thesis import (
 )
 from invenio_rdm_records.contrib.meeting import MEETING_NAMESPACE
 from invenio_rdm_records.services.schemas.files import MetadataSchema
+from invenio_vocabularies.services.custom_fields import VocabularyCF
 from marshmallow import fields
 from invenio_records_resources.services.custom_fields import (
     TextCF,
@@ -310,10 +311,24 @@ RDM_CUSTOM_FIELDS = [
     *MEETING_ORG_CUSTOM_FIELDS,
     *THESIS_CUSTOM_FIELDS,
     TextCF(name="chicago:original_submitter"), # 270.m
-    TextCF(name="chicago:division", multiple=True), # 690.a
-    TextCF(name="chicago:department", multiple=True), # 691.a
-    TextCF(name="chicago:center_or_institute", multiple=True), # 692.a
-    #TextCF(name="meeting:organizer"), # 711.u
+    VocabularyCF( # 690.a
+        name="chicago:division",
+        vocabulary_id="divisions",
+        dump_options=True,  # all values visible, only 22 for divisions
+        multiple=True,
+    ),
+    VocabularyCF( # 691.a
+        name="chicago:department",
+        vocabulary_id="departments",
+        dump_options=False,
+        multiple=True,
+    ),
+    VocabularyCF( # 692.a
+        name="chicago:center_or_institute",
+        vocabulary_id="centerinstitutes",
+        dump_options=False,
+        multiple=True,
+    ),
     IntegerCF(name="chicago:tind_id"), # 001
     RelatedItem(name="chicago:related_items", multiple=True), # 791
 ]
@@ -339,32 +354,35 @@ RDM_CUSTOM_FIELDS_UI = [
         "fields": [
             dict(
                 field="chicago:division",
-                ui_widget="MultiInput",
+                ui_widget="AutocompleteDropdown",
                 props=dict(
                     label=_("Division(s)"),
                     icon="building",
                     description=_("Academic division(s) (e.g., Arts & Humanities Division, Physical Sciences Division)"),
-                    placeholder=_("Enter division name"),
+                    autocompleteFrom="/api/vocabularies/divisions",
+                    multiple=True,
                 ),
             ),
             dict(
                 field="chicago:department",
-                ui_widget="MultiInput",
+                ui_widget="AutocompleteDropdown",
                 props=dict(
                     label=_("Department(s)"),
                     icon="users",
                     description=_("Academic department(s) or program(s)"),
-                    placeholder=_("Enter department name"),
+                    autocompleteFrom="/api/vocabularies/departments",
+                    multiple=True,
                 ),
             ),
             dict(
                 field="chicago:center_or_institute",
-                ui_widget="MultiInput",
+                ui_widget="AutocompleteDropdown",
                 props=dict(
                     label=_("Center(s) or Institute(s)"),
                     icon="university",
                     description=_("Research center(s) or institute(s)"),
-                    placeholder=_("Enter center or institute name"),
+                    autocompleteFrom="/api/vocabularies/centerinstitutes",
+                    multiple=True,
                 ),
             ),
 

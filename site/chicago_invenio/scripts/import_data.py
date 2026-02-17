@@ -46,6 +46,7 @@ from invenio_records_resources.services.records.results import RecordItem
 from invenio_requests.proxies import current_requests_service
 from load_as_coms_colls import main as get_create_community_collection_structure, CSV
 from chicago_invenio.scripts.community_assignment_algorithm import CommunityAssignmentAlgorithm
+from chicago_invenio.scripts.utils import slugify
 
 
 def get_identity_with_roles(user):
@@ -75,6 +76,7 @@ def strip_html_tags(text):
     # Decode HTML entities (like &amp; &lt; &gt; etc.)
     clean = html.unescape(clean)
     return clean.strip()
+
 
 def map_description_type(desc_type):
     """Map MARC description types to DataCite vocabulary IDs"""
@@ -1220,7 +1222,8 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
         if subfield_1 is not None:
             subjects.append({'subject': subfield_a.text.strip()})
         else:
-            depts.append(subfield_a.text.strip())
+            # Convert to vocabulary ID format using slugify
+            depts.append({"id": slugify(subfield_a.text.strip())})
 
     if subjects:
         metadata['subjects'] = subjects
@@ -1662,8 +1665,10 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
     for division_field in division_fields:
         division_a = division_field.find('.//marc:subfield[@code="a"]', MARC_NS)
         if division_a is not None and division_a.text:
-            divisions.append(division_a.text.strip())
-    
+            # Convert text to vocabulary ID format using slugify
+            division_id = slugify(division_a.text.strip())
+            divisions.append({"id": division_id})
+
     if divisions:
         custom_fields['chicago:division'] = divisions
 
@@ -1673,7 +1678,8 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
     for center_field in center_fields:
         center_a = center_field.find('.//marc:subfield[@code="a"]', MARC_NS)
         if center_a is not None:
-            centers_insts.append(center_a.text.strip())
+            # Convert to vocabulary ID format using slugify
+            centers_insts.append({"id": slugify(center_a.text.strip())})
 
     if centers_insts:
         custom_fields['chicago:center_or_institute'] = centers_insts
@@ -2145,18 +2151,31 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
                 
                 # Extract field values from the record
                 custom_fields = invenio_data.get('custom_fields', {})
-                divisions = custom_fields.get('chicago:division', [])
+                divisions_raw = custom_fields.get('chicago:division', [])
                 departments = custom_fields.get('chicago:department', [])
                 centers = custom_fields.get('chicago:center_or_institute', [])
                 resource_type = invenio_data.get('metadata', {}).get('resource_type', {}).get('id', '')
-                
-                # Ensure fields are lists (handle single values)
-                if isinstance(divisions, str):
-                    divisions = [divisions]
-                if isinstance(departments, str):
-                    departments = [departments]
-                if isinstance(centers, str):
-                    centers = [centers]
+
+                # Handle VocabularyCF format: [{"id": ".."}] -> extract IDs
+                # The algorithm CSV uses original text, so we need to convert IDs back
+                # For now, extract the 'id' values (algorithm will need updating to match)
+                def extract_values(field_data):
+                    """Extract values from field data, handling both old and new formats."""
+                    if not field_data:
+                        return []
+                    if isinstance(field_data, str):
+                        return [field_data]
+                    result = []
+                    for item in field_data:
+                        if isinstance(item, dict) and 'id' in item:
+                            result.append(item['id'])
+                        elif isinstance(item, str):
+                            result.append(item)
+                    return result
+
+                divisions = extract_values(divisions_raw)
+                departments = extract_values(departments)
+                centers = extract_values(centers)
                 
                 # Get community assignments
                 assignment_result = community_algorithm.assign_communities(

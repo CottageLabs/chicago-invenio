@@ -20,6 +20,15 @@ descriptiontypes:
 datetypes:
   pid-type: dat
   data-file: vocabularies/date_types.yaml
+divisions: # Custom vocabulary
+  pid-type: div
+  data-file: vocabularies/divisions.jsonl
+departments: # Custom vocabulary
+  pid-type: dep
+  data-file: vocabularies/departments.jsonl
+centerinstitutes: # Custom vocabulary
+  pid-type: cti
+  data-file: vocabularies/center_or_institute.jsonl
 # Minimal example vocabularies
 # can be used for quick testing, or a basis for building your own customized vocabularies.
 #names:

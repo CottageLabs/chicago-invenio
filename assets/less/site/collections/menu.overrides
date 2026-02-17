@@ -31,6 +31,12 @@
       }
     }
   }
+  .logotype {
+    color: white;
+    font-size: 1.2rem;
+    display: flex;
+    align-items: center;
+  }
 
   a.ui.button.auth-button,
   a.ui.button.signup {
@@ -71,12 +77,11 @@
       flex-direction: column;
       margin-left: unset !important;
       padding: 0.8em 1.5rem !important;
-      border-left: 2px solid #d9d9d9;
-      
+
       a {
         color: @primaryColor !important;
         font-weight: bold;
-        
+
         &:hover {
           background-color: transparent;
           color: @primaryColor;
@@ -89,6 +94,11 @@
         display: flex;
         flex-direction: column;
         margin-top: 0 !important;
+        gap: 1rem;
+        .ui.button.auth-button,
+        .ui.button.signup {
+            border: 1px solid maroon;
+        }
       }
     }
 
@@ -121,6 +131,14 @@
       }
     }
 
+    #rdm-burger-toggle {
+      font-size: 20px;
+      position: absolute;
+      right: 0;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
     #rdm-close-burger-menu-icon{
       .navicon:before,
       .navicon:after {
@@ -134,21 +152,13 @@
   width: 100%;
 
   #header-search-bar {
-    display: flex;
-    justify-content: center;
-
     .ui.fluid.search {
-      margin: 7rem 0;
-      width: 100%;
-
-      @media (max-width: @computerBreakpoint) {
-        margin: 1rem 0;
-      }
+      margin: 1rem 0;
 
       &.focus,
       &.active,
       &.visible {
-        margin: 7rem 0;
+        margin: 1rem 0;
         width: 100%;
       }
 
@@ -172,9 +182,48 @@
           padding: 1rem 1.5rem;
           border: @secondaryColor solid 2px;
           border-radius: 0;
+          &:focus,
+          &:focus-visible,
+          &:hover {
+            background-color: maroon;
+            border: @secondaryColor solid 2px;
+          }
         }
       }
     }
   }
+}
 
+#navbar-bottom:not(.navbar-bottom--homepage) {
+  .ui.menu {
+    box-shadow: none;
+  }
+}
+
+.navbar-bottom--homepage {
+  .search-bar {
+    width: 100%;
+
+    #header-search-bar {
+      .ui.fluid.search {
+        margin: 7rem 0;
+        width: 100%;
+
+        @media (max-width: @computerBreakpoint) {
+          margin: 1rem 0;
+        }
+
+        &.focus,
+        &.active,
+        &.visible {
+          margin: 7rem 0;
+          width: 100%;
+        }
+      }
+
+      button {
+        padding: .7em;
+      }
+    }
+  }
 }

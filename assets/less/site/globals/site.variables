@@ -28,11 +28,13 @@
 @yellow: #EAAA00;
 @teal: #007396;
 @darkBlue: #002A3A;
+@purple: #59315F;
 @signupColor: transparent;
 @signupColorTextColor: @black;
+@negativeColor: @purple;
 
 @accessRightOpen: @green;
-@accessRightRestricted: @red;
+@accessRightRestricted: @purple;
 @accessRightEmbargoed: @yellow;
 @accessRightMetadataOnly: @teal;
 
@@ -71,4 +73,3 @@
 /* Fonts */
 @pageFont: UChicagoSansSerif;
 @headerFont: @pageFont;
-

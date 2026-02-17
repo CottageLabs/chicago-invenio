@@ -21,25 +21,24 @@ def info_handler(
     preferred_username, name and oid.
     """
     current_app.logger.info("Processing OAuth authentication")
-    
+
     try:
         # Validate required fields
         if "id_token" not in response_data:
             raise ValueError("Missing id_token in response")
-            
+
         # Fetch OIDC configuration with timeout and validation
         response = requests.get(
-            current_app.config["CHI_OAUTH_WELL_KNOWN_URL"], 
-            timeout=10
+            current_app.config["CHI_OAUTH_WELL_KNOWN_URL"], timeout=10
         )
         response.raise_for_status()
         oidc_config = response.json()
-        
+
         required_keys = ["id_token_signing_alg_values_supported", "jwks_uri", "issuer"]
         for key in required_keys:
             if key not in oidc_config:
                 raise ValueError(f"Missing required OIDC config: {key}")
-        
+
         signing_algos = oidc_config["id_token_signing_alg_values_supported"]
         jwks_client = jwt.PyJWKClient(oidc_config["jwks_uri"])
 
@@ -53,17 +52,17 @@ def info_handler(
             algorithms=signing_algos,
             audience=remote_app.consumer_key,
             issuer=oidc_config["issuer"],
-            options={"verify_exp": True, "verify_aud": True, "verify_iss": True}
+            options={"verify_exp": True, "verify_aud": True, "verify_iss": True},
         )
-        
+
         # Validate required claims
         required_claims = ["preferred_username", "name", "sub"]
         for claim in required_claims:
             if claim not in data:
                 raise ValueError(f"Missing required claim: {claim}")
-                
+
         current_app.logger.info("OAuth authentication successful")
-        
+
     except Exception as e:
         current_app.logger.error(f"OAuth authentication failed: {str(e)}")
         raise

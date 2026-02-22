@@ -9,7 +9,7 @@ needs to be an admin user in order for internal notes to work.
 
 To run the script, go to the repository root directory and use the following command:
 
-        $ pipenv run invenio shell site/chicago_invenio/scripts/xml_import_data.py <email> <datafile> <filepath>
+        $ pipenv run invenio shell site/chicago_invenio/scripts/import_data.py <email> <datafile> <filepath>
 
 Where:
 
@@ -35,7 +35,6 @@ import requests
 from urllib.parse import unquote
 from flask import current_app
 from invenio_app.factory import create_app
-from invenio_rdm_records.fixtures.tasks import get_authenticated_identity
 from flask_principal import Identity, RoleNeed, UserNeed
 from invenio_access.permissions import any_user, authenticated_user
 from invenio_rdm_records.proxies import (
@@ -1895,21 +1894,31 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
         embargo_e = embargo_field.find('.//marc:subfield[@code="e"]', MARC_NS)
         if embargo_e is not None:
             embargo_text = embargo_e.text.strip().lower()
-            if 'restricted' in embargo_text or 'embargo' in embargo_text:
+            if 'restricted' in embargo_text:
                 record['access']['record'] = 'restricted'
                 record['access']['files'] = 'restricted'
 
-                if 'embargo' in embargo_text:
-                    date_obj = None
-                    try:
-                        date_obj = datetime.strptime(embargo_text[9:-1], '%Y-%m-%d')
-                    except Exception:
-                        continue
+            elif 'embargo' in embargo_text:
+                date_obj = None
+                try:
+                    date_obj = datetime.strptime(embargo_text[9:-1], '%Y-%m-%d')
+                except Exception:
+                    continue
 
-                    if date_obj and date_obj > datetime.now():
-                        record['access']['embargo'] = {'active': True, 'until': str(date_obj.date())}
-                    else:
-                        record['access']['embargo'] = {'active': False}
+                if date_obj:
+                    active = date_obj > datetime.now()
+
+                    record['access']['embargo'] = {
+                        'active': active,
+                        'until': str(date_obj.date())
+                    }
+
+                    if active:
+                        record['access']['record'] = 'restricted'
+                        record['access']['files'] = 'restricted'
+
+                else:
+                    record['access']['embargo'] = {'active': False}
 
     if custom_fields:
         record['custom_fields'] = custom_fields

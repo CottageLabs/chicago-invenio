@@ -549,6 +549,15 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
     metadata = {'publisher': "University of Chicago"}
     custom_fields = {'chicago:tind_id': int(record_identifier)}
     pids = {}
+    # Assume record is metadata only
+    # 856 fields determine whether files should be present
+    record = {
+        'files': {'enabled': False},
+        'access': {
+            'record': 'public',
+            'files': 'public'
+        }
+    }
 
     # ==================== RESOURCE TYPE ====================
 
@@ -981,25 +990,26 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
             url_text = url_u.text.strip()
             logger.info(f"Processing URL: {url_text}")
             # Add as identifier If this is a valid URL and not a UChicago knowledge base link
+            # TODO is this a comfortable assumption?
             if url_text.startswith('http') and 'knowledge.uchicago.edu' not in url_text:
                 identifiers.append({
                     'identifier': url_text,
                     'scheme': 'url'
                 })
-                logger.info(f"Added as external identifier")
             else:
-                # File description (MARC 856$y)
+                # All knowledge.uchicago.edu 856 fields assumed to be files that need
+                # to be imported
                 url_y = url_field.find('.//marc:subfield[@code="y"]', MARC_NS)
                 file_name = unquote(url_text.split('/')[-1])  # Extract file name from URL
-                logger.info(f"Extracted filename: {file_name}")
+                file = {'file_name': file_name}
 
                 if url_y is not None:
-                    description = url_y.text.strip()
-                    # Collect file information for file description handling
-                    file_information.append({'url': file_name, 'description': description})
-                    logger.info(f"Added file info - filename: {file_name}, description: {description[:50]}...")
-                else:
-                    logger.info(f"No description (subfield y) found for {file_name}")
+                    file['description'] = url_y.text.strip()
+
+                file_information.append(file)
+
+    if file_information:
+        record['files']['enabled'] = True
 
     # OAI identifiers (MARC 909CO)
     oai_fields = record_elem.findall('.//marc:datafield[@tag="909"][@ind1="C"][@ind2="O"]', MARC_NS)
@@ -1872,16 +1882,8 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
     if locations:
         metadata['locations'] = locations
 
-
-    record = {
-        'pids': pids,
-        'metadata': metadata,
-        'files': {'enabled': True},
-        'access': {
-            'record': 'public',
-            'files': 'public'
-        }
-    }
+    record['pids'] = pids
+    record['metadata'] = metadata
 
     if internal_notes:
         record['internal_notes'] = internal_notes
@@ -1926,7 +1928,7 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
     return record, file_information
 
 
-def add_files_to_draft(draft: RecordItem, identity, filepath: str, file_information):
+def add_files_to_draft(draft: RecordItem, identity, filepath: str, file_information: List):
     """Add files to the draft record.
 
     Args:
@@ -1939,24 +1941,20 @@ def add_files_to_draft(draft: RecordItem, identity, filepath: str, file_informat
         # Path to the record's file/s 'chicago:tind_id'
         record_file_path = os.path.join(filepath, str(draft.data.get("custom_fields", {}).get("chicago:tind_id", "")))
 
-        # Check if file\s exists
-        if not os.path.exists(record_file_path):
-            logger.warning(f"Directory not found at {record_file_path}, skipping file upload")
-            return
-
         # Get the draft files service
         draft_file_service = current_rdm_records_service.draft_files
 
         # Initialize file metadata
-        file_names = os.listdir(record_file_path)
-        file_data = [{"key": file_name} for file_name in file_names]
+        #file_names = os.listdir(record_file_path)
+        file_data = [{"key": file_name['file_name']} for file_name in file_information]
 
-        logger.info(f"Processing {len(file_names)} files for draft {draft.id}")
+        logger.info(f"Processing {len(file_information)} files for draft {draft.id}")
         logger.info(f"File information available: {file_information}")
 
         draft_file_service.init_files(identity, draft.id, data=file_data)
 
-        for file_name in file_names:
+        for file_info in file_information:
+            file_name = file_info['file_name']
             # Upload file content
             with open(os.path.join(record_file_path, file_name), "rb") as f:
                 draft_file_service.set_file_content(identity, draft.id, file_name, f)
@@ -1965,10 +1963,8 @@ def add_files_to_draft(draft: RecordItem, identity, filepath: str, file_informat
             draft_file_service.commit_file(identity, draft.id, file_name)
 
             # Update file metadata if description is available
-            match = next((info for info in file_information if info.get('url') == file_name), None)
-            if match:
-                # Try wrapping in metadata key
-                data = {'metadata': {'description': match['description']}}
+            if file_info.get('description'):
+                data = {'metadata': {'description': file_info['description']}}
                 logger.info(f"Attempting to update metadata for file {file_name} with data: {data}")
                 try:
                     draft_file_service.update_file_metadata(identity, draft.id, file_name, data)
@@ -1978,11 +1974,11 @@ def add_files_to_draft(draft: RecordItem, identity, filepath: str, file_informat
             else:
                 logger.info(f"No description found for file {file_name}")
 
-        logger.info(f"Successfully uploaded {len(file_names)} files to draft {draft.id}")
+        logger.info(f"Successfully uploaded {len(file_information)} files to draft {draft.id}")
 
     except Exception as e:
         logger.error(f"Error uploading file to draft {draft.id}: {e}")
-        # Don't raise the exception - continue with record creation even if file upload fails
+        raise
 
 
 def stream_marc_records(filepath: str, chunk_size: int = 1000) -> Generator[ET.Element, None, None]:
@@ -2052,11 +2048,11 @@ def get_default_preview(file_information: list) -> str:
     """
     for file_info in file_information:
         if file_info.get('description', '').lower() in ['article', 'dissertation', 'thesis']:
-            return file_info.get('url', '')
+            return file_info.get('file_name', '')
 
     # Fallback: first non-license file
-    for file_info in [f for f in file_information if 'license' not in f.get('url', '').lower()]:
-        return file_info.get('url', '')
+    for file_info in [f for f in file_information if 'license' not in f.get('file_name', '').lower()]:
+        return file_info.get('file_name', '')
 
     return ''
 
@@ -2102,11 +2098,6 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
             error_record["invenio_data"] = invenio_data
 
             record_file_path = os.path.join(file_path, record_identifier)
-            add_files = True
-
-            if not os.path.exists(record_file_path):
-                invenio_data['files'] = {'enabled': False}
-                add_files = False
             
             # Extract DOI for better identification
             if 'identifiers' in invenio_data.get('metadata', {}):
@@ -2115,6 +2106,10 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
                         record_identifier = identifier['identifier']
                         error_record["record_identifier"] = record_identifier
                         break
+
+            # Check if record root directory exists
+            if invenio_data['files']['enabled'] and not os.path.exists(record_file_path):
+                raise ValueError(f"Directory not found at {record_file_path}")
 
             # Create draft record
             error_record["error_stage"] = "create_draft"
@@ -2128,7 +2123,7 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
                 raise ValueError("Draft record creation failed - service returned None")
 
             # Add files to the draft
-            if add_files:
+            if invenio_data['files']['enabled']:
                 error_record["error_stage"] = "add_files"
                 add_files_to_draft(draft, identity, file_path, file_information)
 

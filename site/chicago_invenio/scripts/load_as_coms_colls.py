@@ -185,9 +185,9 @@ def to_com_col_tree(structure):
     return tree
 
 FIELD_MAP = {
-    "division": "custom_fields.chicago\\:division",
-    "department": "custom_fields.chicago\\:department",
-    "center": "custom_fields.chicago\\:center_or_institute",
+    "division": "custom_fields.chicago\\:division.id",
+    "department": "custom_fields.chicago\\:department.id",
+    "center": "custom_fields.chicago\\:center_or_institute.id",
     "resource_type": "metadata.resource_type.id",
 }
 
@@ -207,9 +207,10 @@ def child_query_for(rules):
     ands = []
     for k, v in rules.items():
         field = FIELD_MAP[k]
-        # Translate resource_type values to InvenioRDM IDs
         if k == "resource_type" and v in RESOURCE_TYPE_MAP:
             v = RESOURCE_TYPE_MAP[v]
+        elif k in ("division", "department", "center"):
+            v = slugify(v)
         ands.append(f'{field}:"{v}"')
 
     return "(" + ") AND (".join(ands) + ")"

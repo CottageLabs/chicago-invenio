@@ -53,6 +53,7 @@ class StatisticsMigrator:
         self,
         stats_csv_path: str,
         files_csv_path: str,
+        files_folder: str,
         batch_size: int = 1000,
         dry_run: bool = False
     ):
@@ -66,6 +67,7 @@ class StatisticsMigrator:
         """
         self.stats_csv_path = stats_csv_path
         self.files_csv_path = files_csv_path
+        self.files_folder = files_folder
         self.batch_size = batch_size
         self.dry_run = dry_run
 
@@ -137,6 +139,7 @@ class StatisticsMigrator:
                     'recid': record['id'],
                     'parent_recid': record.get('parent', {}).get('id'),
                     'bucket_id': record.get('files', {}).get('bucket_id'),
+                    'tind_id': tind_id,
                 }
                 self._record_cache[tind_id] = record_data
                 self.stats['unique_records'].add(tind_id)
@@ -193,6 +196,19 @@ class StatisticsMigrator:
 
         return visitor_id, unique_session_id
 
+    def get_file_size(self, tind_id: str, filename:str) -> int:
+
+        if not self.files_folder:
+            return 0
+
+        file_path = os.path.join(self.files_folder, tind_id, filename)
+
+        if os.path.exists(file_path):
+            return os.path.getsize(file_path)
+
+        return 0
+
+
     def build_event_document(
         self,
         download_time: str,
@@ -240,7 +256,7 @@ class StatisticsMigrator:
                 'bucket_id': bucket_id,
                 'file_id': file_id,
                 'file_key': file_key,
-                'size': 0,  # Unknown for legacy events
+                'size': self.get_file_size(str(record_info['tind_id']), file_key),
                 'recid': record_info['recid'],
                 'parent_recid': record_info.get('parent_recid', ''),
                 'via_api': False,  # Legacy downloads were via UI
@@ -456,6 +472,11 @@ class StatisticsMigrator:
     help='Path to file_information.csv'
 )
 @click.option(
+    '--files-folder',
+    default=None,
+    help='Path to file root folder'
+)
+@click.option(
     '--batch-size',
     default=1000,
     type=int,
@@ -473,7 +494,7 @@ class StatisticsMigrator:
     default=False,
     help="Don't actually insert, just validate and count"
 )
-def main(stats_csv, files_csv, batch_size, limit, dry_run):
+def main(stats_csv, files_csv, files_folder, batch_size, limit, dry_run):
     """Migrate legacy file download statistics to InvenioRDM."""
     # Default paths are relative to this script's directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -502,6 +523,7 @@ def main(stats_csv, files_csv, batch_size, limit, dry_run):
     migrator = StatisticsMigrator(
         stats_csv_path=stats_csv,
         files_csv_path=files_csv,
+        files_folder=files_folder,
         batch_size=batch_size,
         dry_run=dry_run
     )

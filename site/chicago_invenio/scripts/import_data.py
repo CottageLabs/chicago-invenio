@@ -29,14 +29,11 @@ import xml.etree.ElementTree as ET
 from itertools import islice
 import re
 import os
-import html
 import idutils
 import requests
 from urllib.parse import unquote
 from flask import current_app
 from invenio_app.factory import create_app
-from flask_principal import Identity, RoleNeed, UserNeed
-from invenio_access.permissions import any_user, authenticated_user
 from invenio_rdm_records.proxies import (
     current_rdm_records_service,
     current_record_communities_service,
@@ -46,35 +43,6 @@ from invenio_requests.proxies import current_requests_service
 from load_as_coms_colls import main as get_create_community_collection_structure, CSV
 from chicago_invenio.scripts.community_assignment_algorithm import CommunityAssignmentAlgorithm
 from chicago_invenio.scripts.utils import slugify
-
-
-def get_identity_with_roles(user):
-    """Create an identity that includes the user's roles.
-
-    The default get_authenticated_identity() doesn't load roles,
-    so admin/curator permissions don't work.
-    """
-    identity = Identity(user.id)
-    identity.provides.add(UserNeed(user.id))
-    identity.provides.add(authenticated_user)
-    identity.provides.add(any_user)
-
-    # Add all user roles
-    for role in user.roles:
-        identity.provides.add(RoleNeed(role.name))
-
-    return identity
-
-
-def strip_html_tags(text):
-    """Remove HTML tags and decode HTML entities from text"""
-    if not text:
-        return text
-    # Remove HTML tags using regex
-    clean = re.sub('<.*?>', '', text)
-    # Decode HTML entities (like &amp; &lt; &gt; etc.)
-    clean = html.unescape(clean)
-    return clean.strip()
 
 
 def map_description_type(desc_type):

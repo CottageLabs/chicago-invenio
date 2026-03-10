@@ -1,5 +1,4 @@
 import csv
-import json
 import os
 import sys
 
@@ -10,10 +9,9 @@ from flask import current_app
 from invenio_app.factory import create_app
 from invenio_db import db
 from invenio_communities.proxies import current_communities
-from invenio_rdm_records.fixtures.tasks import get_authenticated_identity
 from marshmallow import ValidationError
 
-from chicago_invenio.scripts.utils import slugify
+from chicago_invenio.scripts.utils import slugify, get_identity_with_roles
 
 
 def rel2abs(src, *paths):
@@ -78,6 +76,13 @@ def load_structure(structure, identity):
     collections_service = current_collections.service
 
     slug_id_map = {}
+    logo_dict = {}
+
+    with open(rel2abs(__file__, 'icons/icons.csv'), newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader) # skip header
+        for row in reader:
+            logo_dict[row[0]] = row[1]
 
     for k, v in structure.items():
         # locate a community if one exists, and delete it
@@ -98,11 +103,14 @@ def load_structure(structure, identity):
 
         # create a new community
         community_id = None
+
+        title = v.get("metadata", {"title": k}).get("title")
+
         try:
             com = communities_service.create(
                 data={
                     "slug": k,
-                    "metadata": v.get("metadata", {"title": k}),
+                    "metadata": {"title": title},
                     "access": v.get("access", {"visibility" : "public"}),
                     "children": {"allow": True}
                 },
@@ -124,6 +132,14 @@ def load_structure(structure, identity):
 
             else:
                 continue
+
+        try:
+            logo_path = rel2abs(__file__, 'icons', logo_dict[title])
+            with open(logo_path, "rb") as filestream:
+                communities_service.update_logo(identity, community_id, filestream)
+        except FileNotFoundError:
+            pass
+
 
         # create a collection tree in the community
         try:
@@ -251,7 +267,7 @@ def main(email_or_identity, csv_path=CSV):
                 print(f"User with email {email_or_identity} not found.")
                 sys.exit(1)
 
-            identity = get_authenticated_identity(owner.id)
+            identity = get_identity_with_roles(owner)
     else:
         identity = email_or_identity
 

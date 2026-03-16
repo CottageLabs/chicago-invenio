@@ -1,5 +1,6 @@
 from invenio_rdm_records.requests import CommunitySubmission
 from invenio_rdm_records.services.permissions import RDMRequestsPermissionPolicy
+from invenio_records_permissions.generators import SystemProcess
 from invenio_requests.services.generators import Creator, Receiver
 
 from invenio_curations.requests.curation import CurationRequest
@@ -41,6 +42,7 @@ class CurationRDMRequestsPermissionPolicy(RDMRequestsPermissionPolicy):
                 Creator(),
                 Receiver(),
                 TopicPermission(permission_name="can_review"),
+                SystemProcess(),
             ],
             else_=RDMRequestsPermissionPolicy.can_read,
         )
@@ -57,3 +59,4 @@ class CurationRDMRequestsPermissionPolicy(RDMRequestsPermissionPolicy):
     can_action_critique = RDMRequestsPermissionPolicy.can_action_accept
 
     can_action_resubmit = can_action_submit
+    can_action_pending_resubmission = can_action_resubmit

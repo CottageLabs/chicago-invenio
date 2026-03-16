@@ -29,7 +29,7 @@ from invenio_rdm_records.contrib.thesis import (
 from invenio_rdm_records.contrib.meeting import MEETING_NAMESPACE
 from invenio_rdm_records.services.schemas.files import MetadataSchema
 from invenio_vocabularies.services.custom_fields import VocabularyCF
-from marshmallow import fields
+from marshmallow import fields, validate
 from invenio_records_resources.services.custom_fields import (
     TextCF,
     IntegerCF
@@ -333,6 +333,16 @@ RDM_CUSTOM_FIELDS = [
     ),
     IntegerCF(name="chicago:tind_id"), # 001
     RelatedItem(name="chicago:related_items", multiple=True), # 791
+    TextCF(
+        name="chicago:distribution_license",
+        field_args={
+            "required": True,
+            "validate": validate.Equal(
+                "I agree",
+                error="You must agree to the distribution license before submitting.",
+            ),
+        },
+    ), # 908
 ]
 
 RDM_CUSTOM_FIELDS_UI = [
@@ -350,6 +360,20 @@ RDM_CUSTOM_FIELDS_UI = [
     },
     # meeting
     MEETING_ORG_CUSTOM_FIELDS_UI,
+    {
+        "section": _("Distribution license"),
+        "fields": [
+            dict(
+                field="chicago:distribution_license",
+                ui_widget="DistributionLicense",
+                props=dict(
+                    label=_("Distribution license"),
+                    icon="legal",
+                    description=_("I agree to distribute this record under the terms of the selected license."),
+                ),
+            ),
+        ],
+    },
     # UChicago institutional fields
     {
         "section": _("University of Chicago Information"),

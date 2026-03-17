@@ -936,18 +936,6 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
                     'scheme': 'patent_application_number'
                 })
 
-    # ISSN (MARC 022$a)
-    #issn_fields = record_elem.findall('.//marc:datafield[@tag="022"]', MARC_NS)
-    #for issn_field in issn_fields:
-    #    issn_a = issn_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-    #    if issn_a is not None:
-    #        issn_value = issn_a.text.strip()
-    #        if issn_value and not any(existing['identifier'] == issn_value for existing in identifiers):
-    #            identifiers.append({
-    #                'identifier': issn_value,
-    #                'scheme': 'issn'
-    #            })
-
     # Electronic location/URLs (MARC 856)
     url_fields = record_elem.findall('.//marc:datafield[@tag="856"]', MARC_NS)
     file_information = []
@@ -1704,10 +1692,14 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
         if journal_issue is not None:
             journal_info['issue'] = journal_issue.text.strip()
 
-        # Journal ISSN (773$x)
-        journal_issn = journal_field.find('.//marc:subfield[@code="x"]', MARC_NS)
-        if journal_issn is not None:
-            journal_info['issn'] = journal_issn.text.strip()
+        # ISSN (MARC 022$a)
+        issn_field = record_elem.find('.//marc:datafield[@tag="022"]', MARC_NS)
+        if issn_field is not None:
+            issn_a = issn_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+            if issn_a is not None:
+                issn_value = issn_a.text.strip()
+                if issn_value:
+                    journal_info['issn'] = issn_value
 
     # Series statement (MARC 490$a) - maps to journal title
     series_field = record_elem.find('.//marc:datafield[@tag="490"]', MARC_NS)
@@ -1883,7 +1875,6 @@ def add_files_to_draft(draft: RecordItem, identity, filepath: str, file_informat
         draft_file_service = current_rdm_records_service.draft_files
 
         # Initialize file metadata
-        #file_names = os.listdir(record_file_path)
         file_data = [{"key": file_name['file_name']} for file_name in file_information]
 
         logger.info(f"Processing {len(file_information)} files for draft {draft.id}")

@@ -1386,27 +1386,6 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
 
     related_identifiers = []
 
-    # Host item entry (MARC 773) - for articles in journals/books
-    host_773 = record_elem.find('.//marc:datafield[@tag="773"]', MARC_NS)
-    if host_773 is not None:
-        # Look for ISBN/ISSN in host item first (more reliable identifiers)
-        host_isbn = host_773.find('.//marc:subfield[@code="z"]', MARC_NS)  # ISBN
-        host_issn = host_773.find('.//marc:subfield[@code="x"]', MARC_NS)  # ISSN
-
-        if host_isbn is not None:
-            related_identifiers.append({
-                'identifier': host_isbn.text.strip(),
-                'scheme': 'isbn',
-                'relation_type': {'id': 'ispartof'}
-            })
-        elif host_issn is not None:
-            related_identifiers.append({
-                'identifier': host_issn.text.strip(),
-                'scheme': 'issn',
-                'relation_type': {'id': 'ispartof'}
-            })
-        # Skip title-only entries as 'title' is not a valid scheme
-
     # Related identifiers (MARC 789)
     related_789_fields = record_elem.findall('.//marc:datafield[@tag="789"]', MARC_NS)
     for rel_field in related_789_fields:

@@ -42,7 +42,7 @@ from invenio_records_resources.services.records.results import RecordItem
 from invenio_requests.proxies import current_requests_service
 from load_as_coms_colls import main as get_create_community_collection_structure, CSV
 from chicago_invenio.scripts.community_assignment_algorithm import CommunityAssignmentAlgorithm
-from chicago_invenio.scripts.utils import slugify
+from chicago_invenio.scripts.utils import slugify, strip_html_tags, get_identity_with_roles
 
 
 def map_description_type(desc_type):

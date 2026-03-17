@@ -1383,6 +1383,7 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
         metadata['rights'] = rights
 
     # ==================== RELATED IDENTIFIERS ====================
+    # 789, 791, 856, 857
 
     related_identifiers = []
 
@@ -1426,6 +1427,36 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
                 'relation_type': {'id': relation_type}
             })
 
+    # Related Item information (MARC 791)
+    # ignoring 791$w, which is free text title and 791$a which just contains "Text"
+    related_item_fields = record_elem.findall('.//marc:datafield[@tag="791"]', MARC_NS)
+
+    for related_field in related_item_fields:
+        related_item = {}
+
+        # Related Item Identifier Type (791$2)
+        id_type = related_field.find('.//marc:subfield[@code="2"]', MARC_NS)
+        if id_type is not None:
+            related_item['identifier'] = {'scheme': id_type.text.strip()}
+
+        # Related Item Type (791$a)
+        # item_type = related_field.find('.//marc:subfield[@code="a"]', MARC_NS)
+        # if item_type is not None:
+        #    related_item['item_type'] = item_type.text.strip()
+
+        # Relation Type (791$e)
+        relation_type = related_field.find('.//marc:subfield[@code="e"]', MARC_NS)
+        if relation_type is not None:
+            related_item['relation_type'] = {'id': relation_type.text.strip().lower()}
+
+        # Related Item Identifier (791$w)
+        related_identifier = related_field.find('.//marc:subfield[@code="w"]', MARC_NS)
+        if related_identifier is not None:
+            related_item['identifier'] = related_identifier.text.strip()
+
+        if related_item:
+            related_identifiers.append(related_item)
+
     # Related resources (MARC 856 with specific indicators)
     related_856_fields = record_elem.findall('.//marc:datafield[@tag="856"][@ind1="4"][@ind2="0"]', MARC_NS)
     for rel_field in related_856_fields:
@@ -1453,7 +1484,7 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
     archive_857_fields = record_elem.findall('.//marc:datafield[@tag="857"][@ind1="4"][@ind2="0"]', MARC_NS)
     for archive_field in archive_857_fields:
         archive_url = archive_field.find('.//marc:subfield[@code="u"]', MARC_NS)
-        archive_desc = archive_field.find('.//marc:subfield[@code="y"]', MARC_NS)
+        # archive_desc = archive_field.find('.//marc:subfield[@code="y"]', MARC_NS)
 
         if archive_url is not None:
             url_text = archive_url.text.strip()
@@ -1710,46 +1741,6 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
 
     if imprint_info:
         custom_fields['imprint:imprint'] = imprint_info
-
-    # Related Item information (MARC 791)
-    related_item_fields = record_elem.findall('.//marc:datafield[@tag="791"]', MARC_NS)
-    related_items = []
-    
-    for related_field in related_item_fields:
-        related_item = {}
-        
-        # Related Item Identifier Type (791$2)
-        id_type = related_field.find('.//marc:subfield[@code="2"]', MARC_NS)
-        if id_type is not None:
-            related_item['identifier'] = {'scheme': id_type.text.strip()}
-        
-        # Related Item Type (791$a)
-        item_type = related_field.find('.//marc:subfield[@code="a"]', MARC_NS)
-        if item_type is not None:
-            related_item['item_type'] = item_type.text.strip()
-        
-        # Relation Type (791$e)
-        relation_type = related_field.find('.//marc:subfield[@code="e"]', MARC_NS)
-        if relation_type is not None:
-            related_item['relation_type'] = relation_type.text.strip()
-        
-        # Related Item Title (791$t)
-        related_title = related_field.find('.//marc:subfield[@code="t"]', MARC_NS)
-        if related_title is not None:
-            related_item['title'] = related_title.text.strip()
-        
-        # Related Item Identifier (791$w)
-        related_identifier = related_field.find('.//marc:subfield[@code="w"]', MARC_NS)
-        if related_identifier is not None:
-            if 'identifier' not in related_item:
-                related_item['identifier'] = {}
-            related_item['identifier']['identifier'] = related_identifier.text.strip()
-        
-        if related_item:
-            related_items.append(related_item)
-    
-    if related_items:
-        custom_fields['chicago:related_items'] = related_items
 
     # ==================== LOCATIONS/GEOGRAPHIC DATA ====================
 

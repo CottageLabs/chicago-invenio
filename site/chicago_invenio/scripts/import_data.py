@@ -17,6 +17,7 @@ Where:
     datafile: Path to the MARCXML data file to import
     filepath: Path to the directory where any associated files are stored (they are looked up under their TIND ID)
 """
+import shutil
 from datetime import datetime
 
 import click
@@ -42,7 +43,7 @@ from invenio_records_resources.services.records.results import RecordItem
 from invenio_requests.proxies import current_requests_service
 from load_as_coms_colls import main as get_create_community_collection_structure, CSV
 from chicago_invenio.scripts.community_assignment_algorithm import CommunityAssignmentAlgorithm
-from chicago_invenio.scripts.utils import slugify, strip_html_tags, get_identity_with_roles
+from chicago_invenio.scripts.utils import slugify, strip_html_tags, get_identity_with_roles, has_mixed_restricted_files
 
 
 def map_description_type(desc_type):
@@ -102,6 +103,11 @@ logger.info(f"Import logging to: {log_filename}")
 # Global error tracking
 errors_log = []
 warnings_log = []
+
+# Track mixed restricted files
+# these are files pertaining to a record where at least one file is restricted
+# and at least one file is public
+restricted_files = []
 
 # MARC namespace
 MARC_NS = {'marc': 'http://www.loc.gov/MARC21/slim'}
@@ -514,6 +520,8 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
     Returns:
         Dictionary with InvenioRDM record data
     """
+    global restricted_files
+
     metadata = {'publisher': "University of Chicago"}
     custom_fields = {'chicago:tind_id': int(record_identifier)}
     pids = {}
@@ -937,6 +945,7 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
                 })
 
     # Electronic location/URLs (MARC 856)
+    has_mixed_access = has_mixed_restricted_files(record_elem)
     url_fields = record_elem.findall('.//marc:datafield[@tag="856"]', MARC_NS)
     file_information = []
     logger.info(f"Found {len(url_fields)} URL fields (856) in record")
@@ -962,7 +971,19 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
                 if url_y is not None:
                     file['description'] = url_y.text.strip()
 
-                file_information.append(file)
+                if not has_mixed_access:
+                    file_information.append(file)
+                else:
+                    # Access restriction
+                    url_e_field = url_field.find('.//marc:subfield[@code="e"]', MARC_NS)
+                    url_e = url_e_field.text.strip().lower() if url_e_field is not None else ''
+
+                    if url_e == 'public':
+                        file_information.append(file)
+                    else:
+                        # Add identifier so path can be constructed
+                        file['identifier'] = record_identifier
+                        restricted_files.append(file)
 
     if file_information:
         record['files']['enabled'] = True
@@ -2186,9 +2207,10 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
 @click.argument("email")
 @click.argument("data")
 @click.argument("file_path")
+@click.argument("restricted_path")
 @click.option("--batch-size", default=500, help="Number of records to process in each batch")
 @click.option("--max-records", default=3000, type=int, help="Maximum number of records to process (for testing)")
-def import_data(email: str, data: str, file_path:str, batch_size: int, max_records: Optional[int]):
+def import_data(email: str, data: str, file_path:str, restricted_path: str, batch_size: int, max_records: Optional[int]):
     """Import MARCXML bibliographic data into Chicago Invenio.
 
     Args:
@@ -2196,6 +2218,7 @@ def import_data(email: str, data: str, file_path:str, batch_size: int, max_recor
         data: Path to the MARCXML file
         filepath: Root filepath for associated files, files will be looked for in subfolders named by record ID
                   if that subfolder does not exist, files will not be added to that record
+        restrictedpath: Root filepaths in which to put restricted files from records with mixed access
         batch_size: Number of records to process in each batch
         max_records: Maximum number of records to process (optional, for testing)
     """
@@ -2274,6 +2297,16 @@ def import_data(email: str, data: str, file_path:str, batch_size: int, max_recor
         except Exception as e:
             logger.error(f"Import failed: {e}")
             sys.exit(1)
+
+        global restricted_files
+
+        for restricted_file in restricted_files:
+            file = os.path.join(file_path, restricted_file['identifier'], restricted_file["file_name"])
+            dest_path = os.path.join(restricted_path, restricted_file['identifier'])
+
+            if os.path.isfile(file):
+                os.makedirs(dest_path, exist_ok=True)
+                shutil.copy(file, dest_path)
 
         # Calculate elapsed time
         end_time = time.time()

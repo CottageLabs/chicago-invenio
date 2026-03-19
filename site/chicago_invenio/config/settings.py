@@ -189,18 +189,18 @@ MAIL_SUPPRESS_SEND = os.environ.get("MAIL_SUPPRESS_SEND", "false").lower() == "t
 # Default values for the deposit form
 APP_RDM_DEPOSIT_FORM_DEFAULTS = {
     "publication_date": lambda: datetime.now().strftime("%Y-%m-%d"),
-    "rights": [
-        {
-            "id": "cc-by-4.0",
-            "title": "Creative Commons Attribution 4.0 International",
-            "description": ("The Creative Commons Attribution license allows "
-                            "re-distribution and re-use of a licensed work "
-                            "on the condition that the creator is "
-                            "appropriately credited."),
-            "link": "https://creativecommons.org/licenses/by/4.0/legalcode",
-        }
-    ],
-    "publisher": "Chicago Invenio",
+    #"rights": [
+    #    {
+    #        "id": "cc-by-4.0",
+    #        "title": "Creative Commons Attribution 4.0 International",
+    #        "description": ("The Creative Commons Attribution license allows "
+    #                        "re-distribution and re-use of a licensed work "
+    #                        "on the condition that the creator is "
+    #                        "appropriately credited."),
+    #        "link": "https://creativecommons.org/licenses/by/4.0/legalcode",
+    #    }
+    #],
+    # "publisher": "Chicago Invenio",
 }
 
 APP_RDM_DEPOSIT_FORM_AUTOCOMPLETE_NAMES = 'search'  # "search_only" or "off"
@@ -379,6 +379,13 @@ RDM_CUSTOM_FIELDS_UI = [
                     label=_("Distribution license"),
                     icon="legal",
                     description=_("I agree to distribute this record under the terms of the selected license."),
+                    license={
+                        "title": "Distribution License",
+                        "description": (
+                            "University of Chicago standard distribution license."
+                        ),
+                        "link": "https://knowledge.uchicago.edu/pages/?page=Distribution+License&ln=en",
+                    },
                 ),
             ),
         ],

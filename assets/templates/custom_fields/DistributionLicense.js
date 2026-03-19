@@ -4,7 +4,9 @@ import { FieldLabel } from "react-invenio-forms";
 import { Checkbox, Form } from "semantic-ui-react";
 import PropTypes from "prop-types";
 
-export const DistributionLicense = ({ fieldPath, label, description, icon }) => {
+const RIGHTS_FIELD = "metadata.rights";
+
+export const DistributionLicense = ({ fieldPath, label, description, icon, license }) => {
   const { values, setFieldValue, setFieldTouched, touched, submitCount } = useFormikContext();
   const [wasAttempted, setWasAttempted] = useState(false);
 
@@ -18,6 +20,22 @@ export const DistributionLicense = ({ fieldPath, label, description, icon }) => 
   const isTouched = getIn(touched, fieldPath) || wasAttempted;
   const hasError = isTouched && !isChecked;
 
+  const handleChange = (_, { checked }) => {
+    setFieldValue(fieldPath, checked ? "I agree" : "");
+    setFieldTouched(fieldPath, true);
+
+    // Sync the license into/out of metadata.rights
+    const rights = getIn(values, RIGHTS_FIELD) || [];
+    if (checked) {
+      const alreadyPresent = rights.some((r) => r.id === license.id);
+      if (!alreadyPresent) {
+        setFieldValue(RIGHTS_FIELD, [...rights, license]);
+      }
+    } else {
+      setFieldValue(RIGHTS_FIELD, rights.filter((r) => r.id !== license.id));
+    }
+  };
+
   return (
     <Form.Field required error={hasError}>
       {label && <FieldLabel htmlFor={fieldPath} icon={icon} label={label} />}
@@ -26,10 +44,7 @@ export const DistributionLicense = ({ fieldPath, label, description, icon }) => 
         name={fieldPath}
         label={description}
         checked={isChecked}
-        onChange={(_, { checked }) => {
-          setFieldValue(fieldPath, checked ? "I agree" : "");
-          setFieldTouched(fieldPath, true);
-        }}
+        onChange={handleChange}
       />
       {hasError && (
         <div className="ui pointing above prompt label">
@@ -45,10 +60,21 @@ DistributionLicense.propTypes = {
   label: PropTypes.string,
   description: PropTypes.string,
   icon: PropTypes.string,
+  license: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    title: PropTypes.string,
+    description: PropTypes.string,
+    link: PropTypes.string,
+  }),
 };
 
 DistributionLicense.defaultProps = {
   label: undefined,
   description: undefined,
   icon: "legal",
+  license: {
+    title: "Distribution license",
+    description: "University of Chicago standard distribution license.",
+    link: "https://knowledge.uchicago.edu/pages/?page=Distribution+License&ln=en",
+  },
 };

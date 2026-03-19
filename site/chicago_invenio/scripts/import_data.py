@@ -1359,14 +1359,13 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
         license_a = distribution_license.find('.//marc:subfield[@code="a"]', MARC_NS)
         if license_a is not None:
             license_text = license_a.text.strip()
-            if license_text and license_text.lower() != 'i agree':
+            if license_text and license_text.lower() == 'i agree':
                 # Generate distribution license URL as per CSV mapping
                 dist_license_url = "https://knowledge.uchicago.edu/pages/?page=Distribution+License&ln=en"
                 rights.append({
                     'identifier': dist_license_url,
                     'title': {'en': 'Distribution License'}
                 })
-            elif license_text and license_text.lower() == 'i agree':
                 custom_fields['chicago:distribution_license'] = "I agree"
 
 

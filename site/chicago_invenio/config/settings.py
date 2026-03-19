@@ -345,7 +345,7 @@ RDM_CUSTOM_FIELDS = [
     TextCF(
         name="chicago:distribution_license",
         field_args={
-            "required": True,
+            #"required": True,
             "validate": validate.Equal(
                 "I agree",
                 error="You must agree to the distribution license before submitting.",

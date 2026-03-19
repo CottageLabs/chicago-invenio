@@ -29,7 +29,7 @@ from invenio_rdm_records.contrib.thesis import (
 from invenio_rdm_records.contrib.meeting import MEETING_NAMESPACE
 from invenio_rdm_records.services.schemas.files import MetadataSchema
 from invenio_vocabularies.services.custom_fields import VocabularyCF
-from marshmallow import fields
+from marshmallow import fields, validate
 from invenio_records_resources.services.custom_fields import (
     TextCF,
     IntegerCF
@@ -189,18 +189,18 @@ MAIL_SUPPRESS_SEND = os.environ.get("MAIL_SUPPRESS_SEND", "false").lower() == "t
 # Default values for the deposit form
 APP_RDM_DEPOSIT_FORM_DEFAULTS = {
     "publication_date": lambda: datetime.now().strftime("%Y-%m-%d"),
-    "rights": [
-        {
-            "id": "cc-by-4.0",
-            "title": "Creative Commons Attribution 4.0 International",
-            "description": ("The Creative Commons Attribution license allows "
-                            "re-distribution and re-use of a licensed work "
-                            "on the condition that the creator is "
-                            "appropriately credited."),
-            "link": "https://creativecommons.org/licenses/by/4.0/legalcode",
-        }
-    ],
-    "publisher": "Chicago Invenio",
+    #"rights": [
+    #    {
+    #        "id": "cc-by-4.0",
+    #        "title": "Creative Commons Attribution 4.0 International",
+    #        "description": ("The Creative Commons Attribution license allows "
+    #                        "re-distribution and re-use of a licensed work "
+    #                        "on the condition that the creator is "
+    #                        "appropriately credited."),
+    #        "link": "https://creativecommons.org/licenses/by/4.0/legalcode",
+    #    }
+    #],
+    # "publisher": "Chicago Invenio",
 }
 
 APP_RDM_DEPOSIT_FORM_AUTOCOMPLETE_NAMES = 'search'  # "search_only" or "off"
@@ -342,6 +342,16 @@ RDM_CUSTOM_FIELDS = [
     ),
     IntegerCF(name="chicago:tind_id"), # 001
     RelatedItem(name="chicago:related_items", multiple=True), # 791
+    TextCF(
+        name="chicago:distribution_license",
+        field_args={
+            "required": True,
+            "validate": validate.Equal(
+                "I agree",
+                error="You must agree to the distribution license before submitting.",
+            ),
+        },
+    ), # 908
 ]
 
 RDM_CUSTOM_FIELDS_UI = [
@@ -359,6 +369,27 @@ RDM_CUSTOM_FIELDS_UI = [
     },
     # meeting
     MEETING_ORG_CUSTOM_FIELDS_UI,
+    {
+        "section": _("Distribution license"),
+        "fields": [
+            dict(
+                field="chicago:distribution_license",
+                ui_widget="DistributionLicense",
+                props=dict(
+                    label=_("Distribution license"),
+                    icon="legal",
+                    description=_("I agree to distribute this record under the terms of the selected license."),
+                    license={
+                        "title": "Distribution License",
+                        "description": (
+                            "University of Chicago standard distribution license."
+                        ),
+                        "link": "https://knowledge.uchicago.edu/pages/?page=Distribution+License&ln=en",
+                    },
+                ),
+            ),
+        ],
+    },
     # UChicago institutional fields
     {
         "section": _("University of Chicago Information"),

@@ -1366,6 +1366,9 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
                     'identifier': dist_license_url,
                     'title': {'en': 'Distribution License'}
                 })
+            elif license_text and license_text.lower() == 'i agree':
+                custom_fields['chicago:distribution_license'] = "I agree"
+
 
     if rights:
         metadata['rights'] = rights

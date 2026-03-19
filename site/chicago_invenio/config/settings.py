@@ -177,6 +177,15 @@ INSTANCE_THEME_FILE = './less/theme.less'
 # Email address for administrator emails (like file checksum alerts)
 APP_RDM_ADMIN_EMAIL_RECIPIENT = "info@invenio.uchicago.edu"
 
+# Email configuration
+MAIL_SERVER = os.environ.get("MAIL_SERVER", "sandbox.smtp.mailtrap.io")
+MAIL_PORT = int(os.environ.get("MAIL_PORT", 587))
+MAIL_USE_TLS = os.environ.get("MAIL_USE_TLS", "true").lower() == "true"
+MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
+MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
+MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", "noreply@invenio.uchicago.edu")
+MAIL_SUPPRESS_SEND = os.environ.get("MAIL_SUPPRESS_SEND", "false").lower() == "true"
+
 # Default values for the deposit form
 APP_RDM_DEPOSIT_FORM_DEFAULTS = {
     "publication_date": lambda: datetime.now().strftime("%Y-%m-%d"),

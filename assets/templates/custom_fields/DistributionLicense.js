@@ -17,6 +17,15 @@ export const DistributionLicense = ({ fieldPath, label, description, icon, licen
     if (submitCount > 0) setWasAttempted(true);
   }, [submitCount]);
 
+  // Sync checkbox from rights field: if the license is removed from rights, uncheck the box
+  useEffect(() => {
+    const rights = getIn(values, RIGHTS_FIELD) || [];
+    const licensePresent = rights.some((r) => r.id === license.id);
+    if (isChecked && !licensePresent) {
+      setFieldValue(fieldPath, "");
+    }
+  }, [getIn(values, RIGHTS_FIELD)]);
+
   const isTouched = getIn(touched, fieldPath) || wasAttempted;
   const hasError = isTouched && !isChecked;
 

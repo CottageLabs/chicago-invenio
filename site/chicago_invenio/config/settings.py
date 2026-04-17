@@ -9,6 +9,8 @@ https://inveniordm.docs.cern.ch/reference/configuration/.
 
 from datetime import datetime
 from invenio_i18n import lazy_gettext as _
+from invenio_oauthclient.views.client import auto_redirect_login
+from invenio_rdm_records.config import RDM_RECORDS_IDENTIFIERS_SCHEMES
 from invenio_rdm_records.contrib.imprint import (
     IMPRINT_CUSTOM_FIELDS,
     IMPRINT_CUSTOM_FIELDS_UI,
@@ -24,16 +26,35 @@ from invenio_rdm_records.contrib.thesis import (
     THESIS_CUSTOM_FIELDS_UI,
     THESIS_NAMESPACE,
 )
-from invenio_rdm_records.contrib.meeting import (
-    MEETING_CUSTOM_FIELDS,
-    MEETING_CUSTOM_FIELDS_UI,
-    MEETING_NAMESPACE,
+from invenio_rdm_records.contrib.meeting import MEETING_NAMESPACE
+from invenio_rdm_records.services.schemas.files import MetadataSchema
+from invenio_vocabularies.services.custom_fields import VocabularyCF
+from marshmallow import fields, validate
+from invenio_records_resources.services.custom_fields import (
+    TextCF,
+    IntegerCF
 )
 import os
 
+from invenio_communities.config import COMMUNITIES_SORT_OPTIONS
+
+# Invenio Curations components
+from invenio_app_rdm.config import NOTIFICATIONS_BUILDERS
+from invenio_curations.config import CURATIONS_NOTIFICATIONS_BUILDERS
+from invenio_curations.requests.curation import CurationRequest
+from invenio_curations.services.components import CurationComponent
+from invenio_rdm_records.services.components import DefaultRecordsComponents
+from chicago_invenio.config.chicago_curation_request import ChicagoCurationAcceptAction
+from chicago_invenio.config.curations_requests_permission_policy import CurationRDMRequestsPermissionPolicy
+from chicago_invenio.config.custom_communities_permission_policy import CustomCommunitiesPermissionPolicy
+from chicago_invenio.config.chicago_record_permission_policy import ChicagoRDMRecordPermissionPolicy
+
+from chicago_invenio.config.meeting_cf_organizer import MEETING_ORG_CUSTOM_FIELDS, MEETING_ORG_CUSTOM_FIELDS_UI
+from chicago_invenio.config.related_item_cf import RelatedItem
+
+
 def _(x):  # needed to avoid start time failure with lazy strings
     return x
-
 
 # Flask
 # =====
@@ -56,14 +77,12 @@ SECRET_KEY = os.environ.get('INVENIO_SECRET_KEY', "CHANGE_ME")
 # route correct hosts to the application.
 TRUSTED_HOSTS = ['0.0.0.0', 'localhost', '127.0.0.1', 'uchicago.invenio.cottagelabs.com']
 
-
 # Flask-SQLAlchemy
 # ================
 # See https://flask-sqlalchemy.palletsprojects.com/en/2.x/config/
 
 # TODO: Set
 SQLALCHEMY_DATABASE_URI = "postgresql+psycopg2://chicago-invenio:chicago-invenio@localhost/chicago-invenio"
-
 
 # Invenio-App
 # ===========
@@ -79,7 +98,8 @@ APP_DEFAULT_SECURE_HEADERS = {
             # Add your own policies here (e.g. analytics)
         ],
         'script-src': [
-            "'self'", "blob:", "'wasm-unsafe-eval'"  # for WASM-based workers
+            "'self'", "blob:", "'wasm-unsafe-eval'", "'unsafe-inline'",  # for WASM-based workers and inline scripts
+            "cdnjs.cloudflare.com"
             # Multipart file uploads use a Web Worker running `hash-wasm` to compute content checksums
             # (e.g., MD5) of uploaded parts. This requires both 'blob:' and 'wasm-unsafe-eval' enabled in `script-src`.
         ],
@@ -95,6 +115,7 @@ APP_DEFAULT_SECURE_HEADERS = {
             "https://www.lib.uchicago.edu",
             "https://fonts.gstatic.com",
             "https://uchicago-brand-fonts.s3.us-east-2.amazonaws.com",
+            "https://cdnjs.cloudflare.com",
             "data:"
         ]
     },
@@ -113,7 +134,6 @@ APP_DEFAULT_SECURE_HEADERS = {
     'strict_transport_security_preload': False,
 }
 
-
 # Flask-Babel
 # ===========
 # See https://python-babel.github.io/flask-babel/#configuration
@@ -122,7 +142,6 @@ APP_DEFAULT_SECURE_HEADERS = {
 BABEL_DEFAULT_LOCALE = 'en'
 # Default time zone
 BABEL_DEFAULT_TIMEZONE = 'America/Chicago'
-
 
 # Invenio-I18N
 # ============
@@ -133,7 +152,6 @@ I18N_LANGUAGES = [
     # ('de', _('German')),
     # ('tr', _('Turkish')),
 ]
-
 
 # Invenio-Theme
 # =============
@@ -159,21 +177,30 @@ INSTANCE_THEME_FILE = './less/theme.less'
 # Email address for administrator emails (like file checksum alerts)
 APP_RDM_ADMIN_EMAIL_RECIPIENT = "info@invenio.uchicago.edu"
 
+# Email configuration
+MAIL_SERVER = os.environ.get("MAIL_SERVER", "sandbox.smtp.mailtrap.io")
+MAIL_PORT = int(os.environ.get("MAIL_PORT", 587))
+MAIL_USE_TLS = os.environ.get("MAIL_USE_TLS", "true").lower() == "true"
+MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
+MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
+MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", "noreply@invenio.uchicago.edu")
+MAIL_SUPPRESS_SEND = os.environ.get("MAIL_SUPPRESS_SEND", "false").lower() == "true"
+
 # Default values for the deposit form
 APP_RDM_DEPOSIT_FORM_DEFAULTS = {
     "publication_date": lambda: datetime.now().strftime("%Y-%m-%d"),
-    "rights": [
-        {
-            "id": "cc-by-4.0",
-            "title": "Creative Commons Attribution 4.0 International",
-            "description": ("The Creative Commons Attribution license allows "
-                            "re-distribution and re-use of a licensed work "
-                            "on the condition that the creator is "
-                            "appropriately credited."),
-            "link": "https://creativecommons.org/licenses/by/4.0/legalcode",
-        }
-    ],
-    "publisher": "Chicago Invenio",
+    #"rights": [
+    #    {
+    #        "id": "cc-by-4.0",
+    #        "title": "Creative Commons Attribution 4.0 International",
+    #        "description": ("The Creative Commons Attribution license allows "
+    #                        "re-distribution and re-use of a licensed work "
+    #                        "on the condition that the creator is "
+    #                        "appropriately credited."),
+    #        "link": "https://creativecommons.org/licenses/by/4.0/legalcode",
+    #    }
+    #],
+    # "publisher": "Chicago Invenio",
 }
 
 APP_RDM_DEPOSIT_FORM_AUTOCOMPLETE_NAMES = 'search'  # "search_only" or "off"
@@ -190,10 +217,10 @@ SITE_API_URL = SITE_UI_URL + "/api"
 # Invenio-RDM-Records
 # ===================
 # See https://inveniordm.docs.cern.ch/customize/dois/
-DATACITE_ENABLED = False
+DATACITE_ENABLED = True
 DATACITE_USERNAME = ""
 DATACITE_PASSWORD = ""
-DATACITE_PREFIX = ""
+DATACITE_PREFIX = "10.70047"
 DATACITE_TEST_MODE = True
 DATACITE_DATACENTER_SYMBOL = ""
 
@@ -217,9 +244,40 @@ SECURITY_LOGIN_WITHOUT_CONFIRMATION = False  # require users to confirm email be
 
 OAUTHCLIENT_REMOTE_APPS = {}  # configure external login providers
 
-from invenio_oauthclient.views.client import auto_redirect_login
 ACCOUNTS_LOGIN_VIEW_FUNCTION = auto_redirect_login  # autoredirect to external login if enabled
 OAUTHCLIENT_AUTO_REDIRECT_TO_EXTERNAL_LOGIN = False  # autoredirect to external login
+
+CHI_OAUTH_CLIENT_ID = os.getenv("CHI_OAUTH_CLIENT_ID")
+CHI_OAUTH_CLIENT_SECRET = os.getenv("CHI_OAUTH_CLIENT_SECRET")
+CHI_OAUTH_WELL_KNOWN_URL = "https://uchicago.okta.com/.well-known/openid-configuration"
+
+CHI_SSO_ENABLED = CHI_OAUTH_CLIENT_ID and CHI_OAUTH_CLIENT_SECRET
+
+if CHI_SSO_ENABLED:
+    OAUTHCLIENT_REMOTE_APPS["chi"] = dict(
+        title="University of Chicago Single Sign On",
+        description="Authentication via membership of the University of Chicago",
+        icon="",
+        params=dict(
+            request_token_params=dict(scope="openid profile"),
+            base_url="",
+            request_token_url=None,
+            access_token_url=f"https://uchicago.okta.com/oauth2/v1/token",
+            access_token_method="POST",
+            authorize_url=f"https://uchicago.okta.com/oauth2/v1/authorize",
+            app_key="CHI_APP_CREDENTIALS",
+        ),
+        authorized_handler="invenio_oauthclient.handlers:authorized_signup_handler",
+        disconnect_handler="invenio_oauthclient.handlers:disconnect_handler",
+        signup_handler=dict(
+            info="chicago_invenio.auth.oauth:info_handler",
+        ),
+        signup_options=dict(auto_confirm=True, send_register_msg=False),
+    )
+    CHI_APP_CREDENTIALS = {
+        "consumer_key": CHI_OAUTH_CLIENT_ID,
+        "consumer_secret": CHI_OAUTH_CLIENT_SECRET,
+    }
 
 # Invenio-UserProfiles
 # --------------------
@@ -240,29 +298,60 @@ OAISERVER_ADMIN_EMAILS = [
 
 SEARCH_INDEX_PREFIX = "chicago-invenio-"
 
-
 # Invenio-Administration
 # ----------------------
 
 from invenio_app_rdm import __version__
+
 ADMINISTRATION_DISPLAY_VERSIONS = [
     ("invenio-app-rdm", f"v{__version__}"),
     ("chicago-invenio", "v1.0.0"),
 ]
-
 
 RDM_NAMESPACES = {
     **JOURNAL_NAMESPACE,
     **IMPRINT_NAMESPACE,
     **THESIS_NAMESPACE,
     **MEETING_NAMESPACE,
+    "chicago": "https://knowledge.uchicago.edu/"
 }
 
 RDM_CUSTOM_FIELDS = [
     *JOURNAL_CUSTOM_FIELDS,
     *IMPRINT_CUSTOM_FIELDS,
-    *MEETING_CUSTOM_FIELDS,
+    *MEETING_ORG_CUSTOM_FIELDS,
     *THESIS_CUSTOM_FIELDS,
+    TextCF(name="chicago:original_submitter"), # 270.m
+    VocabularyCF( # 690.a
+        name="chicago:division",
+        vocabulary_id="divisions",
+        dump_options=True,  # all values visible, only 22 for divisions
+        multiple=True,
+    ),
+    VocabularyCF( # 691.a
+        name="chicago:department",
+        vocabulary_id="departments",
+        dump_options=False,
+        multiple=True,
+    ),
+    VocabularyCF( # 692.a
+        name="chicago:center_or_institute",
+        vocabulary_id="centerinstitutes",
+        dump_options=False,
+        multiple=True,
+    ),
+    IntegerCF(name="chicago:tind_id"), # 001
+    RelatedItem(name="chicago:related_items", multiple=True), # 791
+    TextCF(
+        name="chicago:distribution_license",
+        field_args={
+            "required": True,
+            "validate": validate.Equal(
+                "I agree",
+                error="You must agree to the distribution license before submitting.",
+            ),
+        },
+    ), # 908
 ]
 
 RDM_CUSTOM_FIELDS_UI = [
@@ -279,7 +368,140 @@ RDM_CUSTOM_FIELDS_UI = [
         ],
     },
     # meeting
-    MEETING_CUSTOM_FIELDS_UI,
+    MEETING_ORG_CUSTOM_FIELDS_UI,
+    {
+        "section": _("Distribution license"),
+        "fields": [
+            dict(
+                field="chicago:distribution_license",
+                ui_widget="DistributionLicense",
+                props=dict(
+                    label=_("Distribution license"),
+                    icon="legal",
+                    description=_("I agree to distribute this record under the terms of the selected license."),
+                    license={
+                        "title": "Distribution License",
+                        "description": (
+                            "University of Chicago standard distribution license."
+                        ),
+                        "link": "https://knowledge.uchicago.edu/pages/?page=Distribution+License&ln=en",
+                    },
+                ),
+            ),
+        ],
+    },
+    # UChicago institutional fields
+    {
+        "section": _("University of Chicago Information"),
+        "fields": [
+            dict(
+                field="chicago:division",
+                ui_widget="AutocompleteDropdown",
+                props=dict(
+                    label=_("Division(s)"),
+                    icon="building",
+                    description=_("Academic division(s) (e.g., Arts & Humanities Division, Physical Sciences Division)"),
+                    autocompleteFrom="/api/vocabularies/divisions",
+                    multiple=True,
+                ),
+            ),
+            dict(
+                field="chicago:department",
+                ui_widget="AutocompleteDropdown",
+                props=dict(
+                    label=_("Department(s)"),
+                    icon="users",
+                    description=_("Academic department(s) or program(s)"),
+                    autocompleteFrom="/api/vocabularies/departments",
+                    multiple=True,
+                ),
+            ),
+            dict(
+                field="chicago:center_or_institute",
+                ui_widget="AutocompleteDropdown",
+                props=dict(
+                    label=_("Center(s) or Institute(s)"),
+                    icon="university",
+                    description=_("Research center(s) or institute(s)"),
+                    autocompleteFrom="/api/vocabularies/centerinstitutes",
+                    multiple=True,
+                ),
+            ),
+
+        ],
+    },
 ]
 
-MEETING_CUSTOM_FIELDS_UI["hide_from_landing_page"] = True
+# Enable MathJax for rendering mathematical expressions
+THEME_MATHJAX_CDN = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"
+
+# Add custom identifiers
+# patent_applications = re.compile('^US\s+(?:\d{4}\/)?(?:\d{7,11})\s+[AB][12]?$')
+
+RDM_RECORDS_IDENTIFIERS_SCHEMES = {**RDM_RECORDS_IDENTIFIERS_SCHEMES,
+                                   "patent_application_number": {"label": _("Patent application number"),
+                                                                 "validator": lambda x: True},
+                                   "patent_number": {"label": _("Patent number"), "validator": lambda x: True}}
+
+COMMUNITIES_SHOW_BROWSE_MENU_ENTRY = True
+
+
+#### Invenio curations
+# Comment out to disable curations feature, the initial import needs to run
+# with curations disabled.
+
+CHI_ENABLE_CURATIONS = os.getenv("CHI_ENABLE_CURATIONS")
+
+if CHI_ENABLE_CURATIONS and CHI_ENABLE_CURATIONS.lower() in ['1', 'true', 'yes']:
+    # enable sending of notifications when something's happening in the review
+     NOTIFICATIONS_BUILDERS = {
+        **NOTIFICATIONS_BUILDERS,
+        # Curation request
+        **CURATIONS_NOTIFICATIONS_BUILDERS
+     }
+
+     # NOTE: the curation component should be added at the end
+     RDM_RECORDS_SERVICE_COMPONENTS = DefaultRecordsComponents + [
+        CurationComponent,
+     ]
+
+     REQUESTS_PERMISSION_POLICY = CurationRDMRequestsPermissionPolicy
+     RDM_PERMISSION_POLICY = ChicagoRDMRecordPermissionPolicy
+     CURATIONS_MODERATION_ROLE = "record-curator"
+
+     # Auto-submit to community after curation acceptance
+     # When enabled, accepting a curation request will automatically submit
+     # the record to the selected community for review
+     CHI_AUTO_SUBMIT_COMMUNITY_ON_CURATION = True
+
+     # Monkey-patch the CurationRequest to use our custom accept action
+     CurationRequest.available_actions["accept"] = ChicagoCurationAcceptAction
+
+# Enable community requirement
+RDM_COMMUNITY_REQUIRED_TO_PUBLISH = True
+
+# Apply custom permissions
+COMMUNITIES_PERMISSION_POLICY = CustomCommunitiesPermissionPolicy
+COMMUNITY_CREATOR_ROLE = "community-curator"  # Customizable role name
+
+# It is not possible to sort by title because it's a text field and not a keyword
+# sorting by slug is a sufficient substitute
+
+COMMUNITIES_SORT_OPTIONS = {
+    **COMMUNITIES_SORT_OPTIONS,
+    "title": dict(
+        title=_("Title"),
+        fields=["slug"],
+    ), }
+
+COMMUNITIES_SEARCH = {
+    "facets": [], # ["type", "visibility"],
+    "sort": ["title", "bestmatch", "newest", "oldest"],
+}
+
+# Monkey patch to add 'description' field to file metadata schema
+# This allows us to store file descriptions without modifying the installed package
+# Add the description field to the existing MetadataSchema class
+# This is done at the class level so all instances will have this field
+MetadataSchema._declared_fields['description'] = fields.String()
+setattr(MetadataSchema, 'description', fields.String())

@@ -1,5 +1,6 @@
 Pipfile.lock
 celerybeat-schedule.db
+**/build_config.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -84,3 +85,5 @@ celerybeat-schedule
 *.swo
 *~
 .DS_Store
+
+tmp/

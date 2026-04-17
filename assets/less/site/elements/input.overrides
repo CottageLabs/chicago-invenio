@@ -1,3 +1,3 @@
-#header-search-bar .ui.input, #header-search-bar .ui.input>input {
+.navbar-bottom--homepage #header-search-bar .ui.input, .navbar-bottom--homepage #header-search-bar .ui.input>input {
     height: 48px !important;
 }

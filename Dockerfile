@@ -18,6 +18,8 @@ RUN dnf -y install python3.12 python3.12-devel python3.12-libs python3.12-pip &&
 
 RUN pip install --upgrade pip pipenv
 
+RUN dnf -y install gcc gcc-c++ make
+
 COPY site ./site
 COPY Pipfile Pipfile.lock ./
 RUN pipenv install --deploy --system

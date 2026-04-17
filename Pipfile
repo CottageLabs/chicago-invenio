@@ -13,6 +13,8 @@ chicago-invenio = {editable = true, path="./site"}
 uwsgi = ">=2.0"
 uwsgitop = ">=0.11"
 uwsgi-tools = ">=1.1.1"
+invenio-curations = "*"
+setuptools = "<82"
 
 [requires]
 python_version = "3.12"

@@ -20,6 +20,18 @@ services:
       - "INVENIO_SQLALCHEMY_DATABASE_URI=postgresql+psycopg2://chicago-invenio:chicago-invenio@db/chicago-invenio"
       - "INVENIO_WSGI_PROXIES=2"
       - "INVENIO_RATELIMIT_STORAGE_URL=redis://cache:6379/3"
+      - "CHI_OAUTH_CLIENT_ID=${CHI_OAUTH_CLIENT_ID}"
+      - "CHI_OAUTH_CLIENT_SECRET=${CHI_OAUTH_CLIENT_SECRET}"
+      - "CHI_ENABLE_CURATIONS=${CHI_ENABLE_CURATIONS}"
+      - "INVENIO_DATACITE_USERNAME=${INVENIO_DATACITE_USERNAME}"
+      - "INVENIO_DATACITE_PASSWORD=${INVENIO_DATACITE_PASSWORD}"
+      - "MAIL_SERVER=${MAIL_SERVER}"
+      - "MAIL_PORT=${MAIL_PORT}"
+      - "MAIL_USE_TLS=${MAIL_USE_TLS}"
+      - "MAIL_USERNAME=${MAIL_USERNAME}"
+      - "MAIL_PASSWORD=${MAIL_PASSWORD}"
+      - "MAIL_DEFAULT_SENDER=${MAIL_DEFAULT_SENDER}"
+      - "MAIL_SUPPRESS_SEND=${MAIL_SUPPRESS_SEND}"
   frontend:
     build: ./docker/nginx/
     image: chicago-invenio-frontend

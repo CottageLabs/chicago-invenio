@@ -1,0 +1,208 @@
+- id: contactperson
+  props:
+    datacite: ContactPerson
+    marc: prc
+  title:
+    en: Contact person
+    sv: Kontaktperson
+    de: Kontaktperson
+    cs: Kontaktní osoba
+- id: datacollector
+  props:
+    datacite: DataCollector
+    marc: col
+  title:
+    en: Data collector
+    sv: Datainsamlare
+    de: DatensammlerIn
+    cs: Sběratel dat
+- id: datacurator
+  props:
+    datacite: DataCurator
+    marc: cur
+  title:
+    en: Data curator
+    sv: Datakurator
+    de: DatenkuratorIn
+    cs: Kurátor dat
+- id: datamanager
+  props:
+    datacite: DataManager
+    marc: dtm
+  title:
+    en: Data manager
+    sv: Dataansvarig
+    de: DatenmanagerIn
+    cs: Správce dat
+- id: distributor
+  props:
+    datacite: Distributor
+    marc: dst
+  title:
+    en: Distributor
+    sv: Distributör
+    de: VerteilerIn
+    cs: Distributor
+- id: editor
+  props:
+    datacite: Editor
+    marc: edt
+  title:
+    en: Editor
+    sv: Redaktör
+    de: EditorIn
+    cs: Editor
+- id: hostinginstitution
+  props:
+    datacite: HostingInstitution
+    marc: his
+  title:
+    en: Hosting institution
+    sv: Värdinstitution
+    de: Bereitstellende Institution
+    cs: Hostující instituce
+- id: producer
+  props:
+    datacite: Producer
+    marc: pro
+  title:
+    en: Producer
+    sv: Producent
+    de: ProduzentIn
+    cs: Producent
+- id: projectleader
+  props:
+    datacite: ProjectLeader
+    marc: pdr
+  title:
+    en: Project leader
+    sv: Projektledare
+    de: ProjektleiterIn
+    cs: Vedoucí projektu
+- id: projectmanager
+  props:
+    datacite: ProjectManager
+    marc: rth
+  title:
+    en: Project manager
+    sv: Projektansvarig
+    de: ProjektmanagerIn
+    cs: Manažer projektu
+- id: projectmember
+  props:
+    datacite: ProjectMember
+    marc: rtm
+  title:
+    en: Project member
+    sv: Projektmedlem
+    de: Projektmitglied
+    cs: Člen projektu
+- id: registrationagency
+  props:
+    datacite: RegistrationAgency
+    marc: cor
+  title:
+    en: Registration agency
+    sv: Registreringsorgan
+    de: Registrierungsstelle
+    cs: Registrační agentura
+- id: registrationauthority
+  props:
+    datacite: RegistrationAuthority
+    marc: cor
+  title:
+    en: Registration authority
+    sv: Registreringsmyndighet
+    de: Registrierungsbehörde
+    cs: Registrační autorita
+- id: relatedperson
+  props:
+    datacite: RelatedPerson
+    marc: oth
+  title:
+    en: Related person
+    sv: Relaterad person
+    de: Verwandte Person
+    cs: Související osoba
+- id: researcher
+  props:
+    datacite: Researcher
+    marc: res
+  title:
+    en: Researcher
+    sv: Forskare
+    de: WissenschaftlerIn
+    cs: Výzkumník
+- id: researchgroup
+  props:
+    datacite: ResearchGroup
+    marc: rtm
+  title:
+    en: Research group
+    sv: Forskningsgrupp
+    de: Forschungsgruppe
+    cs: Výzkumná skupina
+- id: rightsholder
+  props:
+    datacite: RightsHolder
+    marc: cph
+  title:
+    en: Rights holder
+    sv: Rättighetsinnehavare
+    de: RechteinhaberIn
+    cs: Držitel práv
+- id: sponsor
+  props:
+    datacite: Sponsor
+    marc: spn
+  title:
+    en: Sponsor
+    sv: Sponsor
+    de: Sponsor
+    cs: Sponzor
+- id: supervisor
+  props:
+    datacite: Supervisor
+    marc: dgs
+  title:
+    en: Supervisor
+    sv: Handledare
+    de: SupervisorIn
+    cs: Supervizor
+- id: workpackageleader
+  props:
+    datacite: WorkPackageLeader
+    marc: led
+  title:
+    en: Work package leader
+    sv: Arbetspaketsledare
+    de: ArbeitspaketleiterIn
+    cs: Vedoucí pracovního balíku
+- id: other
+  props:
+    datacite: Other
+    marc: oth
+  title:
+    en: Other
+    sv: Övriga
+    de: Andere
+    cs: Jiné
+# These are custom roles
+- id: advisor
+  title:
+    en: Advisor
+- id: committeemember
+  title:
+    en: Committee member
+- id: interviewee
+  title:
+    en: Interviewee
+- id: inventor
+  title:
+    en: Inventor
+- id: patent_applicant
+  title:
+    en: Patent applicant
+- id: patent_assignee
+  title:
+    en: Patent assignee

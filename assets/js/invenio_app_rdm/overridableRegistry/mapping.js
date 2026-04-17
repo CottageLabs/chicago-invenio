@@ -10,6 +10,7 @@
 
 import {ResourceTypeField} from "../../chicago_invenio/ResourceTypeField";
 import {ConditionalCustomFields} from "../../chicago_invenio/ConditionalCustomFields";
+import {FileUploaderAreaWithDescriptions} from "../../chicago_invenio/FileUploaderAreaWithDescriptions";
 import { parametrize } from "react-overridable";
 import { curationComponentOverrides } from "@js/invenio_curations/requests";
 import { DepositBox } from "@js/invenio_curations/deposit/DepositBox";
@@ -40,4 +41,5 @@ export const overriddenComponents = {
     ...(buildConfig.enableCurations ? {"InvenioAppRdm.Deposit.CardDepositStatusBox.container": DepositBox} : {}),
     "InvenioAppRdm.Deposit.ResourceTypeField.container": ResourceTypeField,
     "InvenioAppRdm.Deposit.CustomFields.container": ConditionalCustomFieldsWithRules,
+    "ReactInvenioDeposit.FileUploader.FileUploaderArea.container": FileUploaderAreaWithDescriptions,
 }

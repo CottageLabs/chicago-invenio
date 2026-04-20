@@ -38,8 +38,13 @@
     align-items: center;
   }
 
+  form {
+    display: flex;
+  }
+
   a.ui.button.auth-button,
   a.ui.button.signup {
+    display: flex;
     border: 1px solid @white;
     border-radius: 0;
     background: transparent;
@@ -52,6 +57,7 @@
 
   a.ui.button.auth-button:hover,
   a.ui.button.signup:hover {
+    display: flex;
     background: white;
     border-radius: 0;
     color: @primaryColor;
@@ -164,7 +170,6 @@
 
       .ui.input {
         input {
-          border: @secondaryColor solid 2px;
           border-radius: 0;
           color: @darkGray;
           line-height: 1rem;
@@ -173,20 +178,23 @@
 
           &:focus,
           &:focus-visible {
-            border: @darkGray solid 2px;
+            border-color: @primaryColor;
+            & + button {
+              background-color: maroon;
+            }
           }
         }
 
         button {
           margin-left: .5rem !important;
-          padding: 1rem 1.5rem;
-          border: @secondaryColor solid 2px;
           border-radius: 0;
           &:focus,
           &:focus-visible,
           &:hover {
             background-color: maroon;
-            border: @secondaryColor solid 2px;
+            & + input {
+              border-color: @primaryColor;
+            }
           }
         }
       }

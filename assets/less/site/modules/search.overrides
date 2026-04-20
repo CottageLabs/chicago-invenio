@@ -1,19 +1,30 @@
 #header-search-bar .ui.fluid.search.right-angle-search-content .ui.input {
     input {
-        border: 3px solid #737373;
         border-radius: 3px 0 0 3px;
         display: flex;
         font-size: 16px;
         justify-content: center;
         letter-spacing: .5px;
         border-right: none;
+        &:focus, &:focus-visible {
+            border-color: maroon;
+            & + button {
+                background-color: maroon;
+            }
+        }
     }
 
     button {
         margin: 0;
         margin-left: -.5rem !important;
-        border: 3px solid #737373;
+        border: 2px solid #737373;
         border-radius: 0 3px 3px 0;
         border-left: none;
+        &:focus, &:focus-visible {
+            background-color: maroon;
+            & + input {
+                border-color: maroon;
+            }
+        }
     }
 }

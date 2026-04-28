@@ -372,7 +372,7 @@ RDM_CUSTOM_FIELDS_UI = [
     MEETING_ORG_CUSTOM_FIELDS_UI,
     # UChicago institutional fields
     {
-        "section": _("University of Chicago Information"),
+        "section": _("UChicago Information"),
         "fields": [
             dict(
                 field="chicago:division",

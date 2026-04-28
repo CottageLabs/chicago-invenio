@@ -1,0 +1,9 @@
+.ui.label {
+    color: black;
+}
+
+.ui.label.access-status {
+    &.embargoed {
+        color: @black;
+    }
+}

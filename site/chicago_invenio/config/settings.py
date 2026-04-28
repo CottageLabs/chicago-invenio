@@ -351,7 +351,8 @@ RDM_CUSTOM_FIELDS = [
                 error="You must agree to the distribution license before submitting.",
             ),
         },
-    ), # 908
+    ), # 908, this is a placeholder field so that the distribution license checkbox
+    # can be displayed in the submission form, it is not rendered on the landing page
 ]
 
 RDM_CUSTOM_FIELDS_UI = [
@@ -369,27 +370,6 @@ RDM_CUSTOM_FIELDS_UI = [
     },
     # meeting
     MEETING_ORG_CUSTOM_FIELDS_UI,
-    {
-        "section": _("Distribution license"),
-        "fields": [
-            dict(
-                field="chicago:distribution_license",
-                ui_widget="DistributionLicense",
-                props=dict(
-                    label=_("Distribution license"),
-                    icon="legal",
-                    description=_("I agree to distribute this record under the terms of the selected license."),
-                    license={
-                        "title": "Distribution License",
-                        "description": (
-                            "University of Chicago standard distribution license."
-                        ),
-                        "link": "https://knowledge.uchicago.edu/pages/?page=Distribution+License&ln=en",
-                    },
-                ),
-            ),
-        ],
-    },
     # UChicago institutional fields
     {
         "section": _("University of Chicago Information"),

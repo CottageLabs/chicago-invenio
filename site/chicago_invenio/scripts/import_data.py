@@ -907,7 +907,7 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
                 if doi_value.startswith(datacite_prefix):
                     pids['doi'] = {'identifier': doi_value,
                                    'provider': 'datacite',}
-                    with open('doi_mapping.txt', 'a') as f:
+                    with open('doi_mapping.csv', 'a') as f:
                         f.write(f"{record_identifier},{doi_value}\n")
                 else:
                     identifiers.append({

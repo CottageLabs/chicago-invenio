@@ -439,10 +439,11 @@ THEME_MATHJAX_CDN = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/te
 # Add custom identifiers
 # patent_applications = re.compile('^US\s+(?:\d{4}\/)?(?:\d{7,11})\s+[AB][12]?$')
 
-RDM_RECORDS_IDENTIFIERS_SCHEMES = {**RDM_RECORDS_IDENTIFIERS_SCHEMES,
-                                   "patent_application_number": {"label": _("Patent application number"),
-                                                                 "validator": lambda x: True},
-                                   "patent_number": {"label": _("Patent number"), "validator": lambda x: True}}
+RDM_RECORDS_IDENTIFIERS_SCHEMES = {
+    **RDM_RECORDS_IDENTIFIERS_SCHEMES,
+    "patent_application_number": {"label": _("Patent application number"),
+                                  "validator": lambda x: True},
+    "patent_number": {"label": _("Patent number"), "validator": lambda x: True}}
 
 COMMUNITIES_SHOW_BROWSE_MENU_ENTRY = True
 

@@ -448,35 +448,28 @@ COMMUNITIES_SHOW_BROWSE_MENU_ENTRY = True
 
 
 #### Invenio curations
-# Comment out to disable curations feature, the initial import needs to run
-# with curations disabled.
 
-CHI_ENABLE_CURATIONS = os.getenv("CHI_ENABLE_CURATIONS")
+# enable sending of notifications when something's happening in the review
+NOTIFICATIONS_BUILDERS = {
+    **NOTIFICATIONS_BUILDERS,
+    # Curation request
+    **CURATIONS_NOTIFICATIONS_BUILDERS
+}
 
-if CHI_ENABLE_CURATIONS and CHI_ENABLE_CURATIONS.lower() in ['1', 'true', 'yes']:
-    # enable sending of notifications when something's happening in the review
-     NOTIFICATIONS_BUILDERS = {
-        **NOTIFICATIONS_BUILDERS,
-        # Curation request
-        **CURATIONS_NOTIFICATIONS_BUILDERS
-     }
+# NOTE: the curation component should be added at the end
+RDM_RECORDS_SERVICE_COMPONENTS = DefaultRecordsComponents + [CurationComponent,]
 
-     # NOTE: the curation component should be added at the end
-     RDM_RECORDS_SERVICE_COMPONENTS = DefaultRecordsComponents + [
-        CurationComponent,
-     ]
+REQUESTS_PERMISSION_POLICY = CurationRDMRequestsPermissionPolicy
+RDM_PERMISSION_POLICY = ChicagoRDMRecordPermissionPolicy
+CURATIONS_MODERATION_ROLE = "record-curator"
 
-     REQUESTS_PERMISSION_POLICY = CurationRDMRequestsPermissionPolicy
-     RDM_PERMISSION_POLICY = ChicagoRDMRecordPermissionPolicy
-     CURATIONS_MODERATION_ROLE = "record-curator"
+# Auto-submit to community after curation acceptance
+# When enabled, accepting a curation request will automatically submit
+# the record to the selected community for review
+CHI_AUTO_SUBMIT_COMMUNITY_ON_CURATION = True
 
-     # Auto-submit to community after curation acceptance
-     # When enabled, accepting a curation request will automatically submit
-     # the record to the selected community for review
-     CHI_AUTO_SUBMIT_COMMUNITY_ON_CURATION = True
-
-     # Monkey-patch the CurationRequest to use our custom accept action
-     CurationRequest.available_actions["accept"] = ChicagoCurationAcceptAction
+# Monkey-patch the CurationRequest to use our custom accept action
+CurationRequest.available_actions["accept"] = ChicagoCurationAcceptAction
 
 # Enable community requirement
 RDM_COMMUNITY_REQUIRED_TO_PUBLISH = True

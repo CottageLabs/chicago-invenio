@@ -370,6 +370,27 @@ RDM_CUSTOM_FIELDS_UI = [
     },
     # meeting
     MEETING_ORG_CUSTOM_FIELDS_UI,
+    {
+        "section": _("Distribution license"),
+        "fields": [
+            dict(
+                field="chicago:distribution_license",
+                ui_widget="DistributionLicense",
+                props=dict(
+                    label=_("Distribution license"),
+                    icon="legal",
+                    description=_("I agree to distribute this record under the terms of the selected license."),
+                    license={
+                        "title": "Distribution License",
+                        "description": (
+                            "University of Chicago standard distribution license."
+                        ),
+                        "link": "https://knowledge.uchicago.edu/pages/?page=Distribution+License&ln=en",
+                    },
+                ),
+            ),
+        ],
+    },
     # UChicago institutional fields
     {
         "section": _("UChicago Information"),

@@ -39,6 +39,7 @@ from invenio_rdm_records.proxies import (
     current_rdm_records_service,
     current_record_communities_service,
 )
+from invenio_access.permissions import system_identity
 from invenio_records_resources.services.records.results import RecordItem
 from invenio_requests.proxies import current_requests_service
 from load_as_coms_colls import main as get_create_community_collection_structure, CSV
@@ -2091,11 +2092,12 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
                         data=invenio_data
                     )
 
-            # Publish the record
+            # Publish the record using system_identity to bypass the curation
+            # workflow. Ownership is already set by the draft creation above.
             error_record["error_stage"] = "publish"
             published = current_rdm_records_service.publish(
                 id_=draft.id,
-                identity=identity
+                identity=system_identity
             )
             
             # Check if publishing was successful

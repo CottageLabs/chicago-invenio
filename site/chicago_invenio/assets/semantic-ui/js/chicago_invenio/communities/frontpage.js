@@ -28,8 +28,8 @@ if (userCommunitiesContainer) {
 if (newCommunitiesContainer) {
   ReactDOM.render(
     <CommunitiesCardGroup
-      fetchDataUrl="/api/communities?q=&sort=title&page=2&size=5"
-      emptyMessage={i18next.t("There are no new communities.")}
+      fetchDataUrl="/api/communities?q=&sort=title&page=1&size=5"
+      emptyMessage={i18next.t("There are no communities.")}
       defaultLogo="/static/images/square-placeholder.png"
     />,
     newCommunitiesContainer

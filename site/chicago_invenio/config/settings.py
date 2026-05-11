@@ -99,7 +99,8 @@ APP_DEFAULT_SECURE_HEADERS = {
         ],
         'script-src': [
             "'self'", "blob:", "'wasm-unsafe-eval'", "'unsafe-inline'",  # for WASM-based workers and inline scripts
-            "cdnjs.cloudflare.com"
+            "cdnjs.cloudflare.com",
+            "https://www.googletagmanager.com"
             # Multipart file uploads use a Web Worker running `hash-wasm` to compute content checksums
             # (e.g., MD5) of uploaded parts. This requires both 'blob:' and 'wasm-unsafe-eval' enabled in `script-src`.
         ],
@@ -117,6 +118,10 @@ APP_DEFAULT_SECURE_HEADERS = {
             "https://uchicago-brand-fonts.s3.us-east-2.amazonaws.com",
             "https://cdnjs.cloudflare.com",
             "data:"
+        ],
+        "connect-src":[
+            "'self'",
+            "https://*.google-analytics.com"
         ]
     },
     'content_security_policy_report_only': False,
@@ -500,3 +505,5 @@ COMMUNITIES_SEARCH = {
 # This is done at the class level so all instances will have this field
 MetadataSchema._declared_fields['description'] = fields.String()
 setattr(MetadataSchema, 'description', fields.String())
+
+GOOGLE_ANALYTICS_ID = "GTM-MLGTQVZ3"

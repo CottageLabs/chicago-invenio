@@ -31,4 +31,158 @@
     </div>
 
   </div>
+
+
+
+    <!-- Cookie consent banner: shown only when there is no consent or decline cookie -->
+    <div id="cookie-consent-banner" style="display:none;" aria-live="polite" role="dialog">
+        <div style="flex:1; min-width:200px;">
+            <strong>We'd like to use analytics cookies</strong>
+            <div style="margin-top:4px;">We'd like to collect anonymous analytics to improve our website.</div>
+        </div>
+        <div class="cc-actions">
+            <button id="cookie-consent-accept" class="btn btn-primary">Accept</button>
+            <button id="cookie-consent-decline" class="btn btn-secondary">Decline</button>
+        </div>
+    </div>
+
+    <style>
+        /* Simple banner styles */
+        #cookie-consent-banner {
+            position: fixed;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.85);
+            color: #fff;
+            padding: 1rem;
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        #cookie-consent-banner .cc-actions { display:flex; gap:0.5rem; }
+        #cookie-consent-banner button { min-width: 96px; }
+        #cookie-consent-banner a { color: #fff; text-decoration: underline; }
+        @media (max-width:600px){ #cookie-consent-banner{ font-size:0.9rem; } }
+    </style>
+
+    <script>
+    (function(){
+        const GA_ID = '{{ config.GOOGLE_ANALYTICS_ID }}';
+        const CONSENT_COOKIE = 'uchicago_knowledge_consent';
+        const CONSENT_VALUE = 'You have consented to analytics cookies; delete this cookie to revoke consent.';
+        const DECLINE_COOKIE = 'uchicago_knowledge_decline';
+        const DECLINE_VALUE = 'You have declined analytics cookies; delete this cookie to be given the opportunity to consent on your next visit to the site.';
+        const COOKIE_DAYS = 365; // 1 year
+
+        function setCookie(name, value, days){
+            try{
+                let expires = '';
+                if (days) {
+                    var date = new Date();
+                    date.setTime(date.getTime() + (days*24*60*60*1000));
+                    expires = '; expires=' + date.toUTCString();
+                }
+
+                // Determine whether to add the Secure flag. Prefer SITEURL (from template config);
+                // fall back to current page protocol if SITEURL is empty/unspecified.
+                const siteUrl = "";
+                let secureFlag = '';
+                try {
+                    if (siteUrl && siteUrl.indexOf('https://') === 0) {
+                        secureFlag = '; Secure';
+                    }
+                } catch(e) { /* ignore */ }
+                // fallback if SITEURL not set in template but page is served over https
+                if (!secureFlag && typeof location !== 'undefined' && location.protocol === 'https:') {
+                    secureFlag = '; Secure';
+                }
+
+                document.cookie = name + '=' + encodeURIComponent(value) + expires + '; path=/; SameSite=Lax' + secureFlag;
+            }catch(e){ /* ignore */ }
+        }
+        function getCookie(name){
+            let match = document.cookie.match(new RegExp('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)'));
+            return match ? decodeURIComponent(match.pop()) : null;
+        }
+
+        function injectGtag(){
+            if (!GA_ID) return;
+            // avoid double-injection
+            if (window.__ga_injected) return;
+            window.__ga_injected = true;
+
+            const s = document.createElement('script');
+            s.async = true;
+            s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+            document.head.appendChild(s);
+
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            window.gtag = gtag;
+
+            s.onload = function(){
+                gtag('js', new Date());
+                gtag('config', GA_ID);
+            };
+        }
+
+        function hideBanner(){
+            const el = document.getElementById('cookie-consent-banner');
+            if(el) el.style.display = 'none';
+        }
+        function showBanner(){
+            const el = document.getElementById('cookie-consent-banner');
+            if(el) el.style.display = 'flex';
+        }
+
+        // Wire up the banner buttons (if banner exists in DOM)
+        function bindBannerButtons(){
+            const accept = document.getElementById('cookie-consent-accept');
+            const decline = document.getElementById('cookie-consent-decline');
+            if(accept) accept.addEventListener('click', function(){
+                setCookie(CONSENT_COOKIE, CONSENT_VALUE, COOKIE_DAYS);
+                hideBanner();
+                injectGtag();
+            });
+            if(decline) decline.addEventListener('click', function(){
+                setCookie(DECLINE_COOKIE, DECLINE_VALUE, COOKIE_DAYS);
+                hideBanner();
+            });
+        }
+
+        // Initialization: decide whether to load GA or show banner
+        function initConsent(){
+            const consent = getCookie(CONSENT_COOKIE);
+            const decline = getCookie(DECLINE_COOKIE);
+            if (consent){
+                // user previously consented
+                try{ injectGtag(); }catch(e){}
+            } else if (!consent && !decline){
+                // neither consent nor decline -> show banner
+                // Wait for DOM ready to show and bind
+                if (document.readyState === 'loading'){
+                    document.addEventListener('DOMContentLoaded', function(){ showBanner(); bindBannerButtons(); });
+                } else {
+                    showBanner(); bindBannerButtons();
+                }
+            } else {
+                // decline exists -> do nothing (GA disabled)
+            }
+        }
+
+        // Run init as soon as possible
+        initConsent();
+
+        // expose helpers for debugging if needed
+        window.__gaConsent = {
+            setConsent: function(){ setCookie(CONSENT_COOKIE,'1',COOKIE_DAYS); injectGtag(); },
+            setDecline: function(){ setCookie(DECLINE_COOKIE,'1',COOKIE_DAYS); hideBanner(); }
+        };
+    })();
+    </script>
+
 {%- endblock footer_top %}

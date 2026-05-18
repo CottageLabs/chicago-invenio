@@ -205,7 +205,7 @@ APP_RDM_DEPOSIT_FORM_DEFAULTS = {
     #        "link": "https://creativecommons.org/licenses/by/4.0/legalcode",
     #    }
     #],
-    # "publisher": "Chicago Invenio",
+     "publisher": "The University of Chicago",
 }
 
 APP_RDM_DEPOSIT_FORM_AUTOCOMPLETE_NAMES = 'search'  # "search_only" or "off"

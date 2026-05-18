@@ -377,6 +377,7 @@ RDM_CUSTOM_FIELDS_UI = [
     MEETING_ORG_CUSTOM_FIELDS_UI,
     {
         "section": _("Distribution license"),
+        "hide_from_landing_page": True,
         "fields": [
             dict(
                 field="chicago:distribution_license",

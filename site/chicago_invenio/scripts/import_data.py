@@ -895,13 +895,13 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
         subfield_d = id_field.find('.//marc:subfield[@code="d"]', MARC_NS)
         subfield_2 = id_field.find('.//marc:subfield[@code="2"]', MARC_NS)
 
-        # TODO 024-7-2 should be parent doi?
         # Handle DOI identifiers (024$7$2="doi")
         if (id_field.get('ind1') == '7' and subfield_2 is not None and
                 subfield_2.text.strip().lower() == 'doi' and subfield_a is not None):
             doi_value = subfield_a.text.strip()
             # Validate DOI using idutils
             if idutils.is_doi(doi_value):
+                doi_value = idutils.normalize_doi(doi_value)
                 datacite_prefix = current_app.config["DATACITE_PREFIX"]
                 # Assign DOIs with our prefix as managed by DataCite
                 if doi_value.startswith(datacite_prefix):

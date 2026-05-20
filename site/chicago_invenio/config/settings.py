@@ -286,7 +286,14 @@ if CHI_SSO_ENABLED:
 
 # Invenio-UserProfiles
 # --------------------
-USERPROFILES_READ_ONLY = False  # allow users to change profile info (name, email, etc...)
+USERPROFILES_READ_ONLY = True  # allow users to change profile info (name, email, etc...)
+
+# see https://inveniordm.docs.cern.ch/operate/customize/authentication/#local-authentication
+SECURITY_REGISTERABLE = False # do not allow the option of registering
+
+# New user creation defaults for discoverability
+ACCOUNTS_DEFAULT_USER_VISIBILITY = "public"
+ACCOUNTS_DEFAULT_EMAIL_VISIBILITY = "public"
 
 # OAI-PMH
 # =======

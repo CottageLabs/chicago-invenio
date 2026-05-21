@@ -6,6 +6,7 @@ from invenio_requests.services.generators import Creator, Receiver
 from invenio_curations.requests.curation import CurationRequest
 from invenio_curations.services.generators import (
     IfCurationRequestAccepted,
+    IfCurationRequestBasedExists,
     IfRequestTypes,
     TopicPermission,
 )
@@ -20,13 +21,20 @@ class CurationRDMRequestsPermissionPolicy(RDMRequestsPermissionPolicy):
         else_=[],
     )
 
-    # Only allow community-submission requests to be accepted after the rdm-curation request has been accepted
+    # Only allow community-submission requests to be accepted after the rdm-curation request has been accepted.
+    # If no curation request exists at all (e.g. imported records), fall through to standard acceptance.
     can_action_accept = [
         IfRequestTypes(
             request_types=[CommunitySubmission],
             then_=[
-                IfCurationRequestAccepted(
-                    then_=RDMRequestsPermissionPolicy.can_action_accept, else_=[]
+                IfCurationRequestBasedExists(
+                    then_=[
+                        IfCurationRequestAccepted(
+                            then_=RDMRequestsPermissionPolicy.can_action_accept,
+                            else_=[],
+                        )
+                    ],
+                    else_=RDMRequestsPermissionPolicy.can_action_accept,
                 )
             ],
             else_=RDMRequestsPermissionPolicy.can_action_accept,

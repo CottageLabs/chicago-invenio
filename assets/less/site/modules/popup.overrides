@@ -1,0 +1,7 @@
+[data-tooltip]:hover:after, [data-tooltip][data-position="bottom center"]:hover:after {
+    transform: translateX(-50%) scale(1) !important;
+    max-width: min(90vw, 320px);
+    width: max-content;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}

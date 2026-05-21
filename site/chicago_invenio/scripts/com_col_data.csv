@@ -192,9 +192,9 @@ Booth School of Business,,,,Booth School of Business,
 ,,Urban Education Institute,,Centers and Institutes,Urban Education Institute
 ,,Urban Labs,,Centers and Institutes,Urban Labs
 ,,Urban Theory Lab,,Centers and Institutes,Urban Theory Lab
-,,Chicago Studies,,Chicago Studies,
-,Chicago Studies Theses,,,Chicago Studies,Chicago Studies Theses
 ,Chicago Studies,,,Chicago Studies,
+,Chicago Studies Theses,,,Chicago Studies,Chicago Studies Theses
+,,Chicago Studies,,Chicago Studies,
 ,Chicago Studies 2008,,,Chicago Studies Annual,Chicago Studies 2008
 ,Chicago Studies 2009,,,Chicago Studies Annual,Chicago Studies 2009
 ,Chicago Studies 2010,,,Chicago Studies Annual,Chicago Studies 2010
@@ -225,6 +225,8 @@ Divinity School,,,,Divinity School,
 ,,United States Department of Agriculture,,Federal Government Datasets,United States Department of Agriculture
 ,Gaming Islam,,,Gaming Islam,
 Graham School of Continuing Liberal and Professional Studies,,,,Graham School of Continuing Liberal and Professional Studies,
+,Harris School of Public Policy Studies Research Publications,,,Harris School of Public Policy Studies,
+,Harris School of Public Policy Studies Theses,,,Harris School of Public Policy Studies,
 ,Public Policy Research Publications,,,Harris School of Public Policy Studies,
 ,Public Policy Studies Research Publications,,,Harris School of Public Policy Studies,
 Harris School of Public Policy Studies,,,,Harris School of Public Policy Studies,
@@ -237,6 +239,7 @@ Law School,,,,Law School,
 ,In Honor of Sandra Levy,,,Library,In Honor of Sandra Levy
 ,John Crerar Foundation Science Writing Prize for College Students,,,Library,John Crerar Foundation Science Writing Prize for College Students
 ,Library Publications and Presentations,,,Library,
+,Undergraduate Research Symposium,,,Library,Undergraduate Research Symposium
 Library,,,,Library,
 ,MA Program in the Social Sciences (MAPSS),,,MA Program in the Social Sciences (MAPSS) Theses,
 ,"Mamlūk Studies Review, Vol. I (1997)",,,Mamlūk Studies Review,"Mamlūk Studies Review, Vol. 1 (1997)"
@@ -317,6 +320,8 @@ Pritzker School of Molecular Engineering,,,,Pritzker School of Molecular Enginee
 ,Social Thought,,,Social Sciences Division,Social Thought
 ,Sociology,,,Social Sciences Division,Sociology
 ,,Speaking of Art,,Speaking of Art,
+,The Chicago Black Policy Review Vol. 1,,,The Chicago Black Policy Review,"The Chicago Black Policy Review, Vol. 1 (Spring 2024)"
+,The Chicago Black Policy Review Vol. 2,,,The Chicago Black Policy Review,"The Chicago Black Policy Review, Vol. 2 (Spring 2025)"
 ,Arts & Humanities,,,The College,
 ,Biological Sciences,,,The College,
 ,Comparative Race and Ethnic Studies,,,The College,Comparative Race and Ethnic Studies
@@ -332,14 +337,10 @@ Pritzker School of Molecular Engineering,,,,Pritzker School of Molecular Enginee
 ,Russian and Eastern European Studies,,,The College,Russian and Eastern European Studies
 ,Social Sciences,,,The College,
 ,Writing Program,,,The College,Writing Program
-,Art History Dissertations,,Dissertation,UChicago Dissertations,Art History
-,Germanic Studies Dissertations,,Dissertation,UChicago Dissertations,Germanic Studies
-,Booth School of Business Dissertations,,Dissertation,UChicago Dissertations,Booth School of Business
-,"Crown Family School of Social Work, Policy, and Practice Dissertations",,Dissertation,UChicago Dissertations,"Crown Family School of Social Work, Policy, and Practice"
-,Divinity School Dissertations,,Dissertation,UChicago Dissertations,Divinity School
 ,Accounting,,Dissertation,UChicago Dissertations,Accounting
 ,Anthropology,,Dissertation,UChicago Dissertations,Anthropology
 ,Art History,,Dissertation,UChicago Dissertations,Art History
+,Art History Dissertations,,Dissertation,UChicago Dissertations,Art History
 ,Astronomy and Astrophysics,,Dissertation,UChicago Dissertations,Astronomy and Astrophysics
 ,Behavioral Science,,Dissertation,UChicago Dissertations,Behavioral Science
 ,Ben May Department for Cancer Research,,Dissertation,UChicago Dissertations,Ben May Department for Cancer Research
@@ -347,6 +348,7 @@ Pritzker School of Molecular Engineering,,,,Pritzker School of Molecular Enginee
 ,Biochemistry and Molecular Biophysics,,Dissertation,UChicago Dissertations,Biochemistry and Molecular Biophysics
 ,Biology,,Dissertation,UChicago Dissertations,Biology
 ,Biophysical Sciences,,Dissertation,UChicago Dissertations,Biophysical Sciences
+,Booth School of Business Dissertations,,Dissertation,UChicago Dissertations,Booth School of Business
 ,Business,,Dissertation,UChicago Dissertations,Business
 ,Cancer Biology,,Dissertation,UChicago Dissertations,Cancer Biology
 ,Cell and Molecular Biology,,Dissertation,UChicago Dissertations,Cell and Molecular Biology
@@ -359,8 +361,10 @@ Pritzker School of Molecular Engineering,,,,Pritzker School of Molecular Enginee
 ,Computational Neuroscience,,Dissertation,UChicago Dissertations,Computational Neuroscience
 ,Computer Science,,Dissertation,UChicago Dissertations,Computer Science
 ,Conceptual and Historical Studies of Science,,Dissertation,UChicago Dissertations,Conceptual and Historical Studies of Science
+,"Crown Family School of Social Work, Policy, and Practice Dissertations",,Dissertation,UChicago Dissertations,"Crown Family School of Social Work, Policy, and Practice"
 ,"Development, Regeneration, and Stem Cell Biology",,Dissertation,UChicago Dissertations,"Development, Regeneration, and Stem Cell Biology"
 ,Developmental Biology,,Dissertation,UChicago Dissertations,Developmental Biology
+,Divinity School Dissertations,,Dissertation,UChicago Dissertations,Divinity School
 ,East Asian Languages and Civilizations,,Dissertation,UChicago Dissertations,East Asian Languages and Civilizations
 ,Ecology and Evolution,,Dissertation,UChicago Dissertations,Ecology and Evolution
 ,Education,,Dissertation,UChicago Dissertations,Education
@@ -369,6 +373,8 @@ Pritzker School of Molecular Engineering,,,,Pritzker School of Molecular Enginee
 ,Genetics,,Dissertation,UChicago Dissertations,Genetics
 ,"Genetics, Genomics, and Systems Biology",,Dissertation,UChicago Dissertations,"Genetics, Genomics, and Systems Biology"
 ,Geophysical Sciences,,Dissertation,UChicago Dissertations,Geophysical Sciences
+,Germanic Studies Dissertations,,Dissertation,UChicago Dissertations,Germanic Studies
+,Harris School of Public Policy Studies Dissertations,,,UChicago Dissertations,Harris School of Public Policy Studies
 ,History,,Dissertation,UChicago Dissertations,History
 ,Human Genetics,,Dissertation,UChicago Dissertations,Human Genetics
 ,Immunology,,Dissertation,UChicago Dissertations,Immunology
@@ -400,7 +406,7 @@ Pritzker School of Molecular Engineering,,,,Pritzker School of Molecular Enginee
 ,Sociology,,Dissertation,UChicago Dissertations,Sociology
 ,South Asian Languages and Civilizations,,Dissertation,UChicago Dissertations,South Asian Languages and Civilizations
 ,Statistics,,Dissertation,UChicago Dissertations,Statistics
-Pritzker School of Medicine,,,Dissertation,UChicago Dissertations,Pritzker School of Medicine
-Pritzker School of Molecular Engineering,,,Dissertation,UChicago Dissertations,Pritzker School of Molecular Engineering
 Harris School of Public Policy Studies,,,Dissertation,UChicago Dissertations,Harris School of Public Policy Studies
 Law School,,,Dissertation,UChicago Dissertations,Law School
+Pritzker School of Medicine,,,Dissertation,UChicago Dissertations,Pritzker School of Medicine
+Pritzker School of Molecular Engineering,,,Dissertation,UChicago Dissertations,Pritzker School of Molecular Engineering

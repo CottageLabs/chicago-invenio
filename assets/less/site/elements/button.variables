@@ -4,3 +4,5 @@
 
 @searchButtonColor: @white;
 @searchButtonColorTextColor: @darkGray;
+@searchButtonColor: @primaryColor;
+@searchButtonColorTextColor: @white;

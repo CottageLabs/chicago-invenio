@@ -45,6 +45,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+file_cache = {}
 
 class StatisticsMigrator:
     """Migrates legacy download statistics to InvenioRDM OpenSearch."""
@@ -203,8 +204,14 @@ class StatisticsMigrator:
 
         file_path = os.path.join(self.files_folder, tind_id, filename)
 
+        if file_path in file_cache:
+            return file_cache[file_path]
+
         if os.path.exists(file_path):
-            return os.path.getsize(file_path)
+            file_cache[file_path] = os.path.getsize(file_path)
+            return file_cache[file_path]
+
+        file_cache[file_path] = 0
 
         return 0
 

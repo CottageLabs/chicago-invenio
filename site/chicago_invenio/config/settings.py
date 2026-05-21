@@ -99,7 +99,8 @@ APP_DEFAULT_SECURE_HEADERS = {
         ],
         'script-src': [
             "'self'", "blob:", "'wasm-unsafe-eval'", "'unsafe-inline'",  # for WASM-based workers and inline scripts
-            "cdnjs.cloudflare.com"
+            "cdnjs.cloudflare.com",
+            "https://www.googletagmanager.com"
             # Multipart file uploads use a Web Worker running `hash-wasm` to compute content checksums
             # (e.g., MD5) of uploaded parts. This requires both 'blob:' and 'wasm-unsafe-eval' enabled in `script-src`.
         ],
@@ -117,6 +118,10 @@ APP_DEFAULT_SECURE_HEADERS = {
             "https://uchicago-brand-fonts.s3.us-east-2.amazonaws.com",
             "https://cdnjs.cloudflare.com",
             "data:"
+        ],
+        "connect-src":[
+            "'self'",
+            "https://*.google-analytics.com"
         ]
     },
     'content_security_policy_report_only': False,
@@ -200,7 +205,7 @@ APP_RDM_DEPOSIT_FORM_DEFAULTS = {
     #        "link": "https://creativecommons.org/licenses/by/4.0/legalcode",
     #    }
     #],
-    # "publisher": "Chicago Invenio",
+     "publisher": "The University of Chicago",
 }
 
 APP_RDM_DEPOSIT_FORM_AUTOCOMPLETE_NAMES = 'search'  # "search_only" or "off"
@@ -281,7 +286,14 @@ if CHI_SSO_ENABLED:
 
 # Invenio-UserProfiles
 # --------------------
-USERPROFILES_READ_ONLY = False  # allow users to change profile info (name, email, etc...)
+USERPROFILES_READ_ONLY = True  # allow users to change profile info (name, email, etc...)
+
+# see https://inveniordm.docs.cern.ch/operate/customize/authentication/#local-authentication
+SECURITY_REGISTERABLE = False # do not allow the option of registering
+
+# New user creation defaults for discoverability
+ACCOUNTS_DEFAULT_USER_VISIBILITY = "public"
+ACCOUNTS_DEFAULT_EMAIL_VISIBILITY = "public"
 
 # OAI-PMH
 # =======
@@ -351,7 +363,8 @@ RDM_CUSTOM_FIELDS = [
                 error="You must agree to the distribution license before submitting.",
             ),
         },
-    ), # 908
+    ), # 908, this is a placeholder field so that the distribution license checkbox
+    # can be displayed in the submission form, it is not rendered on the landing page
 ]
 
 RDM_CUSTOM_FIELDS_UI = [
@@ -371,6 +384,7 @@ RDM_CUSTOM_FIELDS_UI = [
     MEETING_ORG_CUSTOM_FIELDS_UI,
     {
         "section": _("Distribution license"),
+        "hide_from_landing_page": True,
         "fields": [
             dict(
                 field="chicago:distribution_license",
@@ -392,7 +406,7 @@ RDM_CUSTOM_FIELDS_UI = [
     },
     # UChicago institutional fields
     {
-        "section": _("University of Chicago Information"),
+        "section": _("UChicago Information"),
         "fields": [
             dict(
                 field="chicago:division",
@@ -438,44 +452,38 @@ THEME_MATHJAX_CDN = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/te
 # Add custom identifiers
 # patent_applications = re.compile('^US\s+(?:\d{4}\/)?(?:\d{7,11})\s+[AB][12]?$')
 
-RDM_RECORDS_IDENTIFIERS_SCHEMES = {**RDM_RECORDS_IDENTIFIERS_SCHEMES,
-                                   "patent_application_number": {"label": _("Patent application number"),
-                                                                 "validator": lambda x: True},
-                                   "patent_number": {"label": _("Patent number"), "validator": lambda x: True}}
+RDM_RECORDS_IDENTIFIERS_SCHEMES = {
+    **RDM_RECORDS_IDENTIFIERS_SCHEMES,
+    "patent_application_number": {"label": _("Patent application number"),
+                                  "validator": lambda x: True},
+    "patent_number": {"label": _("Patent number"), "validator": lambda x: True}}
 
 COMMUNITIES_SHOW_BROWSE_MENU_ENTRY = True
 
 
 #### Invenio curations
-# Comment out to disable curations feature, the initial import needs to run
-# with curations disabled.
 
-CHI_ENABLE_CURATIONS = os.getenv("CHI_ENABLE_CURATIONS")
+# enable sending of notifications when something's happening in the review
+NOTIFICATIONS_BUILDERS = {
+    **NOTIFICATIONS_BUILDERS,
+    # Curation request
+    **CURATIONS_NOTIFICATIONS_BUILDERS
+}
 
-if CHI_ENABLE_CURATIONS and CHI_ENABLE_CURATIONS.lower() in ['1', 'true', 'yes']:
-    # enable sending of notifications when something's happening in the review
-     NOTIFICATIONS_BUILDERS = {
-        **NOTIFICATIONS_BUILDERS,
-        # Curation request
-        **CURATIONS_NOTIFICATIONS_BUILDERS
-     }
+# NOTE: the curation component should be added at the end
+RDM_RECORDS_SERVICE_COMPONENTS = DefaultRecordsComponents + [CurationComponent,]
 
-     # NOTE: the curation component should be added at the end
-     RDM_RECORDS_SERVICE_COMPONENTS = DefaultRecordsComponents + [
-        CurationComponent,
-     ]
+REQUESTS_PERMISSION_POLICY = CurationRDMRequestsPermissionPolicy
+RDM_PERMISSION_POLICY = ChicagoRDMRecordPermissionPolicy
+CURATIONS_MODERATION_ROLE = "record-curator"
 
-     REQUESTS_PERMISSION_POLICY = CurationRDMRequestsPermissionPolicy
-     RDM_PERMISSION_POLICY = ChicagoRDMRecordPermissionPolicy
-     CURATIONS_MODERATION_ROLE = "record-curator"
+# Auto-submit to community after curation acceptance
+# When enabled, accepting a curation request will automatically submit
+# the record to the selected community for review
+CHI_AUTO_SUBMIT_COMMUNITY_ON_CURATION = True
 
-     # Auto-submit to community after curation acceptance
-     # When enabled, accepting a curation request will automatically submit
-     # the record to the selected community for review
-     CHI_AUTO_SUBMIT_COMMUNITY_ON_CURATION = True
-
-     # Monkey-patch the CurationRequest to use our custom accept action
-     CurationRequest.available_actions["accept"] = ChicagoCurationAcceptAction
+# Monkey-patch the CurationRequest to use our custom accept action
+CurationRequest.available_actions["accept"] = ChicagoCurationAcceptAction
 
 # Enable community requirement
 RDM_COMMUNITY_REQUIRED_TO_PUBLISH = True
@@ -505,3 +513,5 @@ COMMUNITIES_SEARCH = {
 # This is done at the class level so all instances will have this field
 MetadataSchema._declared_fields['description'] = fields.String()
 setattr(MetadataSchema, 'description', fields.String())
+
+GOOGLE_ANALYTICS_ID = "GTM-MLGTQVZ3"

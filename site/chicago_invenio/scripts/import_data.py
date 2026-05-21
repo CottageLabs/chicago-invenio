@@ -39,6 +39,7 @@ from invenio_rdm_records.proxies import (
     current_rdm_records_service,
     current_record_communities_service,
 )
+from invenio_access.permissions import system_identity
 from invenio_records_resources.services.records.results import RecordItem
 from invenio_requests.proxies import current_requests_service
 from load_as_coms_colls import main as get_create_community_collection_structure, CSV
@@ -894,19 +895,19 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
         subfield_d = id_field.find('.//marc:subfield[@code="d"]', MARC_NS)
         subfield_2 = id_field.find('.//marc:subfield[@code="2"]', MARC_NS)
 
-        # TODO 024-7-2 should be parent doi?
         # Handle DOI identifiers (024$7$2="doi")
         if (id_field.get('ind1') == '7' and subfield_2 is not None and
                 subfield_2.text.strip().lower() == 'doi' and subfield_a is not None):
             doi_value = subfield_a.text.strip()
             # Validate DOI using idutils
             if idutils.is_doi(doi_value):
+                doi_value = idutils.normalize_doi(doi_value)
                 datacite_prefix = current_app.config["DATACITE_PREFIX"]
                 # Assign DOIs with our prefix as managed by DataCite
                 if doi_value.startswith(datacite_prefix):
                     pids['doi'] = {'identifier': doi_value,
                                    'provider': 'datacite',}
-                    with open('doi_mapping.txt', 'a') as f:
+                    with open('doi_mapping.csv', 'a') as f:
                         f.write(f"{record_identifier},{doi_value}\n")
                 else:
                     identifiers.append({
@@ -2091,11 +2092,12 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
                         data=invenio_data
                     )
 
-            # Publish the record
+            # Publish the record using system_identity to bypass the curation
+            # workflow. Ownership is already set by the draft creation above.
             error_record["error_stage"] = "publish"
             published = current_rdm_records_service.publish(
                 id_=draft.id,
-                identity=identity
+                identity=system_identity
             )
             
             # Check if publishing was successful

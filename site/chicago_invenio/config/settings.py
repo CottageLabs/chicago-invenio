@@ -180,7 +180,7 @@ THEME_SHOW_FRONTPAGE_INTRO_SECTION = False
 INSTANCE_THEME_FILE = './less/theme.less'
 
 # Email address for administrator emails (like file checksum alerts)
-APP_RDM_ADMIN_EMAIL_RECIPIENT = "info@invenio.uchicago.edu"
+APP_RDM_ADMIN_EMAIL_RECIPIENT = "info@knowledge.uchicago.edu"
 
 # Email configuration
 MAIL_SERVER = os.environ.get("MAIL_SERVER", "sandbox.smtp.mailtrap.io")
@@ -188,7 +188,7 @@ MAIL_PORT = int(os.environ.get("MAIL_PORT", 587))
 MAIL_USE_TLS = os.environ.get("MAIL_USE_TLS", "true").lower() == "true"
 MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
 MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
-MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", "noreply@invenio.uchicago.edu")
+MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", "noreply@knowledge.uchicago.edu")
 MAIL_SUPPRESS_SEND = os.environ.get("MAIL_SUPPRESS_SEND", "false").lower() == "true"
 
 # Default values for the deposit form
@@ -299,10 +299,10 @@ ACCOUNTS_DEFAULT_EMAIL_VISIBILITY = "public"
 # =======
 # See https://github.com/inveniosoftware/invenio-oaiserver/blob/master/invenio_oaiserver/config.py
 
-OAISERVER_ID_PREFIX = "invenio.uchicago.edu"
+OAISERVER_ID_PREFIX = "knowledge.uchicago.edu"
 """The prefix that will be applied to the generated OAI-PMH ids."""
 OAISERVER_ADMIN_EMAILS = [
-    "info@invenio.uchicago.edu",
+    "info@knowledge.uchicago.edu",
 ]
 
 # Invenio-Search

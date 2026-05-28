@@ -19,6 +19,7 @@ Where:
 """
 import shutil
 from datetime import datetime
+import csv
 
 import click
 import logging
@@ -79,6 +80,49 @@ def add_pages(resource_type, phys_text):
             return True
 
     return False
+
+
+def normalize_identifier(identifier: Optional[str]) -> Optional[str]:
+    """Normalize IDs/DOIs to make comparisons robust across common formats."""
+    if identifier is None:
+        return None
+
+    normalized = str(identifier).strip().strip('"').strip("'")
+    if not normalized:
+        return None
+
+    lowered = normalized.lower()
+    for prefix in (
+        "https://doi.org/",
+        "http://doi.org/",
+        "http://dx.doi.org/",
+        "https://dx.doi.org/",
+        "doi:",
+    ):
+        if lowered.startswith(prefix):
+            normalized = normalized[len(prefix):].strip()
+            lowered = normalized.lower()
+            break
+
+    return lowered
+
+
+def load_limit_identifiers(file_path: str) -> set:
+    """Load IDs/DOIs from newline-delimited text or CSV."""
+    identifiers = set()
+
+    with open(file_path, "r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.reader(handle)
+        for row in reader:
+            if not row:
+                continue
+            for value in row:
+                normalized = normalize_identifier(value)
+                if normalized:
+                    identifiers.add(normalized)
+
+    return identifiers
+
 
 # Functions moved back to avoid circular import
 
@@ -2056,7 +2100,8 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
                 if record_identifier is None:
                     continue
 
-                if record_identifier in limit_to_ids:
+                normalized_record_identifier = normalize_identifier(record_identifier)
+                if normalized_record_identifier in limit_to_ids:
                     process_this_record = True
                 else:
                     require_doi_in_limit = True
@@ -2078,7 +2123,8 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
 
                         if not process_this_record:
                             if require_doi_in_limit:
-                                process_this_record = record_identifier in limit_to_ids
+                                normalized_record_identifier = normalize_identifier(record_identifier)
+                                process_this_record = normalized_record_identifier in limit_to_ids
 
                         break
 
@@ -2223,16 +2269,16 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
             elif hasattr(e, 'description'):
                 error_record["error_details"]["description"] = e.description
             
-            # errors_log.append(error_record)
+            errors_log.append(error_record)
             logger.error(f"Error processing record {record_identifier} at stage {error_record['error_stage']}: {e}")
             import traceback
             tb = traceback.format_exc()
             logger.error(tb)
             error_record["error_details"]["traceback"] = tb
 
-            # append directly to the error output
-            with open("errors.json", 'w+', encoding='utf-8') as f:
-                raw = json.dumps(errors_log, ensure_ascii=False, default=str)
+            # Append one JSON object per line (NDJSON) for streaming-friendly error logs.
+            with open("errors.json", 'a', encoding='utf-8') as f:
+                raw = json.dumps(error_record, ensure_ascii=False, default=str)
                 f.write(raw)
                 f.write("\n")
 
@@ -2246,9 +2292,9 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
 @click.argument("data")
 @click.argument("file_path")
 @click.argument("restricted_path")
-@click.option("--id_list", default=None, help="newline separated file of ids to process")
+@click.option("--id_list", default=None, help="File of IDs/DOIs to process (newline text or CSV)")
 @click.option("--batch-size", default=500, help="Number of records to process in each batch")
-@click.option("--max_records", default=3000, type=int, help="Maximum number of records to process (for testing)")
+@click.option("--max-records", "--max_records", "max_records", default=3000, type=int, help="Maximum number of records to process (for testing)")
 def import_data(email: str, data: str, file_path:str, restricted_path: str, id_list:str, batch_size: int, max_records: Optional[int]):
     """Import MARCXML bibliographic data into Chicago Invenio.
 
@@ -2265,8 +2311,8 @@ def import_data(email: str, data: str, file_path:str, restricted_path: str, id_l
 
     limit_to_ids = None
     if id_list is not None:
-        with open(id_list, "r") as f:
-            limit_to_ids = [id.strip() for id in f.read().split("\n") if id != ""]
+        limit_to_ids = load_limit_identifiers(id_list)
+        logger.info(f"Using id list {id_list} ({len(limit_to_ids)} unique identifiers)")
 
     # Create application context
     app = create_app()
@@ -2298,6 +2344,10 @@ def import_data(email: str, data: str, file_path:str, restricted_path: str, id_l
         # Clear the global error log at the start of each import
         global errors_log
         errors_log = []
+
+        # Start a fresh per-run NDJSON error log.
+        with open('errors.json', 'w', encoding='utf-8') as f:
+            f.write("")
         
         # Clear the awards.txt file at the start of import
         with open('awards.txt', 'w') as f:
@@ -2323,10 +2373,16 @@ def import_data(email: str, data: str, file_path:str, restricted_path: str, id_l
                 if not batch:
                     break
 
-                # Check max_records limit
-                if max_records and total_processed >= max_records:
-                    logger.info(f"Reached maximum records limit: {max_records}")
-                    #break
+                # Enforce max_records limit and trim final batch if needed.
+                if max_records is not None:
+                    if total_processed >= max_records:
+                        logger.info(f"Reached maximum records limit: {max_records}")
+                        break
+
+                    remaining = max_records - total_processed
+                    if len(batch) > remaining:
+                        logger.info(f"Trimming batch from {len(batch)} to remaining {remaining} record(s) due to max_records={max_records}")
+                        batch = batch[:remaining]
 
                 # Process the batch
                 batch_results = process_records_batch(batch, identity, community_map, file_path, community_algorithm, limit_to_ids)

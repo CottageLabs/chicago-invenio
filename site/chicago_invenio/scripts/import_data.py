@@ -2361,16 +2361,10 @@ def import_data(email: str, data: str, file_path:str, restricted_path: str, id_l
                 if not batch:
                     break
 
-                # Enforce max_records limit and trim final batch if needed.
-                if max_records is not None:
-                    if total_processed >= max_records:
-                        logger.info(f"Reached maximum records limit: {max_records}")
-                        break
-
-                    remaining = max_records - total_processed
-                    if len(batch) > remaining:
-                        logger.info(f"Trimming batch from {len(batch)} to remaining {remaining} record(s) due to max_records={max_records}")
-                        batch = batch[:remaining]
+                # Check max_records limit
+                if max_records and total_processed >= max_records:
+                    logger.info(f"Reached maximum records limit: {max_records}")
+                    break
 
                 # Process the batch
                 batch_results = process_records_batch(batch, identity, community_map, file_path, community_algorithm, limit_to_ids)

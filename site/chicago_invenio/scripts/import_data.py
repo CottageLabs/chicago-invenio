@@ -2227,8 +2227,8 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
             logger.error(f"Error processing record {record_identifier} at stage {error_record['error_stage']}: {e}")
             import traceback
             tb = traceback.format_exc()
-            error_record["error_detials"]["traceback"] = tb
             logger.error(tb)
+            error_record["error_details"]["traceback"] = tb
 
             # append directly to the error output
             with open("errors.json", 'w+', encoding='utf-8') as f:
@@ -2248,7 +2248,7 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
 @click.argument("restricted_path")
 @click.option("--id_list", default=None, help="newline separated file of ids to process")
 @click.option("--batch-size", default=500, help="Number of records to process in each batch")
-@click.option("--max-records", default=3000, type=int, help="Maximum number of records to process (for testing)")
+@click.option("--max_records", default=3000, type=int, help="Maximum number of records to process (for testing)")
 def import_data(email: str, data: str, file_path:str, restricted_path: str, id_list:str, batch_size: int, max_records: Optional[int]):
     """Import MARCXML bibliographic data into Chicago Invenio.
 

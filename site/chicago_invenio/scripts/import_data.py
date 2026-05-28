@@ -2077,6 +2077,7 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
         record_identifier = None
         error_record = {
             "record_identifier": record_identifier,
+            "doi": None,
             "error_stage": None,
             "error_message": None,
             "error_details": None,
@@ -2091,22 +2092,18 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
                 record_identifier = control_001.text.strip()
                 error_record["record_identifier"] = record_identifier
 
-            # We want to limit processed records to only those which are provided in the limit_to_ids list.
-            # that list may contain regular ids, or dois.  If we don't find the id in the limit list, but
-            # the limit list does exist, then we need to check
-            require_doi_in_limit = False
+            # if we are given a list of record ids (not dois) then we can filter on them
             process_this_record = False
             if limit_to_ids is not None:
                 if record_identifier is None:
                     continue
-
                 normalized_record_identifier = normalize_identifier(record_identifier)
                 if normalized_record_identifier in limit_to_ids:
                     process_this_record = True
-                else:
-                    require_doi_in_limit = True
             else:
                 process_this_record = True
+            if not process_this_record:
+                continue
 
             # Convert MARC to InvenioRDM format
             invenio_data, file_information = parse_marc_record(record_elem, record_identifier)
@@ -2119,17 +2116,8 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
                 for identifier in invenio_data['metadata']['identifiers']:
                     if identifier.get('scheme') == 'doi':
                         record_identifier = identifier['identifier']
-                        error_record["record_identifier"] = record_identifier
-
-                        if not process_this_record:
-                            if require_doi_in_limit:
-                                normalized_record_identifier = normalize_identifier(record_identifier)
-                                process_this_record = normalized_record_identifier in limit_to_ids
-
+                        error_record["doi"] = record_identifier
                         break
-
-            if not process_this_record:
-                continue
 
             # Check if record root directory exists
             if invenio_data['files']['enabled'] and not os.path.exists(record_file_path):

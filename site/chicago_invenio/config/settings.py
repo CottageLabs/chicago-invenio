@@ -75,7 +75,7 @@ SECRET_KEY = os.environ.get('INVENIO_SECRET_KEY', "CHANGE_ME")
 # provided, the trusted hosts variable is set to localhost. In production it
 # should be set to the correct host and it is strongly recommended to only
 # route correct hosts to the application.
-TRUSTED_HOSTS = ['0.0.0.0', 'localhost', '127.0.0.1', 'uchicago.invenio.cottagelabs.com']
+TRUSTED_HOSTS = ['0.0.0.0', 'localhost', '127.0.0.1', 'uchicago.invenio.cottagelabs.com', "knowledge.uchicago.edu"]
 
 # Flask-SQLAlchemy
 # ================

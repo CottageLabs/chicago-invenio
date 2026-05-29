@@ -1007,31 +1007,35 @@ def parse_marc_record(record_elem, record_identifier) -> Tuple[Dict[str, Any], L
                     'scheme': 'url'
                 })
             else:
+                # this hacked version of the file doesn't try to import any files
+                continue
+
                 # All knowledge.uchicago.edu 856 fields assumed to be files that need
                 # to be imported
-                url_y = url_field.find('.//marc:subfield[@code="y"]', MARC_NS)
-                file_name = unquote(url_text.split('/')[-1])  # Extract file name from URL
-                file = {'file_name': file_name}
+                # url_y = url_field.find('.//marc:subfield[@code="y"]', MARC_NS)
+                # file_name = unquote(url_text.split('/')[-1])  # Extract file name from URL
+                # file = {'file_name': file_name}
+                #
+                # if url_y is not None:
+                #     file['description'] = url_y.text.strip()
+                #
+                # if not has_mixed_access:
+                #     file_information.append(file)
+                # else:
+                #     # Access restriction
+                #     url_e_field = url_field.find('.//marc:subfield[@code="e"]', MARC_NS)
+                #     url_e = url_e_field.text.strip().lower() if url_e_field is not None else ''
+                #
+                #     if url_e == 'public':
+                #         file_information.append(file)
+                #     else:
+                #         # Add identifier so path can be constructed
+                #         file['identifier'] = record_identifier
+                #         restricted_files.append(file)
 
-                if url_y is not None:
-                    file['description'] = url_y.text.strip()
-
-                if not has_mixed_access:
-                    file_information.append(file)
-                else:
-                    # Access restriction
-                    url_e_field = url_field.find('.//marc:subfield[@code="e"]', MARC_NS)
-                    url_e = url_e_field.text.strip().lower() if url_e_field is not None else ''
-
-                    if url_e == 'public':
-                        file_information.append(file)
-                    else:
-                        # Add identifier so path can be constructed
-                        file['identifier'] = record_identifier
-                        restricted_files.append(file)
-
-    if file_information:
-        record['files']['enabled'] = True
+    # DISABLED File Importing
+    # if file_information:
+    #     record['files']['enabled'] = True
 
     # OAI identifiers (MARC 909CO)
     oai_fields = record_elem.findall('.//marc:datafield[@tag="909"][@ind1="C"][@ind2="O"]', MARC_NS)

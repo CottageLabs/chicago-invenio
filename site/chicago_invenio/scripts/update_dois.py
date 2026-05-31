@@ -7,6 +7,7 @@ import argparse
 import csv
 import logging
 import random
+import os
 import time
 import requests
 from typing import Optional, Tuple
@@ -23,6 +24,19 @@ from invenio_rdm_records.services.pids.providers.datacite import DataCitePIDProv
 from invenio_rdm_records.utils import ChainObject
 
 logger = logging.getLogger(__name__)
+
+
+def _ensure_boolean(value):
+    """Convert string boolean values to actual booleans.
+
+    Kubernetes/environment variables often pass booleans as strings.
+    This converts 'true'/'false' (case-insensitive) to bool.
+    """
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.lower() in ("true", "1", "yes")
+    return bool(value)
 
 
 class RateLimiter:
@@ -275,6 +289,45 @@ def sync_all_dois(
         raise RuntimeError("DATACITE_ENABLED is False.")
 
     provider = DataCitePIDProvider("datacite")
+
+    # Workaround: ensure DATACITE_TEST_MODE is a boolean, not a string
+    # (Kubernetes/environment may pass it as string "false" or "true")
+    config_test_mode = current_app.config.get("DATACITE_TEST_MODE", False)
+    if isinstance(config_test_mode, str):
+        logger.warning(
+            "DATACITE_TEST_MODE is a string (%r), converting to boolean. "
+            "Recommend fixing config loading in invenio app. See chicago_invenio/config.py or invenio.cfg",
+            config_test_mode,
+        )
+        config_test_mode = _ensure_boolean(config_test_mode)
+        # Force the provider to use the corrected boolean value
+        provider.client._config_overrides["DATACITE_TEST_MODE"] = config_test_mode
+        # Clear the cached API client so it gets recreated with the corrected boolean
+        provider.client._api = None
+
+    # Diagnostic: check for DATACITE_TEST_MODE config vs actual provider state
+    actual_api_url = getattr(provider.client.api, "api_url", "")
+    is_test_api = "test.datacite.org" in actual_api_url
+    config_test_mode_bool = _ensure_boolean(config_test_mode)
+
+    if config_test_mode_bool != is_test_api:
+        logger.warning(
+            "DATACITE_TEST_MODE config mismatch: config=%s actual_api_url=%s (is_test=%s)",
+            config_test_mode_bool,
+            actual_api_url,
+            is_test_api,
+        )
+
+        # Check for env var overrides
+        env_test_mode = os.environ.get("INVENIO_DATACITE_TEST_MODE")
+        env_prefix = os.environ.get("INVENIO_DATACITE_PREFIX")
+        if env_test_mode or env_prefix:
+            logger.warning(
+                "Potential env var overrides: INVENIO_DATACITE_TEST_MODE=%s INVENIO_DATACITE_PREFIX=%s",
+                env_test_mode,
+                env_prefix,
+            )
+
     if debug_datacite_lookups:
         logger.info(
             "DataCite client context: api_url=%s username=%s prefix=%s",

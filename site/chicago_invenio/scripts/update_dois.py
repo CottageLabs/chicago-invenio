@@ -144,21 +144,32 @@ def _doi_exists_in_datacite(provider: DataCitePIDProvider, doi: str) -> bool:
 
 
 def _iter_record_ids(batch_size: int):
+    if batch_size <= 0:
+        raise ValueError(f"batch_size must be > 0, got {batch_size}")
+
     last_id = None
     while True:
-        query = (
-            RDMRecord.model_cls.query.with_entities(RDMRecord.model_cls.id)
-            .order_by(RDMRecord.model_cls.id)
-            .limit(batch_size)
-        )
+        query = RDMRecord.model_cls.query.with_entities(RDMRecord.model_cls.id)
         if last_id is not None:
             query = query.filter(RDMRecord.model_cls.id > last_id)
+        query = query.order_by(RDMRecord.model_cls.id).limit(batch_size)
         rows = query.all()
         if not rows:
             break
         for row in rows:
             yield row[0]
-        last_id = rows[-1][0]
+
+        next_last_id = rows[-1][0]
+        if last_id is not None and next_last_id <= last_id:
+            logger.error(
+                "Record-id iterator cursor did not advance: last_id=%s next_last_id=%s batch_size=%s",
+                last_id,
+                next_last_id,
+                batch_size,
+            )
+            raise RuntimeError("Record-id iterator cursor did not advance.")
+
+        last_id = next_last_id
 
 
 def sync_all_dois(

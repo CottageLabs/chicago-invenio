@@ -8,6 +8,7 @@ import csv
 import logging
 import random
 import time
+import requests
 from typing import Optional, Tuple
 from urllib.parse import quote
 
@@ -135,12 +136,95 @@ def _record_landing_url(
     return f"{site_ui_url}/records/{record_identifier}"
 
 
-def _doi_exists_in_datacite(provider: DataCitePIDProvider, doi: str) -> bool:
+def _doi_exists_in_datacite(
+    provider: DataCitePIDProvider,
+    doi: str,
+    *,
+    debug_lookups: bool = False,
+) -> bool:
+    api_url = getattr(provider.client.api, "api_url", "<unknown>")
+    if debug_lookups:
+        logger.info("[doi-check] lookup DOI=%s via %s", doi, api_url)
+
     try:
-        provider.client.api.get_doi(doi)
+        datacite_url = provider.client.api.get_doi(doi)
+        if debug_lookups:
+            logger.info(
+                "[doi-check] found DOI=%s resolved_url=%s",
+                doi,
+                datacite_url,
+            )
         return True
-    except DataCiteNotFoundError:
+    except DataCiteNotFoundError as e:
+        if debug_lookups:
+            logger.warning(
+                "[doi-check] NOT FOUND DOI=%s via %s (%s)",
+                doi,
+                api_url,
+                str(e),
+            )
         return False
+
+
+def _probe_doi(provider: DataCitePIDProvider, doi: str) -> None:
+    api_url = getattr(provider.client.api, "api_url", "<unknown>")
+    normalized = normalize_doi(doi) if is_doi(doi) else doi
+    encoded = quote(normalized, safe="")
+
+    logger.info(
+        "[doi-probe] input=%s normalized=%s api_url=%s",
+        doi,
+        normalized,
+        api_url,
+    )
+
+    try:
+        datacite_url = provider.client.api.get_doi(normalized)
+        logger.info(
+            "[doi-probe] authenticated DataCite lookup FOUND normalized=%s url=%s",
+            normalized,
+            datacite_url,
+        )
+    except DataCiteError as e:
+        logger.warning(
+            "[doi-probe] authenticated DataCite lookup FAILED normalized=%s error_type=%s error=%s",
+            normalized,
+            type(e).__name__,
+            str(e),
+        )
+
+    public_api_url = f"https://api.datacite.org/dois/{encoded}"
+    try:
+        resp = requests.get(public_api_url, timeout=15)
+        body_excerpt = resp.text[:300].replace("\n", " ")
+        logger.info(
+            "[doi-probe] public DataCite lookup status=%s url=%s body_excerpt=%s",
+            resp.status_code,
+            public_api_url,
+            body_excerpt,
+        )
+    except Exception as e:
+        logger.warning(
+            "[doi-probe] public DataCite lookup FAILED url=%s error=%s",
+            public_api_url,
+            str(e),
+        )
+
+    doi_org_url = f"https://doi.org/{encoded}"
+    try:
+        resp = requests.get(doi_org_url, allow_redirects=False, timeout=15)
+        logger.info(
+            "[doi-probe] doi.org status=%s location=%s url=%s",
+            resp.status_code,
+            resp.headers.get("Location"),
+            doi_org_url,
+        )
+    except Exception as e:
+        logger.warning(
+            "[doi-probe] doi.org check FAILED url=%s error=%s",
+            doi_org_url,
+            str(e),
+        )
 
 
 def _iter_record_ids(batch_size: int):
@@ -182,6 +266,8 @@ def sync_all_dois(
     output_csv: Optional[str] = None,
     throttle_seconds: float = 0.5,
     max_retries: int = 3,
+    debug_datacite_lookups: bool = False,
+    probe_dois: Optional[list[str]] = None,
 ) -> dict:
     if not has_app_context():
         raise RuntimeError("No Flask application context found.")
@@ -189,6 +275,18 @@ def sync_all_dois(
         raise RuntimeError("DATACITE_ENABLED is False.")
 
     provider = DataCitePIDProvider("datacite")
+    if debug_datacite_lookups:
+        logger.info(
+            "DataCite client context: api_url=%s username=%s prefix=%s",
+            getattr(provider.client.api, "api_url", "<unknown>"),
+            getattr(provider.client.api, "username", "<unknown>"),
+            getattr(provider.client.api, "prefix", "<unknown>"),
+        )
+
+    if probe_dois:
+        for probe_doi in probe_dois:
+            _probe_doi(provider, probe_doi)
+
     stats = {
         "scanned": 0,
         "without_doi": 0,
@@ -244,6 +342,7 @@ def sync_all_dois(
                     _doi_exists_in_datacite,
                     provider,
                     doi,
+                    debug_lookups=debug_datacite_lookups,
                 )
                 if dry_run:
                     action = "update" if exists_remotely else "register"
@@ -268,6 +367,11 @@ def sync_all_dois(
                             stats["updated"] += 1
                             doi_operations.append((doi, record_url, "record"))
                     else:
+                        if debug_datacite_lookups and doi_pid is not None:
+                            logger.warning(
+                                "[doi-check] local PID exists but remote lookup returned not found; DOI=%s",
+                                doi,
+                            )
                         if doi_pid is not None:
                             ok = provider.register(doi_pid, record=record, url=record_url)
                         else:
@@ -306,6 +410,7 @@ def sync_all_dois(
                 _doi_exists_in_datacite,
                 provider,
                 parent_doi,
+                debug_lookups=debug_datacite_lookups,
             )
             if dry_run:
                 action = "update" if parent_exists_remotely else "register"
@@ -337,6 +442,11 @@ def sync_all_dois(
                         stats["parents_updated"] += 1
                         doi_operations.append((parent_doi, parent_url, "parent"))
                 else:
+                    if debug_datacite_lookups and parent_doi_pid is not None:
+                        logger.warning(
+                            "[doi-check] local parent PID exists but remote lookup returned not found; DOI=%s",
+                            parent_doi,
+                        )
                     if parent_doi_pid is not None:
                         ok = provider.register(
                             parent_doi_pid,
@@ -419,6 +529,20 @@ def _parse_args() -> argparse.Namespace:
         default=3,
         help="Maximum retry attempts on DataCite errors (default: 3).",
     )
+    parser.add_argument(
+        "--debug-datacite-lookups",
+        action="store_true",
+        help="Log detailed DataCite DOI lookup behavior.",
+    )
+    parser.add_argument(
+        "--probe-doi",
+        action="append",
+        default=[],
+        help=(
+            "Probe a DOI before sync using authenticated DataCite lookup, public "
+            "DataCite API, and doi.org. Repeat flag to probe multiple DOIs."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -434,6 +558,8 @@ def main() -> None:
         url_template=args.url_template,
         throttle_seconds=args.throttle_seconds,
         max_retries=args.max_retries,
+        debug_datacite_lookups=args.debug_datacite_lookups,
+        probe_dois=args.probe_doi,
     )
 
 

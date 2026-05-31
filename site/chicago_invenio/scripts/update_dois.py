@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 """Synchronize DOIs between InvenioRDM and DataCite with rate limiting."""
+
 from __future__ import annotations
-import argparse, csv, logging, random, time
+
+import argparse
+import csv
+import logging
+import random
+import time
 from typing import Optional, Tuple
 from urllib.parse import quote
-from idutils.normalizers import normalize_doi
-from idutils.validators import is_doi
+
 from datacite.errors import DataCiteError, DataCiteNotFoundError
 from flask import current_app, has_app_context
+from idutils.normalizers import normalize_doi
+from idutils.validators import is_doi
 from invenio_db import db
 from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_rdm_records.records.api import RDMRecord
@@ -19,6 +26,7 @@ logger = logging.getLogger(__name__)
 
 class RateLimiter:
     """Manages request throttling and exponential backoff."""
+
     def __init__(self, throttle_seconds: float = 0.5, max_retries: int = 3):
         self.throttle_seconds = throttle_seconds
         self.max_retries = max_retries
@@ -65,7 +73,10 @@ class RateLimiter:
         if last_exception:
             raise last_exception
 
-def _extract_record_doi(record: RDMRecord, provider: DataCitePIDProvider) -> Tuple[Optional[str], Optional[object]]:
+
+def _extract_record_doi(
+    record: RDMRecord, provider: DataCitePIDProvider
+) -> Tuple[Optional[str], Optional[object]]:
     record_pid = getattr(record, "pid", None)
     if record_pid and record_pid.pid_value and is_doi(record_pid.pid_value):
         return normalize_doi(record_pid.pid_value), record_pid
@@ -80,7 +91,10 @@ def _extract_record_doi(record: RDMRecord, provider: DataCitePIDProvider) -> Tup
             return doi_value, None
     return None, None
 
-def _extract_parent_doi(record: RDMRecord, provider: DataCitePIDProvider) -> Tuple[Optional[str], Optional[object]]:
+
+def _extract_parent_doi(
+    record: RDMRecord, provider: DataCitePIDProvider
+) -> Tuple[Optional[str], Optional[object]]:
     parent_doi_entry = (record.parent.get("pids") or {}).get("doi") or {}
     parent_doi = parent_doi_entry.get("identifier")
     if not parent_doi or not is_doi(parent_doi):
@@ -92,21 +106,34 @@ def _extract_parent_doi(record: RDMRecord, provider: DataCitePIDProvider) -> Tup
     except PIDDoesNotExistError:
         return parent_doi, None
 
+
 def _parent_pid_payload_and_landing_record(record: RDMRecord):
     latest_record = record
     if not latest_record.versions.is_latest:
         latest = RDMRecord.get_latest_published_by_parent(latest_record.parent)
         latest_record = latest or latest_record
-    return ChainObject(latest_record.parent, latest_record,
-        aliases={"_parent": latest_record.parent, "_child": latest_record}), latest_record
+    payload = ChainObject(
+        latest_record.parent,
+        latest_record,
+        aliases={"_parent": latest_record.parent, "_child": latest_record},
+    )
+    return payload, latest_record
 
-def _record_landing_url(record: RDMRecord, doi: str, url_template: Optional[str] = None) -> str:
+
+def _record_landing_url(
+    record: RDMRecord, doi: str, url_template: Optional[str] = None
+) -> str:
     site_ui_url = (current_app.config.get("SITE_UI_URL") or "").rstrip("/")
     record_identifier = record.get("id") or doi
     record_identifier = quote(str(record_identifier), safe="")
     if url_template:
-        return url_template.format(site_ui_url=site_ui_url, record_id=record_identifier, doi=doi)
+        return url_template.format(
+            site_ui_url=site_ui_url,
+            record_id=record_identifier,
+            doi=doi,
+        )
     return f"{site_ui_url}/records/{record_identifier}"
+
 
 def _doi_exists_in_datacite(provider: DataCitePIDProvider, doi: str) -> bool:
     try:
@@ -115,11 +142,15 @@ def _doi_exists_in_datacite(provider: DataCitePIDProvider, doi: str) -> bool:
     except DataCiteNotFoundError:
         return False
 
+
 def _iter_record_ids(batch_size: int):
     last_id = None
     while True:
-        query = (RDMRecord.model_cls.query.with_entities(RDMRecord.model_cls.id)
-            .order_by(RDMRecord.model_cls.id).limit(batch_size))
+        query = (
+            RDMRecord.model_cls.query.with_entities(RDMRecord.model_cls.id)
+            .order_by(RDMRecord.model_cls.id)
+            .limit(batch_size)
+        )
         if last_id is not None:
             query = query.filter(RDMRecord.model_cls.id > last_id)
         rows = query.all()
@@ -129,20 +160,42 @@ def _iter_record_ids(batch_size: int):
             yield row[0]
         last_id = rows[-1][0]
 
-def sync_all_dois(*, batch_size: int = 100, limit: Optional[int] = None, dry_run: bool = False,
-    url_template: Optional[str] = None, progress_every: Optional[int] = None, output_csv: Optional[str] = None,
-    throttle_seconds: float = 0.5, max_retries: int = 3) -> dict:
+
+def sync_all_dois(
+    *,
+    batch_size: int = 100,
+    limit: Optional[int] = None,
+    dry_run: bool = False,
+    url_template: Optional[str] = None,
+    progress_every: Optional[int] = None,
+    output_csv: Optional[str] = None,
+    throttle_seconds: float = 0.5,
+    max_retries: int = 3,
+) -> dict:
     if not has_app_context():
         raise RuntimeError("No Flask application context found.")
     if not current_app.config.get("DATACITE_ENABLED", False):
         raise RuntimeError("DATACITE_ENABLED is False.")
 
     provider = DataCitePIDProvider("datacite")
-    stats = {"scanned": 0, "without_doi": 0, "skipped_prefix_mismatch": 0, "registered": 0, "updated": 0,
-        "parents_without_doi": 0, "parents_skipped_prefix_mismatch": 0, "parents_registered": 0, 
-        "parents_updated": 0, "errors": 0}
+    stats = {
+        "scanned": 0,
+        "without_doi": 0,
+        "skipped_prefix_mismatch": 0,
+        "registered": 0,
+        "updated": 0,
+        "parents_without_doi": 0,
+        "parents_skipped_prefix_mismatch": 0,
+        "parents_registered": 0,
+        "parents_updated": 0,
+        "errors": 0,
+    }
     rate_limiter = RateLimiter(throttle_seconds=throttle_seconds, max_retries=max_retries)
-    logger.info("Initialized rate limiter: throttle=%.1fs, max_retries=%d", throttle_seconds, max_retries)
+    logger.info(
+        "Initialized rate limiter: throttle=%.1fs, max_retries=%d",
+        throttle_seconds,
+        max_retries,
+    )
 
     doi_operations = []
     datacite_prefix = (current_app.config.get("DATACITE_PREFIX") or "").strip()
@@ -156,9 +209,15 @@ def sync_all_dois(*, batch_size: int = 100, limit: Optional[int] = None, dry_run
             break
         stats["scanned"] += 1
         if progress_every and stats["scanned"] % progress_every == 0:
-            logger.info("Progress: scanned=%s reg=%s upd=%s par_reg=%s par_upd=%s err=%s",
-                stats["scanned"], stats["registered"], stats["updated"],
-                stats["parents_registered"], stats["parents_updated"], stats["errors"])
+            logger.info(
+                "Progress: scanned=%s reg=%s upd=%s par_reg=%s par_upd=%s err=%s",
+                stats["scanned"],
+                stats["registered"],
+                stats["updated"],
+                stats["parents_registered"],
+                stats["parents_updated"],
+                stats["errors"],
+            )
 
         try:
             record = RDMRecord.get_record(record_id)
@@ -170,10 +229,16 @@ def sync_all_dois(*, batch_size: int = 100, limit: Optional[int] = None, dry_run
                 stats["skipped_prefix_mismatch"] += 1
             else:
                 record_url = _record_landing_url(record, doi, url_template=url_template)
-                exists_remotely = rate_limiter.retry_with_backoff(_doi_exists_in_datacite, provider, doi)
+                exists_remotely = rate_limiter.retry_with_backoff(
+                    _doi_exists_in_datacite,
+                    provider,
+                    doi,
+                )
                 if dry_run:
                     action = "update" if exists_remotely else "register"
-                    logger.info("[dry-run] %s record DOI %s -> %s", action, doi, record_url)
+                    logger.info(
+                        "[dry-run] %s record DOI %s -> %s", action, doi, record_url
+                    )
                     doi_operations.append((doi, record_url, "record"))
                 else:
                     if exists_remotely:
@@ -182,7 +247,11 @@ def sync_all_dois(*, batch_size: int = 100, limit: Optional[int] = None, dry_run
                         else:
                             doc = provider.serializer.dump_obj(record)
                             doc["event"] = "publish"
-                            provider.client.api.update_doi(doi=doi, metadata=doc, url=record_url)
+                            provider.client.api.update_doi(
+                                doi=doi,
+                                metadata=doc,
+                                url=record_url,
+                            )
                             ok = True
                         if ok:
                             stats["updated"] += 1
@@ -192,7 +261,11 @@ def sync_all_dois(*, batch_size: int = 100, limit: Optional[int] = None, dry_run
                             ok = provider.register(doi_pid, record=record, url=record_url)
                         else:
                             doc = provider.serializer.dump_obj(record)
-                            provider.client.api.public_doi(metadata=doc, url=record_url, doi=doi)
+                            provider.client.api.public_doi(
+                                metadata=doc,
+                                url=record_url,
+                                doi=doi,
+                            )
                             ok = True
                         if ok:
                             stats["registered"] += 1
@@ -210,31 +283,62 @@ def sync_all_dois(*, batch_size: int = 100, limit: Optional[int] = None, dry_run
             if not parent_doi.startswith(managed_prefix):
                 stats["parents_skipped_prefix_mismatch"] += 1
                 continue
-            parent_record_payload, parent_landing_record = _parent_pid_payload_and_landing_record(record)
-            parent_url = _record_landing_url(parent_landing_record, parent_doi, url_template=url_template)
-            parent_exists_remotely = rate_limiter.retry_with_backoff(_doi_exists_in_datacite, provider, parent_doi)
+            parent_record_payload, parent_landing_record = (
+                _parent_pid_payload_and_landing_record(record)
+            )
+            parent_url = _record_landing_url(
+                parent_landing_record,
+                parent_doi,
+                url_template=url_template,
+            )
+            parent_exists_remotely = rate_limiter.retry_with_backoff(
+                _doi_exists_in_datacite,
+                provider,
+                parent_doi,
+            )
             if dry_run:
                 action = "update" if parent_exists_remotely else "register"
-                logger.info("[dry-run] %s parent DOI %s -> %s", action, parent_doi, parent_url)
+                logger.info(
+                    "[dry-run] %s parent DOI %s -> %s",
+                    action,
+                    parent_doi,
+                    parent_url,
+                )
                 doi_operations.append((parent_doi, parent_url, "parent"))
             else:
                 if parent_exists_remotely:
                     if parent_doi_pid is not None:
-                        ok = provider.update(parent_doi_pid, record=parent_record_payload, url=parent_url)
+                        ok = provider.update(
+                            parent_doi_pid,
+                            record=parent_record_payload,
+                            url=parent_url,
+                        )
                     else:
                         doc = provider.serializer.dump_obj(parent_record_payload)
                         doc["event"] = "publish"
-                        provider.client.api.update_doi(doi=parent_doi, metadata=doc, url=parent_url)
+                        provider.client.api.update_doi(
+                            doi=parent_doi,
+                            metadata=doc,
+                            url=parent_url,
+                        )
                         ok = True
                     if ok:
                         stats["parents_updated"] += 1
                         doi_operations.append((parent_doi, parent_url, "parent"))
                 else:
                     if parent_doi_pid is not None:
-                        ok = provider.register(parent_doi_pid, record=parent_record_payload, url=parent_url)
+                        ok = provider.register(
+                            parent_doi_pid,
+                            record=parent_record_payload,
+                            url=parent_url,
+                        )
                     else:
                         doc = provider.serializer.dump_obj(parent_record_payload)
-                        provider.client.api.public_doi(metadata=doc, url=parent_url, doi=parent_doi)
+                        provider.client.api.public_doi(
+                            metadata=doc,
+                            url=parent_url,
+                            doi=parent_doi,
+                        )
                         ok = True
                     if ok:
                         stats["parents_registered"] += 1
@@ -246,10 +350,20 @@ def sync_all_dois(*, batch_size: int = 100, limit: Optional[int] = None, dry_run
             stats["errors"] += 1
             logger.exception("Failed DOI sync for DB record %s", record_id)
 
-    logger.info("Done: scanned=%s without_doi=%s skip_prefix=%s reg=%s upd=%s par_without=%s "
-        "par_skip_prefix=%s par_reg=%s par_upd=%s errors=%s", stats["scanned"], stats["without_doi"],
-        stats["skipped_prefix_mismatch"], stats["registered"], stats["updated"], stats["parents_without_doi"],
-        stats["parents_skipped_prefix_mismatch"], stats["parents_registered"], stats["parents_updated"], stats["errors"])
+    logger.info(
+        "Done: scanned=%s without_doi=%s skip_prefix=%s reg=%s upd=%s par_without=%s "
+        "par_skip_prefix=%s par_reg=%s par_upd=%s errors=%s",
+        stats["scanned"],
+        stats["without_doi"],
+        stats["skipped_prefix_mismatch"],
+        stats["registered"],
+        stats["updated"],
+        stats["parents_without_doi"],
+        stats["parents_skipped_prefix_mismatch"],
+        stats["parents_registered"],
+        stats["parents_updated"],
+        stats["errors"],
+    )
 
     if output_csv and doi_operations:
         try:
@@ -264,26 +378,53 @@ def sync_all_dois(*, batch_size: int = 100, limit: Optional[int] = None, dry_run
 
     return stats
 
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Sync record DOIs with DataCite")
     parser.add_argument("--batch-size", type=int, default=100)
     parser.add_argument("--limit", type=int, default=None)
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--progress-every", type=int, default=None, help="Log progress every N records scanned.")
-    parser.add_argument("--output-csv", default=None, help="Path to write CSV of DOI operations.")
+    parser.add_argument(
+        "--progress-every",
+        type=int,
+        default=None,
+        help="Log progress every N records scanned.",
+    )
+    parser.add_argument(
+        "--output-csv",
+        default=None,
+        help="Path to write CSV of DOI operations.",
+    )
     parser.add_argument("--url-template", default=None, help="Optional URL template.")
-    parser.add_argument("--throttle-seconds", type=float, default=0.5,
-        help="Minimum seconds between DataCite requests (default: 0.5).")
-    parser.add_argument("--max-retries", type=int, default=3,
-        help="Maximum retry attempts on DataCite errors (default: 3).")
+    parser.add_argument(
+        "--throttle-seconds",
+        type=float,
+        default=0.5,
+        help="Minimum seconds between DataCite requests (default: 0.5).",
+    )
+    parser.add_argument(
+        "--max-retries",
+        type=int,
+        default=3,
+        help="Maximum retry attempts on DataCite errors (default: 3).",
+    )
     return parser.parse_args()
+
 
 def main() -> None:
     args = _parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    sync_all_dois(batch_size=args.batch_size, limit=args.limit, dry_run=args.dry_run,
-        progress_every=args.progress_every, output_csv=args.output_csv, url_template=args.url_template,
-        throttle_seconds=args.throttle_seconds, max_retries=args.max_retries)
+    sync_all_dois(
+        batch_size=args.batch_size,
+        limit=args.limit,
+        dry_run=args.dry_run,
+        progress_every=args.progress_every,
+        output_csv=args.output_csv,
+        url_template=args.url_template,
+        throttle_seconds=args.throttle_seconds,
+        max_retries=args.max_retries,
+    )
+
 
 if __name__ == "__main__":
     main()

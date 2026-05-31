@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import datetime
 import logging
 import random
 import os
@@ -359,6 +360,9 @@ def sync_all_dois(
         max_retries,
     )
 
+    start_time = datetime.datetime.now()
+    logger.info("Starting DOI sync at %s", start_time.isoformat())
+
     doi_operations = []
     datacite_prefix = (current_app.config.get("DATACITE_PREFIX") or "").strip()
     if not datacite_prefix:
@@ -371,8 +375,10 @@ def sync_all_dois(
             break
         stats["scanned"] += 1
         if progress_every and stats["scanned"] % progress_every == 0:
+            elapsed = (datetime.datetime.now() - start_time).total_seconds()
             logger.info(
-                "Progress: scanned=%s reg=%s upd=%s par_reg=%s par_upd=%s err=%s",
+                "Progress (elapsed=%.1fs): scanned=%s reg=%s upd=%s par_reg=%s par_upd=%s err=%s",
+                elapsed,
                 stats["scanned"],
                 stats["registered"],
                 stats["updated"],
@@ -402,7 +408,7 @@ def sync_all_dois(
                     logger.info(
                         "[dry-run] %s record DOI %s -> %s", action, doi, record_url
                     )
-                    doi_operations.append((doi, record_url, "record"))
+                    doi_operations.append((doi, record_url, "record", action))
                 else:
                     if exists_remotely:
                         if doi_pid is not None:
@@ -418,7 +424,7 @@ def sync_all_dois(
                             ok = True
                         if ok:
                             stats["updated"] += 1
-                            doi_operations.append((doi, record_url, "record"))
+                            doi_operations.append((doi, record_url, "record", "update"))
                     else:
                         if debug_datacite_lookups and doi_pid is not None:
                             logger.warning(
@@ -437,7 +443,7 @@ def sync_all_dois(
                             ok = True
                         if ok:
                             stats["registered"] += 1
-                            doi_operations.append((doi, record_url, "record"))
+                            doi_operations.append((doi, record_url, "record", "register"))
 
             parent_id = getattr(record.parent, "id", None)
             if parent_id is not None and parent_id in processed_parent_ids:
@@ -473,7 +479,7 @@ def sync_all_dois(
                     parent_doi,
                     parent_url,
                 )
-                doi_operations.append((parent_doi, parent_url, "parent"))
+                doi_operations.append((parent_doi, parent_url, "parent", action))
             else:
                 if parent_exists_remotely:
                     if parent_doi_pid is not None:
@@ -493,7 +499,7 @@ def sync_all_dois(
                         ok = True
                     if ok:
                         stats["parents_updated"] += 1
-                        doi_operations.append((parent_doi, parent_url, "parent"))
+                        doi_operations.append((parent_doi, parent_url, "parent", "update"))
                 else:
                     if debug_datacite_lookups and parent_doi_pid is not None:
                         logger.warning(
@@ -516,7 +522,7 @@ def sync_all_dois(
                         ok = True
                     if ok:
                         stats["parents_registered"] += 1
-                        doi_operations.append((parent_doi, parent_url, "parent"))
+                        doi_operations.append((parent_doi, parent_url, "parent", "register"))
             if not dry_run:
                 db.session.commit()
         except (DataCiteError, PIDDoesNotExistError, Exception):
@@ -524,9 +530,16 @@ def sync_all_dois(
             stats["errors"] += 1
             logger.exception("Failed DOI sync for DB record %s", record_id)
 
+    end_time = datetime.datetime.now()
+    elapsed_seconds = (end_time - start_time).total_seconds()
+    elapsed_str = str(datetime.timedelta(seconds=int(elapsed_seconds)))
+
     logger.info(
-        "Done: scanned=%s without_doi=%s skip_prefix=%s reg=%s upd=%s par_without=%s "
+        "Done (started=%s ended=%s elapsed=%s): scanned=%s without_doi=%s skip_prefix=%s reg=%s upd=%s par_without=%s "
         "par_skip_prefix=%s par_reg=%s par_upd=%s errors=%s",
+        start_time.isoformat(),
+        end_time.isoformat(),
+        elapsed_str,
         stats["scanned"],
         stats["without_doi"],
         stats["skipped_prefix_mismatch"],
@@ -543,9 +556,9 @@ def sync_all_dois(
         try:
             with open(output_csv, "w", newline="", encoding="utf-8") as f:
                 writer = csv.writer(f)
-                writer.writerow(["DOI", "URL", "Type"])
-                for doi, url, doi_type in doi_operations:
-                    writer.writerow([doi, url, doi_type])
+                writer.writerow(["DOI", "URL", "Type", "Action"])
+                for doi, url, doi_type, action in doi_operations:
+                    writer.writerow([doi, url, doi_type, action])
             logger.info("Wrote %d DOI operations to %s", len(doi_operations), output_csv)
         except Exception as e:
             logger.error("Failed to write CSV output: %s", e)

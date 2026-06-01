@@ -27,6 +27,9 @@ from invenio_rdm_records.contrib.thesis import (
     THESIS_NAMESPACE,
 )
 from invenio_rdm_records.contrib.meeting import MEETING_NAMESPACE
+from invenio_rdm_records.services.pids.providers.datacite import DataCitePIDProvider
+from invenio_rdm_records.services.pids.providers.external import ExternalPIDProvider
+from invenio_rdm_records.services.pids.providers.oai import OAIPIDProvider
 from invenio_rdm_records.services.schemas.files import MetadataSchema
 from invenio_vocabularies.services.custom_fields import VocabularyCF
 from marshmallow import fields, validate
@@ -51,6 +54,7 @@ from chicago_invenio.config.chicago_record_permission_policy import ChicagoRDMRe
 
 from chicago_invenio.config.meeting_cf_organizer import MEETING_ORG_CUSTOM_FIELDS, MEETING_ORG_CUSTOM_FIELDS_UI
 from chicago_invenio.config.related_item_cf import RelatedItem
+from chicago_invenio.config.datacite_serializer import ChicagoSafeDataCite43JSONSerializer
 
 
 def _(x):  # needed to avoid start time failure with lazy strings
@@ -228,6 +232,17 @@ DATACITE_PASSWORD = ""
 DATACITE_PREFIX = "10.70047"
 DATACITE_TEST_MODE = True
 DATACITE_DATACENTER_SYMBOL = ""
+
+# Use a defensive serializer that normalizes invalid contributor payloads
+# before sending updates/registrations to DataCite.
+RDM_PERSISTENT_IDENTIFIER_PROVIDERS = [
+    DataCitePIDProvider("datacite", serializer=ChicagoSafeDataCite43JSONSerializer()),
+    ExternalPIDProvider("external"),
+    OAIPIDProvider("oai"),
+]
+RDM_PARENT_PERSISTENT_IDENTIFIER_PROVIDERS = [
+    DataCitePIDProvider("datacite", serializer=ChicagoSafeDataCite43JSONSerializer())
+]
 
 # Authentication - Invenio-Accounts and Invenio-OAuthclient
 # =========================================================

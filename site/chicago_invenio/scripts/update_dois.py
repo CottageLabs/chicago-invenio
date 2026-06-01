@@ -271,6 +271,15 @@ def _iter_record_ids(batch_size: int):
         last_id = next_last_id
 
 
+def _get_configured_datacite_provider() -> DataCitePIDProvider:
+    """Return the configured DataCite provider, falling back to default."""
+    providers = current_app.config.get("RDM_PERSISTENT_IDENTIFIER_PROVIDERS", [])
+    for provider in providers:
+        if isinstance(provider, DataCitePIDProvider) and provider.name == "datacite":
+            return provider
+    return DataCitePIDProvider("datacite")
+
+
 def sync_all_dois(
     *,
     batch_size: int = 100,
@@ -289,7 +298,7 @@ def sync_all_dois(
     if not current_app.config.get("DATACITE_ENABLED", False):
         raise RuntimeError("DATACITE_ENABLED is False.")
 
-    provider = DataCitePIDProvider("datacite")
+    provider = _get_configured_datacite_provider()
 
     # Workaround: ensure DATACITE_TEST_MODE is a boolean, not a string
     # (Kubernetes/environment may pass it as string "false" or "true")

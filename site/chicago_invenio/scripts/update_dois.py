@@ -18,8 +18,10 @@ from datacite.errors import DataCiteError, DataCiteNotFoundError
 from flask import current_app, has_app_context
 from idutils.normalizers import normalize_doi
 from idutils.validators import is_doi
+from invenio_access.permissions import system_identity
 from invenio_db import db
 from invenio_pidstore.errors import PIDDoesNotExistError
+from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_rdm_records.records.api import RDMRecord
 from invenio_rdm_records.services.pids.providers.datacite import DataCitePIDProvider
 from invenio_rdm_records.utils import ChainObject
@@ -389,6 +391,7 @@ def sync_all_dois(
 
         try:
             record = RDMRecord.get_record(record_id)
+            enriched = current_rdm_records_service.read(system_identity, record["id"]).to_dict()
             doi, doi_pid = _extract_record_doi(record, provider)
             if not doi:
                 stats["without_doi"] += 1
@@ -412,9 +415,9 @@ def sync_all_dois(
                 else:
                     if exists_remotely:
                         if doi_pid is not None:
-                            ok = provider.update(doi_pid, record=record, url=record_url)
+                            ok = provider.update(doi_pid, record=enriched, url=record_url)
                         else:
-                            doc = provider.serializer.dump_obj(record)
+                            doc = provider.serializer.dump_obj(enriched)
                             doc["event"] = "publish"
                             provider.client.api.update_doi(
                                 doi=doi,
@@ -432,9 +435,9 @@ def sync_all_dois(
                                 doi,
                             )
                         if doi_pid is not None:
-                            ok = provider.register(doi_pid, record=record, url=record_url)
+                            ok = provider.register(doi_pid, record=enriched, url=record_url)
                         else:
-                            doc = provider.serializer.dump_obj(record)
+                            doc = provider.serializer.dump_obj(enriched)
                             provider.client.api.public_doi(
                                 metadata=doc,
                                 url=record_url,
@@ -485,11 +488,11 @@ def sync_all_dois(
                     if parent_doi_pid is not None:
                         ok = provider.update(
                             parent_doi_pid,
-                            record=parent_record_payload,
+                            record=enriched,
                             url=parent_url,
                         )
                     else:
-                        doc = provider.serializer.dump_obj(parent_record_payload)
+                        doc = provider.serializer.dump_obj(enriched)
                         doc["event"] = "publish"
                         provider.client.api.update_doi(
                             doi=parent_doi,
@@ -509,11 +512,11 @@ def sync_all_dois(
                     if parent_doi_pid is not None:
                         ok = provider.register(
                             parent_doi_pid,
-                            record=parent_record_payload,
+                            record=enriched,
                             url=parent_url,
                         )
                     else:
-                        doc = provider.serializer.dump_obj(parent_record_payload)
+                        doc = provider.serializer.dump_obj(enriched)
                         provider.client.api.public_doi(
                             metadata=doc,
                             url=parent_url,

@@ -11,6 +11,9 @@ from datetime import datetime
 from invenio_i18n import lazy_gettext as _
 from invenio_oauthclient.views.client import auto_redirect_login
 from invenio_rdm_records.config import RDM_RECORDS_IDENTIFIERS_SCHEMES
+from invenio_rdm_records.resources.serializers import DataCite43JSONSerializer
+from invenio_rdm_records.services.pids import providers
+from chicago_invenio.config.datacite_providers import RestrictedDataCitePIDProvider
 from invenio_rdm_records.contrib.imprint import (
     IMPRINT_CUSTOM_FIELDS,
     IMPRINT_CUSTOM_FIELDS_UI,
@@ -228,6 +231,36 @@ DATACITE_PASSWORD = ""
 DATACITE_PREFIX = "10.70047"
 DATACITE_TEST_MODE = True
 DATACITE_DATACENTER_SYMBOL = ""
+
+# Override default provider list to use RestrictedDataCitePIDProvider so that
+# DOIs are minted and registered for restricted records (registered in DataCite
+# as "hidden" / non-findable rather than being skipped entirely).
+RDM_PERSISTENT_IDENTIFIER_PROVIDERS = [
+    RestrictedDataCitePIDProvider(
+        "datacite",
+        client=providers.DataCiteClient("datacite", config_prefix="DATACITE"),
+        label=_("DOI"),
+    ),
+    providers.ExternalPIDProvider(
+        "external",
+        "doi",
+        validators=[providers.BlockedPrefixes(config_names=["DATACITE_PREFIX"])],
+        label=_("DOI"),
+    ),
+    providers.OAIPIDProvider(
+        "oai",
+        label=_("OAI ID"),
+    ),
+]
+
+RDM_PARENT_PERSISTENT_IDENTIFIER_PROVIDERS = [
+    RestrictedDataCitePIDProvider(
+        "datacite",
+        client=providers.DataCiteClient("datacite", config_prefix="DATACITE"),
+        serializer=DataCite43JSONSerializer(schema_context={"is_parent": True}),
+        label=_("Concept DOI"),
+    ),
+]
 
 # Authentication - Invenio-Accounts and Invenio-OAuthclient
 # =========================================================

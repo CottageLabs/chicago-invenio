@@ -23,7 +23,7 @@ from invenio_db import db
 from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_rdm_records.proxies import current_rdm_records_service
 from invenio_rdm_records.records.api import RDMRecord
-from invenio_rdm_records.services.pids.providers.datacite import DataCitePIDProvider
+from chicago_invenio.config.datacite_providers import RestrictedDataCitePIDProvider as DataCitePIDProvider
 from invenio_rdm_records.utils import ChainObject
 
 logger = logging.getLogger(__name__)

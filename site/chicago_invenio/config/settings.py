@@ -515,3 +515,7 @@ MetadataSchema._declared_fields['description'] = fields.String()
 setattr(MetadataSchema, 'description', fields.String())
 
 GOOGLE_ANALYTICS_ID = "GTM-MLGTQVZ3"
+
+APP_RDM_PAGES = {
+    "distribution-license": "/distribution-license",
+}

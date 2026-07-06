@@ -1,0 +1,5 @@
+# list of pages:
+- url: /distribution-license
+  title: UChicago Knowledge Deposit Agreement
+  description: UChicago Knowledge is an institutional repository managed by University of Chicago Library.
+  template: distribution_license.html

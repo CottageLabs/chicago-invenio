@@ -14,6 +14,10 @@ import {FileUploaderAreaWithDescriptions} from "../../chicago_invenio/FileUpload
 import { parametrize } from "react-overridable";
 import { curationComponentOverrides } from "@js/invenio_curations/requests";
 import { ChicagoDepositBox } from "../../chicago_invenio/deposit/ChicagoDepositBox";
+import { DatesFieldNoEmptyValue } from "../../chicago_invenio/deposit/DatesFieldNoEmptyValue";
+import { IdentifiersFieldWithHelpText } from "../../chicago_invenio/deposit/IdentifiersFieldWithHelpText";
+import { RelatedWorksFieldNoEmptyValue } from "../../chicago_invenio/deposit/RelatedWorksFieldNoEmptyValue";
+import { ReferencesFieldNoEmptyValue } from "../../chicago_invenio/deposit/ReferencesFieldNoEmptyValue";
 
 const ConditionalCustomFieldsWithRules = parametrize(ConditionalCustomFields, {
     sectionRules: {
@@ -41,4 +45,8 @@ export const overriddenComponents = {
     "InvenioAppRdm.Deposit.ResourceTypeField.container": ResourceTypeField,
     "InvenioAppRdm.Deposit.CustomFields.container": ConditionalCustomFieldsWithRules,
     "ReactInvenioDeposit.FileUploader.FileUploaderArea.container": FileUploaderAreaWithDescriptions,
+    "InvenioAppRdm.Deposit.DateField.container": DatesFieldNoEmptyValue,
+    "InvenioAppRdm.Deposit.IdentifiersField.container": IdentifiersFieldWithHelpText,
+    "InvenioAppRdm.Deposit.RelatedWorksField.container": RelatedWorksFieldNoEmptyValue,
+    "InvenioAppRdm.Deposit.ReferencesField.container": ReferencesFieldNoEmptyValue,
 }

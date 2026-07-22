@@ -87,3 +87,4 @@ celerybeat-schedule
 .DS_Store
 
 tmp/
+temp/

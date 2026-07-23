@@ -432,7 +432,7 @@ RDM_CUSTOM_FIELDS_UI = [
                         "description": (
                             "University of Chicago standard distribution license."
                         ),
-                        "link": "https://knowledge.uchicago.edu/pages/?page=Distribution+License&ln=en",
+                        "link": "https://knowledge.uchicago.edu/distribution-license",
                     },
                 ),
             ),

@@ -14,11 +14,12 @@ the record to the community after curation is approved.
 from flask import current_app
 from flask_principal import Identity
 from invenio_access.permissions import system_identity
-from invenio_access.utils import get_identity
 from invenio_curations.requests.curation import CurationAcceptAction
 from invenio_records_resources.services.uow import UnitOfWork
 from invenio_requests import current_events_service, current_requests_service
 from invenio_requests.customizations.event_types import CommentEventType
+
+from chicago_invenio.scripts.utils import get_identity_with_roles
 
 
 class ChicagoCurationAcceptAction(CurationAcceptAction):
@@ -56,31 +57,31 @@ class ChicagoCurationAcceptAction(CurationAcceptAction):
         if not request_id:
             return
 
-        # Read the request to check its status
+        # Read the request to check its status and find who created it
         try:
-            request_record = current_requests_service.read(
-                system_identity, request_id
-            )
-            status = request_record.data.get("status")
+            sub_request = current_requests_service.record_cls.get_record(request_id)
         except Exception:
             # If we can't read the request, don't proceed
             return
 
         # Only submit if the request is in "created" state (not yet submitted)
-        if status != "created":
+        if sub_request.status != "created":
             return
 
-        # Get the record owner's identity to submit on their behalf
-        owner = draft.parent.access.owner.resolve()
-        if not owner:
-            # Fall back to system identity if owner cannot be resolved
-            owner_identity = system_identity
+        # Submit as the community-submission request's own creator. Only they
+        # (or an admin) are permitted to submit it - the record owner isn't
+        # necessarily the same person, and using the owner's identity here
+        # was raising a PermissionDeniedError whenever the two differed.
+        submitter = sub_request.created_by.resolve()
+        if not submitter:
+            # Fall back to system identity if the creator cannot be resolved
+            submitter_identity = system_identity
         else:
-            owner_identity = get_identity(owner)
+            submitter_identity = get_identity_with_roles(submitter)
 
-        # Submit the community submission request as the record owner
+        # Submit the community submission request as its original creator
         current_requests_service.execute_action(
-            owner_identity,
+            submitter_identity,
             request_id,
             "submit",
             uow=uow,

@@ -11,6 +11,9 @@ from datetime import datetime
 from invenio_i18n import lazy_gettext as _
 from invenio_oauthclient.views.client import auto_redirect_login
 from invenio_rdm_records.config import RDM_RECORDS_IDENTIFIERS_SCHEMES
+from invenio_rdm_records.resources.serializers import DataCite43JSONSerializer
+from invenio_rdm_records.services.pids import providers
+from chicago_invenio.config.datacite_providers import RestrictedDataCitePIDProvider
 from invenio_rdm_records.contrib.imprint import (
     IMPRINT_CUSTOM_FIELDS,
     IMPRINT_CUSTOM_FIELDS_UI,
@@ -75,7 +78,7 @@ SECRET_KEY = os.environ.get('INVENIO_SECRET_KEY', "CHANGE_ME")
 # provided, the trusted hosts variable is set to localhost. In production it
 # should be set to the correct host and it is strongly recommended to only
 # route correct hosts to the application.
-TRUSTED_HOSTS = ['0.0.0.0', 'localhost', '127.0.0.1', 'uchicago.invenio.cottagelabs.com']
+TRUSTED_HOSTS = ['0.0.0.0', 'localhost', '127.0.0.1', 'uchicago.invenio.cottagelabs.com', "knowledge.uchicago.edu"]
 
 # Flask-SQLAlchemy
 # ================
@@ -180,15 +183,16 @@ THEME_SHOW_FRONTPAGE_INTRO_SECTION = False
 INSTANCE_THEME_FILE = './less/theme.less'
 
 # Email address for administrator emails (like file checksum alerts)
-APP_RDM_ADMIN_EMAIL_RECIPIENT = "info@invenio.uchicago.edu"
+APP_RDM_ADMIN_EMAIL_RECIPIENT = "info@knowledge.uchicago.edu"
 
 # Email configuration
 MAIL_SERVER = os.environ.get("MAIL_SERVER", "sandbox.smtp.mailtrap.io")
 MAIL_PORT = int(os.environ.get("MAIL_PORT", 587))
 MAIL_USE_TLS = os.environ.get("MAIL_USE_TLS", "true").lower() == "true"
+MAIL_USE_SSL = os.environ.get("MAIL_USE_SSL", "true").lower() == "true"
 MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
 MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
-MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", "noreply@invenio.uchicago.edu")
+MAIL_DEFAULT_SENDER = os.environ.get("MAIL_DEFAULT_SENDER", "noreply@knowledge.uchicago.edu")
 MAIL_SUPPRESS_SEND = os.environ.get("MAIL_SUPPRESS_SEND", "false").lower() == "true"
 
 # Default values for the deposit form
@@ -228,6 +232,36 @@ DATACITE_PASSWORD = ""
 DATACITE_PREFIX = "10.70047"
 DATACITE_TEST_MODE = True
 DATACITE_DATACENTER_SYMBOL = ""
+
+# Override default provider list to use RestrictedDataCitePIDProvider so that
+# DOIs are minted and registered for restricted records (registered in DataCite
+# as "hidden" / non-findable rather than being skipped entirely).
+RDM_PERSISTENT_IDENTIFIER_PROVIDERS = [
+    RestrictedDataCitePIDProvider(
+        "datacite",
+        client=providers.DataCiteClient("datacite", config_prefix="DATACITE"),
+        label=_("DOI"),
+    ),
+    providers.ExternalPIDProvider(
+        "external",
+        "doi",
+        validators=[providers.BlockedPrefixes(config_names=["DATACITE_PREFIX"])],
+        label=_("DOI"),
+    ),
+    providers.OAIPIDProvider(
+        "oai",
+        label=_("OAI ID"),
+    ),
+]
+
+RDM_PARENT_PERSISTENT_IDENTIFIER_PROVIDERS = [
+    RestrictedDataCitePIDProvider(
+        "datacite",
+        client=providers.DataCiteClient("datacite", config_prefix="DATACITE"),
+        serializer=DataCite43JSONSerializer(schema_context={"is_parent": True}),
+        label=_("Concept DOI"),
+    ),
+]
 
 # Authentication - Invenio-Accounts and Invenio-OAuthclient
 # =========================================================
@@ -299,10 +333,10 @@ ACCOUNTS_DEFAULT_EMAIL_VISIBILITY = "public"
 # =======
 # See https://github.com/inveniosoftware/invenio-oaiserver/blob/master/invenio_oaiserver/config.py
 
-OAISERVER_ID_PREFIX = "invenio.uchicago.edu"
+OAISERVER_ID_PREFIX = "knowledge.uchicago.edu"
 """The prefix that will be applied to the generated OAI-PMH ids."""
 OAISERVER_ADMIN_EMAILS = [
-    "info@invenio.uchicago.edu",
+    "info@knowledge.uchicago.edu",
 ]
 
 # Invenio-Search
@@ -398,7 +432,7 @@ RDM_CUSTOM_FIELDS_UI = [
                         "description": (
                             "University of Chicago standard distribution license."
                         ),
-                        "link": "https://knowledge.uchicago.edu/pages/?page=Distribution+License&ln=en",
+                        "link": "https://knowledge.uchicago.edu/distribution-license",
                     },
                 ),
             ),

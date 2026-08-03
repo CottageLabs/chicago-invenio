@@ -61,7 +61,7 @@ export const DistributionLicense = ({ fieldPath, label, description, icon, licen
         </div>
       )}
       <div style={{ paddingTop: "0.9rem" }}>
-        Further information: <a href="/distribution-license">UChicago Knowledge Deposit Agreement</a>
+        Further information: <a href="/distribution-license" target="_blank" rel="noopener noreferrer">UChicago Knowledge Deposit Agreement</a>
       </div>
     </Form.Field>
   );

@@ -17,7 +17,16 @@ separately if the file was part of a DOI's registered content.
 
 Usage:
     pipenv run invenio shell site/chicago_invenio/scripts/delete_file_from_record.py \\
-        <record_id> <file_key> [options]
+        -- -- <record_id> <file_key> [options]
+
+    The double `--` is required whenever any option (--yes, --reason) is
+    passed: `invenio shell` runs this via IPython, and both Click (invenio
+    shell's own option parser) and IPython (which re-parses its argv looking
+    for its own flags) each consume one `--` as their "stop parsing options"
+    marker before the rest reaches this script's argparse. With only
+    positional args (no options) this isn't needed, e.g. a dry run can be:
+        pipenv run invenio shell site/chicago_invenio/scripts/delete_file_from_record.py \\
+            <record_id> <file_key>
 
     By default this is a dry run: it resolves the record and file, prints
     what would be deleted, and makes no changes. Pass --yes to actually
@@ -35,6 +44,7 @@ import sys
 from datetime import datetime, timezone
 
 from invenio_access.permissions import system_identity
+from invenio_db import db
 from invenio_pidstore.errors import PIDDoesNotExistError
 from invenio_rdm_records.proxies import current_rdm_records_service as records_service
 from invenio_rdm_records.records.api import RDMRecord
@@ -82,7 +92,25 @@ def delete_file(record_id: str, file_key: str, *, confirm: bool, reason: str | N
         datetime.now(timezone.utc).isoformat(),
     )
 
-    records_service.files.delete_file(system_identity, record_id, file_key)
+    # Publishing locks a record's file bucket at the storage layer
+    # (invenio_files_rest.models.ObjectVersion.create checks bucket.locked
+    # directly) - this is separate from and unaffected by the
+    # can_delete_files permission bypass above, so it must be unlocked here
+    # too or FileService.delete_file raises BucketLockedError.
+    bucket_was_locked = record.files.bucket.locked
+    if bucket_was_locked:
+        logger.info("Bucket is locked (published record) - unlocking for this operation.")
+        record.files.unlock()
+        db.session.commit()
+
+    try:
+        records_service.files.delete_file(system_identity, record_id, file_key)
+    finally:
+        if bucket_was_locked:
+            relocked_record = RDMRecord.pid.resolve(record_id, registered_only=False)
+            relocked_record.files.lock()
+            db.session.commit()
+            logger.info("Bucket re-locked.")
 
     # The file service's own commit doesn't pass an indexer, so the search
     # index won't reflect the change unless we do this explicitly.

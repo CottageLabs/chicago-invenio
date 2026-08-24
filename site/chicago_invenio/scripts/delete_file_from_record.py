@@ -32,6 +32,11 @@ Usage:
     what would be deleted, and makes no changes. Pass --yes to actually
     delete.
 
+    If the deleted file was the record's last remaining file, the record is
+    also flipped to metadata-only (files.enabled = False) - a record with a
+    since-deleted file but files still "enabled" would otherwise look broken
+    (files section present, but nothing in it).
+
 Options:
     --yes            Actually perform the deletion (default: dry run only).
     --reason TEXT     Why this file is being removed. Strongly recommended -
@@ -43,6 +48,7 @@ import logging
 import sys
 from datetime import datetime, timezone
 
+from flask import current_app
 from invenio_access.permissions import system_identity
 from invenio_db import db
 from invenio_pidstore.errors import PIDDoesNotExistError
@@ -71,13 +77,15 @@ def delete_file(record_id: str, file_key: str, *, confirm: bool, reason: str | N
 
     file_record = record.files[file_key]
     file_obj = file_record.file
+    is_last_file = len(record.files) == 1
     logger.info(
-        "Target file: record=%s key=%r size=%s checksum=%s mimetype=%s",
+        "Target file: record=%s key=%r size=%s checksum=%s mimetype=%s%s",
         record_id,
         file_key,
         getattr(file_obj, "size", "?"),
         getattr(file_obj, "checksum", "?"),
         getattr(file_record, "mimetype", "?"),
+        " (last remaining file - record would become metadata-only)" if is_last_file else "",
     )
 
     if not confirm:
@@ -112,17 +120,35 @@ def delete_file(record_id: str, file_key: str, *, confirm: bool, reason: str | N
             db.session.commit()
             logger.info("Bucket re-locked.")
 
-    # The file service's own commit doesn't pass an indexer, so the search
-    # index won't reflect the change unless we do this explicitly.
     updated_record = RDMRecord.pid.resolve(record_id, registered_only=False)
+
+    became_metadata_only = False
+    if is_last_file and len(updated_record.files) == 0:
+        if current_app.config.get("RDM_ALLOW_METADATA_ONLY_RECORDS", True):
+            updated_record.files.enabled = False
+            updated_record.commit()
+            db.session.commit()
+            became_metadata_only = True
+            logger.info("Record %s had no files left - flipped to metadata-only.", record_id)
+        else:
+            logger.warning(
+                "Record %s has no files left, but RDM_ALLOW_METADATA_ONLY_RECORDS is "
+                "False on this instance - leaving files.enabled as-is.",
+                record_id,
+            )
+
+    # The file service's own commit doesn't pass an indexer, so the search
+    # index won't reflect the change unless we do this explicitly. This also
+    # covers the files.enabled flip above, since it's the same record.
     records_service.indexer.index(updated_record)
 
     logger.info(
-        "Deleted and reindexed. record=%s key=%r checksum=%s reason=%s",
+        "Deleted and reindexed. record=%s key=%r checksum=%s reason=%s metadata_only=%s",
         record_id,
         file_key,
         getattr(file_obj, "checksum", "?"),
         reason or "(none given)",
+        became_metadata_only,
     )
 
 

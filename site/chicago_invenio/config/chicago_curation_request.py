@@ -19,8 +19,6 @@ from invenio_records_resources.services.uow import UnitOfWork
 from invenio_requests import current_events_service, current_requests_service
 from invenio_requests.customizations.event_types import CommentEventType
 
-from chicago_invenio.scripts.utils import get_identity_with_roles
-
 
 class ChicagoCurationAcceptAction(CurationAcceptAction):
     """Accept curation and auto-submit to community.
@@ -57,7 +55,7 @@ class ChicagoCurationAcceptAction(CurationAcceptAction):
         if not request_id:
             return
 
-        # Read the request to check its status and find who created it
+        # Read the request to check its status
         try:
             sub_request = current_requests_service.record_cls.get_record(request_id)
         except Exception:
@@ -68,28 +66,17 @@ class ChicagoCurationAcceptAction(CurationAcceptAction):
         if sub_request.status != "created":
             return
 
-        # Submit as the community-submission request's own creator. Only they
-        # (or an admin) are permitted to submit it - the record owner isn't
-        # necessarily the same person, and using the owner's identity here
-        # was raising a PermissionDeniedError whenever the two differed.
-        submitter = sub_request.created_by.resolve()
-        if not submitter:
-            # Fall back to system identity if the creator cannot be resolved
-            submitter_identity = system_identity
-        else:
-            submitter_identity = get_identity_with_roles(submitter)
-
-        # Submit the community submission request as its original creator
+        # This is an automated, system-triggered transition
         current_requests_service.execute_action(
-            submitter_identity,
+            system_identity,
             request_id,
             "submit",
             uow=uow,
         )
 
-        # Add explanatory comment using the curator's identity
+        # Add explanatory comment as the system too, for the same reason.
         current_events_service.create(
-            identity,
+            system_identity,
             request_id,
             {
                 "payload": {

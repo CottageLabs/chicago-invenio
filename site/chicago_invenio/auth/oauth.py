@@ -7,6 +7,8 @@ import requests
 from flask import current_app
 from flask_oauthlib.client import OAuthRemoteApp
 
+from chicago_invenio.auth.campus import CHI_SSO_METHOD
+
 
 def info_handler(
     remote_app: OAuthRemoteApp, response_data: dict[str, Any]
@@ -77,6 +79,6 @@ def info_handler(
             ),
         ),
         external_id=data["sub"],
-        external_method="chi_sso",
+        external_method=CHI_SSO_METHOD,
         active=True,
     )

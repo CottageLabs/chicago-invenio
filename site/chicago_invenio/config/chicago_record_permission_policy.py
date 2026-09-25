@@ -11,6 +11,9 @@
 This policy prevents non-admin users from editing published records
 or creating new versions. Only administrators and community curators
 can perform these actions.
+
+It also makes restricted files on public records readable by campus
+users (those who logged in via CNET SSO).
 """
 
 from invenio_curations.services.permissions import CurationRDMRecordPermissionPolicy
@@ -18,10 +21,15 @@ from invenio_rdm_records.services.generators import (
     AccessGrant,
     IfDeleted,
     IfExternalDOIRecord,
+    IfRestricted,
     RecordCommunitiesAction,
     SecretLinks,
 )
 from invenio_records_permissions.generators import Disable, IfConfig, SystemProcess
+from invenio_records_resources.services.files.generators import IfTransferType
+from invenio_records_resources.services.files.transfer import LOCAL_TRANSFER_TYPE
+
+from chicago_invenio.auth.campus import CampusUser
 
 
 class ChicagoRDMRecordPermissionPolicy(CurationRDMRecordPermissionPolicy):
@@ -61,4 +69,20 @@ class ChicagoRDMRecordPermissionPolicy(CurationRDMRecordPermissionPolicy):
             then_=can_curate_no_owner,
             else_=[IfExternalDOIRecord(then_=[SystemProcess()], else_=can_curate_no_owner)],
         ),
+    ]
+
+    # Restricted files on a public record are campus-only: CNET SSO users can read
+    # them. Records restricted as a whole stay admin/owner-only.
+    can_read_files = CurationRDMRecordPermissionPolicy.can_read_files + [
+        IfRestricted(
+            "record",
+            then_=[],
+            else_=[IfRestricted("files", then_=[CampusUser()], else_=[])],
+        ),
+    ]
+
+    # The parent's can_get_content_files refers to its own can_read_files list,
+    # so the campus rule has to be added here as well for downloads to work.
+    can_get_content_files = CurationRDMRecordPermissionPolicy.can_get_content_files + [
+        IfTransferType(LOCAL_TRANSFER_TYPE, can_read_files),
     ]

@@ -273,7 +273,7 @@ RDM_PARENT_PERSISTENT_IDENTIFIER_PROVIDERS = [
 # ----------------
 # See https://github.com/inveniosoftware/invenio-accounts/blob/master/invenio_accounts/config.py
 ACCOUNTS_LOCAL_LOGIN_ENABLED = True  # enable local login
-SECURITY_REGISTERABLE = True  # local login: allow users to register
+#SECURITY_REGISTERABLE = True  # local login: allow users to register
 SECURITY_RECOVERABLE = True  # local login: allow users to reset the password
 SECURITY_CHANGEABLE = True  # local login: allow users to change psw
 SECURITY_CONFIRMABLE = True  # local login: users can confirm e-mail address

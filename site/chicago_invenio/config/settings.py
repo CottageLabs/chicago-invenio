@@ -183,7 +183,9 @@ THEME_SHOW_FRONTPAGE_INTRO_SECTION = False
 INSTANCE_THEME_FILE = './less/theme.less'
 
 # Email address for administrator emails (like file checksum alerts)
-APP_RDM_ADMIN_EMAIL_RECIPIENT = "info@knowledge.uchicago.edu"
+APP_RDM_ADMIN_EMAIL_RECIPIENT = os.environ.get(
+    "APP_RDM_ADMIN_EMAIL_RECIPIENT", "sysadmin+chicago@cottagelabs.com"
+)
 
 # Email configuration
 MAIL_SERVER = os.environ.get("MAIL_SERVER", "sandbox.smtp.mailtrap.io")

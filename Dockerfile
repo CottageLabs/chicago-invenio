@@ -27,6 +27,8 @@ RUN PIPENV_VENV_IN_PROJECT=1 pipenv install --deploy
 
 COPY static ./static
 COPY assets ./assets
+COPY docker/download-fonts.sh ./docker/download-fonts.sh
+RUN bash ./docker/download-fonts.sh ./assets
 
 ENV PATH="/opt/invenio/src/.venv/bin:${PATH}"
 RUN cp -r ./static/. ${INVENIO_INSTANCE_PATH}/static/ && \

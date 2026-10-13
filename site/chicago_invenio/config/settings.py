@@ -183,7 +183,9 @@ THEME_SHOW_FRONTPAGE_INTRO_SECTION = False
 INSTANCE_THEME_FILE = './less/theme.less'
 
 # Email address for administrator emails (like file checksum alerts)
-APP_RDM_ADMIN_EMAIL_RECIPIENT = "info@knowledge.uchicago.edu"
+APP_RDM_ADMIN_EMAIL_RECIPIENT = os.environ.get(
+    "APP_RDM_ADMIN_EMAIL_RECIPIENT", "sysadmin+chicago@cottagelabs.com"
+)
 
 # Email configuration
 MAIL_SERVER = os.environ.get("MAIL_SERVER", "sandbox.smtp.mailtrap.io")
@@ -271,7 +273,7 @@ RDM_PARENT_PERSISTENT_IDENTIFIER_PROVIDERS = [
 # ----------------
 # See https://github.com/inveniosoftware/invenio-accounts/blob/master/invenio_accounts/config.py
 ACCOUNTS_LOCAL_LOGIN_ENABLED = True  # enable local login
-SECURITY_REGISTERABLE = True  # local login: allow users to register
+#SECURITY_REGISTERABLE = True  # local login: allow users to register
 SECURITY_RECOVERABLE = True  # local login: allow users to reset the password
 SECURITY_CHANGEABLE = True  # local login: allow users to change psw
 SECURITY_CONFIRMABLE = True  # local login: users can confirm e-mail address

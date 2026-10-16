@@ -1,3 +1,24 @@
+// UChicago Sans Serif, self-hosted so the font CSS is part of the main bundle
+// instead of a chain of render-blocking @imports from lib.uchicago.edu and S3.
+// Paths are relative to this file; webpack bundles the files into /static/dist.
+.uchicago-sans-serif(@file, @weight, @style) {
+    @font-face {
+        font-family: "UChicagoSansSerif";
+        font-style: @style;
+        font-weight: @weight;
+        font-display: swap;
+        src: url("../../../fonts/uchicago-sans-serif/UChicagoSansSerif-@{file}.woff2") format("woff2");
+    }
+}
+.uchicago-sans-serif(Light, 300, normal);
+.uchicago-sans-serif(LightItalic, 300, italic);
+.uchicago-sans-serif(Regular, 400, normal);
+.uchicago-sans-serif(RegularItalic, 400, italic);
+.uchicago-sans-serif(SemiBold, 600, normal);
+.uchicago-sans-serif(SemiBoldItalic, 600, italic);
+.uchicago-sans-serif(Bold, 700, normal);
+.uchicago-sans-serif(BoldItalic, 700, italic);
+
 .outer-navbar {
     position: relative;
     height: 100%;

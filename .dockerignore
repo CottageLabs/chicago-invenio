@@ -25,6 +25,7 @@ docker-services.yml
 # Dev tooling
 Makefile
 *.sh
+!docker/download-fonts.sh
 *.txt
 
 # Docs

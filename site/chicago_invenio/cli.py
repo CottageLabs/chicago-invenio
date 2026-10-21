@@ -82,6 +82,8 @@ def fake_chicago_record(row):
     division, department, center, resource_type = (v.strip() for v in row[:4])
 
     data = create_fake_record()
+    # The stock funder isn't in Chicago's funders vocabulary
+    data["metadata"]["funding"] = [{"funder": {"id": "021nxhr62"}}]
     if resource_type:
         data["metadata"]["resource_type"] = {"id": RESOURCE_TYPE_MAP[resource_type]}
 

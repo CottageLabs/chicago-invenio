@@ -10,6 +10,7 @@
 Importing this module (via the ``flask.commands`` entry point) also replaces
 ``invenio rdm-records demo records``. The stock command publishes records
 without a community, which fails with RDM_COMMUNITY_REQUIRED_TO_PUBLISH.
+Like the stock command, the records are created by Celery tasks.
 """
 
 import csv
@@ -18,19 +19,18 @@ import random
 import click
 from flask import current_app
 from flask.cli import with_appcontext
-from invenio_access.permissions import system_identity, system_process
+from invenio_access.permissions import system_process
 from invenio_accounts.proxies import current_datastore
-from invenio_curations.proxies import current_curations_service
 from invenio_db import db
 from invenio_rdm_records import cli as rdm_cli
 from invenio_rdm_records.fixtures.demo import create_fake_record
-from invenio_rdm_records.fixtures.tasks import _add_file_to_draft
-from invenio_rdm_records.proxies import current_rdm_records
-from invenio_rdm_records.requests import CommunitySubmission
 from invenio_rdm_records.utils import get_or_create_user
-from invenio_requests import current_requests_service
 
 from chicago_invenio.scripts.utils import get_identity_with_roles, slugify
+from chicago_invenio.tasks import (
+    create_demo_draft_in_review,
+    create_demo_published_record,
+)
 
 COMMUNITY_OWNER_EMAIL = "community@demo.org"
 RECORD_CURATOR_EMAIL = "curator@demo.org"
@@ -101,46 +101,6 @@ def fake_chicago_record(row):
     return data, create_file
 
 
-def create_draft(identity, data, create_file):
-    """Create a draft, with a file if the instance requires one."""
-    service = current_rdm_records.records_service
-    draft = service.create(identity, data)
-    if create_file:
-        _add_file_to_draft(service.draft_files, draft.id, "file.txt", identity)
-    return draft
-
-
-def create_published_record(identity, data, create_file, community_id):
-    """Publish a record owned by the demo user and include it in a community."""
-    draft = create_draft(identity, data, create_file)
-    # System skips the curation and community-required checks on publish
-    record = current_rdm_records.records_service.publish(system_identity, draft.id)
-    current_rdm_records.record_communities_service.add(
-        system_identity,
-        record.id,
-        {"communities": [{"id": community_id, "require_review": False}]},
-    )
-
-
-def create_draft_in_review(identity, data, create_file, community_id, actions):
-    """Create a draft with a curation request, as the deposit form would.
-
-    ``actions`` are then run on the curation request as the system. Accepting
-    it also submits the community request (see ChicagoCurationAcceptAction).
-    """
-    draft = create_draft(identity, data, create_file)
-    current_rdm_records.records_service.review.update(
-        identity,
-        draft.id,
-        {"type": CommunitySubmission.type_id, "receiver": {"community": community_id}},
-    )
-    curation = current_curations_service.create(
-        identity, {"topic": {"record": draft.id}}
-    )
-    for action in actions:
-        current_requests_service.execute_action(system_identity, curation.id, action)
-
-
 @click.command("records")
 @click.option(
     "-u",
@@ -182,39 +142,28 @@ def demo_records(user_email, n_records, n_in_review):
     rows = [row for row in read_csv_rows() if row[4].strip() in community_map]
     if not rows:
         raise click.ClickException("No communities were loaded.")
-    identity = get_identity_with_roles(depositor)
-    failures = 0
 
-    click.secho(f"Creating {n_records} published records...", fg="green")
+    click.secho(f"Submitting {n_records} published record tasks...", fg="green")
     for _ in range(n_records):
         row = random.choice(rows)
         data, create_file = fake_chicago_record(row)
-        try:
-            create_published_record(
-                identity, data, create_file, community_map[row[4].strip()]
-            )
-        except Exception as e:
-            failures += 1
-            click.secho(f"Failed to create record for {row[4]}: {e!r}", fg="red")
+        create_demo_published_record.delay(
+            depositor.id, data, create_file, community_map[row[4].strip()]
+        )
 
-    click.secho(f"Creating {n_in_review} drafts in review...", fg="green")
+    click.secho(f"Submitting {n_in_review} draft in review tasks...", fg="green")
     for i in range(n_in_review):
         row = random.choice(rows)
         data, create_file = fake_chicago_record(row)
-        try:
-            create_draft_in_review(
-                identity,
-                data,
-                create_file,
-                community_map[row[4].strip()],
-                REVIEW_STAGES[i % len(REVIEW_STAGES)],
-            )
-        except Exception as e:
-            failures += 1
-            click.secho(f"Failed to create draft for {row[4]}: {e!r}", fg="red")
+        create_demo_draft_in_review.delay(
+            depositor.id,
+            data,
+            create_file,
+            community_map[row[4].strip()],
+            REVIEW_STAGES[i % len(REVIEW_STAGES)],
+        )
 
-    colour = "yellow" if failures else "green"
-    click.secho(f"Demo records created ({failures} failures).", fg=colour)
+    click.secho("Demo records tasks submitted...", fg="green")
 
 
 # Replace the stock subcommand, and the bare `demo` fallback which invokes

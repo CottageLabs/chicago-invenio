@@ -57,6 +57,9 @@ unless `--no-demo-data` is given) is replaced with a Chicago version that:
 - leaves drafts at each curation stage: awaiting curation, under review,
   and curation accepted (awaiting community review)
 
+As with the stock demo, the records are created by Celery tasks, so they
+appear once a worker (e.g. `invenio-cli run`) has processed them.
+
 Demo users have the password `123456`. To change the numbers, run:
 
 ```console

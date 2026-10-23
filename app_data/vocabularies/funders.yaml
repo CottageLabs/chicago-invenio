@@ -382,3 +382,8 @@
   name: Australian Government
   title:
     en: Australian Government
+- country: US
+  id: niss
+  name: National Institute of Social Sciences
+  title:
+    en: National Institute of Social Sciences

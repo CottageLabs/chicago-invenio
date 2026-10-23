@@ -189,20 +189,32 @@
     cs: Jiné
 # These are custom roles
 - id: advisor
+  props:
+    datacite: Supervisor
   title:
     en: Advisor
 - id: committeemember
+  props:
+    datacite: Other
   title:
     en: Committee member
 - id: interviewee
+  props:
+    datacite: Other
   title:
     en: Interviewee
 - id: inventor
+  props:
+    datacite: Other
   title:
     en: Inventor
 - id: patent_applicant
+  props:
+    datacite: Other
   title:
     en: Patent applicant
 - id: patent_assignee
+  props:
+    datacite: Other
   title:
     en: Patent assignee

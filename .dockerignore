@@ -1,2 +1,32 @@
-# Ignore local virtualenv (if present)
+# Version control
+.git/
+.gitignore
+
+# Python
 .venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs and temp
+*.log
+tmp/
+temp/
+
+# Data / import files not needed in image
+imports/
+celerybeat-schedule
+
+# Docker / orchestration files
+docker-compose*.yml
+docker-services.yml
+
+# Dev tooling
+Makefile
+*.sh
+*.txt
+
+# Docs
+README.md
+doc.txt

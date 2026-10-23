@@ -14,7 +14,6 @@ the record to the community after curation is approved.
 from flask import current_app
 from flask_principal import Identity
 from invenio_access.permissions import system_identity
-from invenio_access.utils import get_identity
 from invenio_curations.requests.curation import CurationAcceptAction
 from invenio_records_resources.services.uow import UnitOfWork
 from invenio_requests import current_events_service, current_requests_service
@@ -58,37 +57,26 @@ class ChicagoCurationAcceptAction(CurationAcceptAction):
 
         # Read the request to check its status
         try:
-            request_record = current_requests_service.read(
-                system_identity, request_id
-            )
-            status = request_record.data.get("status")
+            sub_request = current_requests_service.record_cls.get_record(request_id)
         except Exception:
             # If we can't read the request, don't proceed
             return
 
         # Only submit if the request is in "created" state (not yet submitted)
-        if status != "created":
+        if sub_request.status != "created":
             return
 
-        # Get the record owner's identity to submit on their behalf
-        owner = draft.parent.access.owner.resolve()
-        if not owner:
-            # Fall back to system identity if owner cannot be resolved
-            owner_identity = system_identity
-        else:
-            owner_identity = get_identity(owner)
-
-        # Submit the community submission request as the record owner
+        # This is an automated, system-triggered transition
         current_requests_service.execute_action(
-            owner_identity,
+            system_identity,
             request_id,
             "submit",
             uow=uow,
         )
 
-        # Add explanatory comment using the curator's identity
+        # Add explanatory comment as the system too, for the same reason.
         current_events_service.create(
-            identity,
+            system_identity,
             request_id,
             {
                 "payload": {

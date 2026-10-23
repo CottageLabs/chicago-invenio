@@ -88,5 +88,7 @@
     cs: Stáhnuto
 # Custom additional date types
 - id: patent-filed
+  props:
+    datacite: Other
   title:
     en: Patent filed

@@ -48,8 +48,12 @@
     cs: Jiné
 # Custom additional description types
 - id: notes
+  props:
+    datacite: Other
   title:
     en: Notes
 - id: data-availability
+  props:
+    datacite: Other
   title:
     en: Data availability

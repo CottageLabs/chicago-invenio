@@ -116,3 +116,10 @@
         }
     }
 }
+
+// hide icons on community page - it's intentionally VERY specific query to minimise the chance that other images are affected
+#main > div > div.ui.container.theme-font.rel-mt-3.rel-mb-2 > div.ui.relaxed.grid.stackable >
+div.four.wide.column > div.ui.mt-0.mb-0.rel-ml-1 > div.content.rel-mb-1 > div.ui.grid >
+div.twelve.wide.column.middle.aligned.left.floated > div.flex.align-items-center > img.computer.only.rel-mr-1 {
+    display: none;
+}

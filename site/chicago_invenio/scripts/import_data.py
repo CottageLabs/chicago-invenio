@@ -19,6 +19,7 @@ Where:
 """
 import shutil
 from datetime import datetime
+import csv
 
 import click
 import logging
@@ -79,6 +80,49 @@ def add_pages(resource_type, phys_text):
             return True
 
     return False
+
+
+def normalize_identifier(identifier: Optional[str]) -> Optional[str]:
+    """Normalize IDs/DOIs to make comparisons robust across common formats."""
+    if identifier is None:
+        return None
+
+    normalized = str(identifier).strip().strip('"').strip("'")
+    if not normalized:
+        return None
+
+    lowered = normalized.lower()
+    for prefix in (
+        "https://doi.org/",
+        "http://doi.org/",
+        "http://dx.doi.org/",
+        "https://dx.doi.org/",
+        "doi:",
+    ):
+        if lowered.startswith(prefix):
+            normalized = normalized[len(prefix):].strip()
+            lowered = normalized.lower()
+            break
+
+    return lowered
+
+
+def load_limit_identifiers(file_path: str) -> set:
+    """Load IDs/DOIs from newline-delimited text or CSV."""
+    identifiers = set()
+
+    with open(file_path, "r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.reader(handle)
+        for row in reader:
+            if not row:
+                continue
+            for value in row:
+                normalized = normalize_identifier(value)
+                if normalized:
+                    identifiers.add(normalized)
+
+    return identifiers
+
 
 # Functions moved back to avoid circular import
 
@@ -2011,7 +2055,7 @@ def get_default_preview(file_information: list) -> str:
     return ''
 
 
-def process_records_batch(records_batch, identity, community_map: dict, file_path: str, community_algorithm=None) -> list:
+def process_records_batch(records_batch, identity, community_map: dict, file_path: str, community_algorithm=None, limit_to_ids=None) -> list:
     """Process a batch of records.
 
     Args:
@@ -2030,9 +2074,10 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
 
     for record_elem in records_batch:
         invenio_data = None
-        record_identifier = "Unknown"
+        record_identifier = None
         error_record = {
             "record_identifier": record_identifier,
+            "doi": None,
             "error_stage": None,
             "error_message": None,
             "error_details": None,
@@ -2046,7 +2091,20 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
             if control_001 is not None:
                 record_identifier = control_001.text.strip()
                 error_record["record_identifier"] = record_identifier
-            
+
+            # if we are given a list of record ids (not dois) then we can filter on them
+            process_this_record = False
+            if limit_to_ids is not None:
+                if record_identifier is None:
+                    continue
+                normalized_record_identifier = normalize_identifier(record_identifier)
+                if normalized_record_identifier in limit_to_ids:
+                    process_this_record = True
+            else:
+                process_this_record = True
+            if not process_this_record:
+                continue
+
             # Convert MARC to InvenioRDM format
             invenio_data, file_information = parse_marc_record(record_elem, record_identifier)
             error_record["invenio_data"] = invenio_data
@@ -2058,7 +2116,7 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
                 for identifier in invenio_data['metadata']['identifiers']:
                     if identifier.get('scheme') == 'doi':
                         record_identifier = identifier['identifier']
-                        error_record["record_identifier"] = record_identifier
+                        error_record["doi"] = record_identifier
                         break
 
             # Check if record root directory exists
@@ -2202,7 +2260,16 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
             errors_log.append(error_record)
             logger.error(f"Error processing record {record_identifier} at stage {error_record['error_stage']}: {e}")
             import traceback
-            logger.error(traceback.format_exc())
+            tb = traceback.format_exc()
+            logger.error(tb)
+            error_record["error_details"]["traceback"] = tb
+
+            # Append one JSON object per line (NDJSON) for streaming-friendly error logs.
+            with open("errors.json", 'a', encoding='utf-8') as f:
+                raw = json.dumps(error_record, ensure_ascii=False, default=str)
+                f.write(raw)
+                f.write("\n")
+
             continue
 
     return results
@@ -2213,9 +2280,10 @@ def process_records_batch(records_batch, identity, community_map: dict, file_pat
 @click.argument("data")
 @click.argument("file_path")
 @click.argument("restricted_path")
+@click.option("--id_list", default=None, help="File of IDs/DOIs to process (newline text or CSV)")
 @click.option("--batch-size", default=500, help="Number of records to process in each batch")
-@click.option("--max-records", default=3000, type=int, help="Maximum number of records to process (for testing)")
-def import_data(email: str, data: str, file_path:str, restricted_path: str, batch_size: int, max_records: Optional[int]):
+@click.option("--max-records", "--max_records", "max_records", default=3000000, type=int, help="Maximum number of records to process (for testing)")
+def import_data(email: str, data: str, file_path:str, restricted_path: str, id_list:str, batch_size: int, max_records: Optional[int]):
     """Import MARCXML bibliographic data into Chicago Invenio.
 
     Args:
@@ -2224,9 +2292,16 @@ def import_data(email: str, data: str, file_path:str, restricted_path: str, batc
         filepath: Root filepath for associated files, files will be looked for in subfolders named by record ID
                   if that subfolder does not exist, files will not be added to that record
         restrictedpath: Root filepaths in which to put restricted files from records with mixed access
+        id_list: file of newline separated ids to process
         batch_size: Number of records to process in each batch
         max_records: Maximum number of records to process (optional, for testing)
     """
+
+    limit_to_ids = None
+    if id_list is not None:
+        limit_to_ids = load_limit_identifiers(id_list)
+        logger.info(f"Using id list {id_list} ({len(limit_to_ids)} unique identifiers)")
+
     # Create application context
     app = create_app()
     with app.app_context():
@@ -2257,6 +2332,10 @@ def import_data(email: str, data: str, file_path:str, restricted_path: str, batc
         # Clear the global error log at the start of each import
         global errors_log
         errors_log = []
+
+        # Start a fresh per-run NDJSON error log.
+        with open('errors.json', 'w', encoding='utf-8') as f:
+            f.write("")
         
         # Clear the awards.txt file at the start of import
         with open('awards.txt', 'w') as f:
@@ -2285,10 +2364,10 @@ def import_data(email: str, data: str, file_path:str, restricted_path: str, batc
                 # Check max_records limit
                 if max_records and total_processed >= max_records:
                     logger.info(f"Reached maximum records limit: {max_records}")
-                    #break
+                    break
 
                 # Process the batch
-                batch_results = process_records_batch(batch, identity, community_map, file_path, community_algorithm)
+                batch_results = process_records_batch(batch, identity, community_map, file_path, community_algorithm, limit_to_ids)
 
                 total_processed += len(batch)
                 total_created += len(batch_results)
@@ -2337,12 +2416,12 @@ def import_data(email: str, data: str, file_path:str, restricted_path: str, batc
         logger.info("=" * 50)
 
         # Write errors to JSON file
-        if errors_log:
-            with open("errors.json", 'w', encoding='utf-8') as f:
-                json.dump(errors_log, f, indent=2, ensure_ascii=False, default=str)
-            logger.info(f"Wrote {len(errors_log)} errors to errors.json")
-        else:
-            logger.info("No errors to write - all records processed successfully!")
+        # if errors_log:
+        #     with open("errors.json", 'w', encoding='utf-8') as f:
+        #         json.dump(errors_log, f, indent=2, ensure_ascii=False, default=str)
+        #     logger.info(f"Wrote {len(errors_log)} errors to errors.json")
+        # else:
+        #     logger.info("No errors to write - all records processed successfully!")
 
         if warnings_log:
             with open("warnings.json", 'w', encoding='utf-8') as f:

@@ -35,6 +35,50 @@ Once running, visit https://127.0.0.1 in your browser.
 **Note**: The server is using a self-signed SSL certificate, so your browser
 will issue a warning that you will have to by-pass.
 
+### Communities, collections and demo data
+
+Publishing requires a community (`RDM_COMMUNITY_REQUIRED_TO_PUBLISH`), so the
+Chicago communities and their collections must be loaded before records can be
+published. They are defined in `site/chicago_invenio/scripts/com_col_data.csv`:
+each `Community` value becomes a community, and each `Collection` value becomes
+a collection in it, matching records on division, department, center/institute
+and resource type.
+
+The `chicago` CLI commands are registered through an entry point. After changing
+`site/setup.cfg`, reinstall the site package with `pipenv run pip install -e ./site`.
+
+**Demo data**: `invenio rdm-records demo` (run by `invenio-cli ... --setup`
+unless `--no-demo-data` is given) is replaced with a Chicago version that:
+
+- creates the communities and collections from the CSV, owned by
+  `community@demo.org` (role `community-curator`)
+- creates the record curator `curator@demo.org` (role `record-curator`)
+- publishes records by `user@demo.org` into matching communities
+- leaves drafts at each curation stage: awaiting curation, under review,
+  and curation accepted (awaiting community review)
+
+As with the stock demo, the records are created by Celery tasks, so they
+appear once a worker (e.g. `invenio-cli run`) has processed them.
+
+Demo users have the password `123456`. To change the numbers, run:
+
+```console
+invenio rdm-records demo records --records 100 --in-review 10
+```
+
+**Production**: load the communities and collections only, owned by an existing
+user with the `community-curator` or `admin` role:
+
+```console
+invenio roles create community-curator
+invenio roles create record-curator
+invenio roles add <email> community-curator
+invenio chicago communities --user <email>
+```
+
+Re-running it is safe. Existing communities are kept, and their collections
+are rebuilt from the CSV.
+
 ## Overview
 
 Following is an overview of the generated files and folders:

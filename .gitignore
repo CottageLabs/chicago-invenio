@@ -88,3 +88,5 @@ celerybeat-schedule
 
 tmp/
 temp/
+# UChicago brand fonts, downloaded at build time by docker/download-fonts.sh
+assets/fonts/

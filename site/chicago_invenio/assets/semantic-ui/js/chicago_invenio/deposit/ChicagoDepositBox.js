@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { Card, Form, Grid, Message } from "semantic-ui-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -13,8 +13,12 @@ import { ShareDraftButton } from
 
 import {
   useDepositSubmit,
+  useDepositStateChange,
   useCurationRequest,
   useCurationsData,
+  DRAFT_SAVE_SUCCEEDED,
+  DRAFT_SAVE_STARTED,
+  DRAFT_SAVE_FAILED
 } from "@cl-toolkit";
 
 const ChicagoDepositBoxContent = ({
@@ -46,14 +50,32 @@ const ChicagoDepositBoxContent = ({
     refresh,
   } = useCurationRequest(recordId);
 
-  const { curationsData } = useCurationsData();
+  console.log("Latest Request: %o", latestRequest)
+  console.log("Record: %o", record)
+  console.log("RecordID: %o", recordId)
 
-  // Preserve the record supplied by the deposit form,
-  // but use the current ID from Redux.
-  const currentRecord = {
+  const { curationsData } = useCurationsData();
+  const [savedSuccessfully, setSavedSuccessfully] = useState(false);
+
+  useDepositStateChange({
+    [DRAFT_SAVE_STARTED]: () => {
+      setSavedSuccessfully(false);
+    },
+    [DRAFT_SAVE_SUCCEEDED]: () => {
+      setSavedSuccessfully(true);
+      refresh();
+    },
+    [DRAFT_SAVE_FAILED]: () => {
+      setSavedSuccessfully(false);
+      refresh();
+    },
+  });
+
+  const currentRecord = useMemo(() => ({
     ...record,
     id: recordId,
-  };
+    savedSuccessfully,
+  }), [record, recordId, savedSuccessfully]);
 
   // Clear the community error when a community is selected.
   useEffect(() => {

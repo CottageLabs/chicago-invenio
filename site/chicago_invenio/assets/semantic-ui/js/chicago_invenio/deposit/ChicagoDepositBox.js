@@ -71,38 +71,30 @@ const ChicagoDepositBoxContent = ({
     setCommunityError(false);
     setSubmissionError(null);
 
-    try {
-      await saveDraft();
-
-      // Refresh curation state after the save.
-      await refresh();
-
-      await createRequest();
-
-      console.log("Curation request created");
-    } catch (error) {
-      console.error("Failed to create curation request:", error);
-      setSubmissionError(
-        "Unable to create the curation request."
-      );
-    }
+    return saveDraft()
+      .then(() => refresh())
+      .then(() => createRequest())
+      .then(() => {
+        console.log("Curation request created");
+      })
+      .catch((error) => {
+        console.error("Failed to create curation request:", error);
+        setSubmissionError("Unable to create the curation request.");
+      });
   };
 
   const handleResubmitRequest = async () => {
     setSubmissionError(null);
 
-    try {
-      await saveDraft();
-
-      await resubmitRequest(latestRequest);
-
-      console.log("Curation request resubmitted");
-    } catch (error) {
-      console.error("Failed to resubmit curation request:", error);
-      setSubmissionError(
-        "Unable to resubmit the curation request."
-      );
-    }
+    return saveDraft()
+      .then(() => resubmitRequest(latestRequest))
+      .then(() => {
+        console.log("Curation request resubmitted");
+      })
+      .catch((error) => {
+        console.error("Failed to resubmit curation request:", error);
+        setSubmissionError("Unable to resubmit the curation request.");
+      });
   };
 
   return (

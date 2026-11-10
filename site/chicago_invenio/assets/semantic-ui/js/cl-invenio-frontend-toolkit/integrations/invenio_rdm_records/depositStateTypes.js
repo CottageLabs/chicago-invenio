@@ -1,0 +1,1 @@
+export * from "@js/invenio_rdm_records/src/deposit/state/types";

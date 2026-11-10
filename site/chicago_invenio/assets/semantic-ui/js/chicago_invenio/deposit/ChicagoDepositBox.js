@@ -5,10 +5,37 @@ import { DepositBoxComponent } from "@js/invenio_curations/deposit/DepositBox";
 import { CustomDepositStatusBox } from "@js/invenio_curations/deposit/CustomDepositStatusBox";
 import { RequestOrPublishButton } from "@js/invenio_curations/deposit/RequestOrPublishButton";
 import { ShareDraftButton } from "@js/invenio_app_rdm/deposit/ShareDraftButton";
-import { connect } from "react-redux";
-import { connect as connectFormik } from "formik";
+import { connect, useSelector } from "react-redux";
+import { connect as connectFormik, useFormikContext } from "formik";
+import { useDepositSubmit } from "@cl-toolkit";
 
-class ChicagoDepositBoxComponent extends DepositBoxComponent {
+const ChicagoDepositBoxComponent = () => {
+  const formikContext = useFormikContext();
+  const hasCommunitySelected = useSelector((state) => {
+    return !!state?.deposit?.editorState?.selectedCommunity
+  });
+
+  const recordId = useSelector((state) => {
+    return state.deposit?.record?.id
+  });
+
+  const { saveDraft } = useDepositSubmit();
+
+  console.log("HCS: %o", hasCommunitySelected)
+  console.log("RecordId: %o", recordId)
+  console.log("SaveDraft: %o", saveDraft)
+
+
+  return (
+    <>
+      <div>Hello World</div>
+      <button onClick={() => saveDraft()}>Save draft</button>
+    </>
+
+  )
+}
+
+/*class ChicagoDepositBoxComponent extends DepositBoxComponent {
   constructor(props) {
     super(props);
     this.state = { ...this.state, communityError: false };
@@ -28,7 +55,7 @@ class ChicagoDepositBoxComponent extends DepositBoxComponent {
   render() {
     const { latestRequest, curationsData, communityError } = this.state;
     const { record, permissions, groupsEnabled } = this.props;
-    
+
 
     this.checkShouldFetchCurationRequest();
 
@@ -106,4 +133,6 @@ const mapStateToProps = (state) => ({
 export const ChicagoDepositBox = connect(
   mapStateToProps,
   null
-)(connectFormik(ChicagoDepositBoxComponent));
+)(connectFormik(ChicagoDepositBoxComponent));*/
+
+export const ChicagoDepositBox = ChicagoDepositBoxComponent;

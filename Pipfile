@@ -16,6 +16,7 @@ uwsgi-tools = ">=1.1.1"
 invenio-curations = "==0.6.2"
 setuptools = "<82"
 sentry-sdk = {extras = ["flask"], version = ">=1.0.0,<2.0.0"}
+watchdog = "==6.0.0"
 
 [requires]
 python_version = "3.12"

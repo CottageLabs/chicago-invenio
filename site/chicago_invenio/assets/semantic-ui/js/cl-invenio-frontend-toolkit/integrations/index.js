@@ -1,0 +1,1 @@
+export * from './invenio_rdm_records';

@@ -1,6 +1,25 @@
 {
   "name": "@cottagelabs/invenio-frontend-toolkit",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
-  "main": "./index.js"
+  "main": "./index.js",
+  "_invenioCompatibilityComment1": "version. Backwards-compatible improvements can use minor or patch releases.",
+  "_invenioCompatibilityComment2": "TODO: Decide whether to maintain historical compatibility mappings here",
+  "_invenioCompatibilityComment3": "or only declare compatibility for the current toolkit release.",
+  "invenioCompatibility": {
+    "invenio-curations": [
+      {
+        "backend": "<0.6.3",
+        "toolkit": ">=1.0.0,<2.0.0"
+      },
+      {
+        "backend": ">=0.6.3,<=0.6.6",
+        "toolkit": ">=2.0.0,<3.0.0"
+      },
+      {
+        "backend": ">=0.6.7",
+        "toolkit": ">=3.0.0,<4.0.0"
+      }
+    ]
+  }
 }

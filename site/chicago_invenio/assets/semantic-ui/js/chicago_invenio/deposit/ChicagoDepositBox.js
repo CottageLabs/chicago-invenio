@@ -5,23 +5,22 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { PreviewButton, SaveButton } from "@js/invenio_rdm_records";
 
-// TODO these are all implementation details, and should probably be centralised?
-import { CustomDepositStatusBox } from
-  "@js/invenio_curations/deposit/CustomDepositStatusBox";
-import { RequestOrPublishButton } from
-  "@js/invenio_curations/deposit/RequestOrPublishButton";
-import { ShareDraftButton } from
-  "@js/invenio_app_rdm/deposit/ShareDraftButton";
+// Integration specific logic
+import {
+  useCurationRequest,
+  useCurationsData,
+  CustomDepositStatusBox,
+  RequestOrPublishButton
+} from "@cottagelabs/invenio-integrations-curations";
 
 import {
   useDepositSubmit,
   useDepositStateChange,
-  useCurationRequest,
-  useCurationsData,
   DRAFT_SAVE_SUCCEEDED,
   DRAFT_SAVE_STARTED,
-  DRAFT_SAVE_FAILED
-} from "@cottagelabs/invenio-frontend-toolkit";
+  DRAFT_SAVE_FAILED,
+  ShareDraftButton
+} from "@cottagelabs/invenio-integrations-rdm";
 
 const ChicagoDepositBoxContent = ({
   record,

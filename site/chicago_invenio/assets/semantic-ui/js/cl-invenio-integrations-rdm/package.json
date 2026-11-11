@@ -1,0 +1,26 @@
+{
+  "name": "@cottagelabs/invenio-integrations-rdm",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./index.js",
+  "invenioCompatibility": {
+    "invenio-rdm-records": [
+      {
+        "backend": ">=20.3.2",
+        "toolkit": ">=1.0.0,<2.0.0"
+      }
+    ],
+    "invenio-app-rdm": [
+      {
+        "backend": ">=13.1.2",
+        "toolkit": ">=1.0.0,<2.0.0"
+      }
+    ]
+  },
+  "peerDependencies": {
+    "react": "^16.14.0",
+    "react-invenio-forms": "^4.0.0",
+    "@tanstack/react-query": "^4.44.0",
+    "semantic-ui-react": "^2.1.0"
+  }
+}

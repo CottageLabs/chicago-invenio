@@ -2,3 +2,5 @@
 export { curationClient } from "./curationClient";
 export { useCurationRequest } from "./useCurationRequest";
 export { useCurationsData } from "./useCurationsData";
+
+export * from "./Components";

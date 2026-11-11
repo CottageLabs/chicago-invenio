@@ -6,13 +6,13 @@
   "invenioCompatibility": {
     "invenio-rdm-records": [
       {
-        "backend": ">=20.3.2",
+        "backend": ">=20.3.2,<21.0.0",
         "toolkit": ">=1.0.0,<2.0.0"
       }
     ],
     "invenio-app-rdm": [
       {
-        "backend": ">=13.1.2",
+        "backend": ">=13.1.2,<14.0.0",
         "toolkit": ">=1.0.0,<2.0.0"
       }
     ]

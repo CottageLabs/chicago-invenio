@@ -23,15 +23,24 @@ from invenio_assets.webpack import WebpackThemeBundle
 from pathlib import Path
 from .toolkit_config import validate_toolkit
 
-TOOLKIT_DIR = (
+CURATIONS_TOOLKIT_DIR = (
     Path(__file__).resolve().parent
     / "assets"
     / "semantic-ui"
     / "js"
-    / "cl-invenio-frontend-toolkit"
+    / "cl-invenio-integrations-curations"
 )
 
-validate_toolkit(TOOLKIT_DIR)
+RDM_TOOLKIT_DIR = (
+    Path(__file__).resolve().parent
+    / "assets"
+    / "semantic-ui"
+    / "js"
+    / "cl-invenio-integrations-rdm"
+)
+
+validate_toolkit(CURATIONS_TOOLKIT_DIR)
+validate_toolkit(RDM_TOOLKIT_DIR)
 
 theme = WebpackThemeBundle(
     __name__,
@@ -43,8 +52,10 @@ theme = WebpackThemeBundle(
                 "chicago-communities-frontpage": "./js/chicago_invenio/communities/frontpage.js",
             },
             dependencies={
-                "@cottagelabs/invenio-frontend-toolkit":
-                    "file:./js/cl-invenio-frontend-toolkit",
+                "@cottagelabs/invenio-integrations-rdm":
+                    "file:./js/cl-invenio-integrations-rdm",
+                "@cottagelabs/invenio-integrations-curations":
+                    "file:./js/cl-invenio-integrations-curations",
 
                 "@tanstack/react-query": "^4.44.0",
                 "react-invenio-forms": "^4.0.0",

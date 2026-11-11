@@ -1,5 +1,5 @@
 {
-  "name": "@cottagelabs/invenio-frontend-toolkit",
+  "name": "@cottagelabs/invenio-integrations-curations",
   "version": "1.0.0",
   "private": true,
   "main": "./index.js",
@@ -21,5 +21,11 @@
         "toolkit": ">=3.0.0,<4.0.0"
       }
     ]
+  },
+  "peerDependencies": {
+    "react": "^16.14.0",
+    "react-invenio-forms": "^4.0.0",
+    "@tanstack/react-query": "^4.44.0",
+    "semantic-ui-react": "^2.1.0"
   }
 }

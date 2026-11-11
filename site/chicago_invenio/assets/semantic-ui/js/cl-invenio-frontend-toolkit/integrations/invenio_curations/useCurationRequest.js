@@ -8,9 +8,11 @@ export const useCurationRequest = (recordId) => {
 
   const queryKey = ["curations", "latest-request", recordId];
 
+  console.log("RecordId: %o", recordId)
+
   const requestQuery = useQuery({
     queryKey,
-    queryFn: () => curationClient.getLatestRequest(recordId),
+    queryFn: async () => await curationClient.getLatestRequest(recordId),
     enabled: Boolean(recordId),
     refetchInterval: 10_000,
   });

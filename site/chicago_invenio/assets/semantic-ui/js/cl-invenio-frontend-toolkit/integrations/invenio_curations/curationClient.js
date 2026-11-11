@@ -2,12 +2,15 @@ import { http } from "react-invenio-forms";
 
 export const curationClient = {
   async getLatestRequest(recordId) {
+    console.log(`curationClient::getLatestRequest(${recordId})`)
     const response = await http.get("/api/curations/", {
       params: {
         expand: 1,
         topic: `record:${recordId}`,
       },
     });
+
+    console.log("Resp: %o", response)
 
     const hits = response.data.hits;
 

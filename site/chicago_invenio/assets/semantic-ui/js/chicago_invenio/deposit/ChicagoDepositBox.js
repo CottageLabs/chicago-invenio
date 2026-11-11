@@ -30,6 +30,8 @@ const ChicagoDepositBoxContent = ({
     (state) => state.deposit?.record?.id
   ) || record.id;
 
+  console.log("RECORDID: %o", recordId)
+
   const hasCommunitySelected = useSelector(
     (state) => Boolean(
       state.deposit?.editorState?.selectedCommunity

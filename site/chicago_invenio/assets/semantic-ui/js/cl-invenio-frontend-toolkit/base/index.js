@@ -1,1 +1,0 @@
-export { getBackendVersions } from './getBackendVersions';

@@ -9,4 +9,9 @@
 // what the best route froward is there.
 
 // Unsure why this one isn't surfaced when Save/Preview etc are...
-export { ShareDraftButton } from '@js/invenio_app_rdm/deposit/ShareDraftButton'
+export { ShareDraftButton } from '@js/invenio_app_rdm/deposit/ShareDraftButton';
+
+export {
+  DepositFormSubmitActions,
+  DepositFormSubmitContext,
+} from "@js/invenio_rdm_records/src/deposit/api/DepositFormSubmitContext";

@@ -1,11 +1,10 @@
 import { useContext } from "react";
 import { useFormikContext } from "formik";
 
-// WARNING: See README#Implementation warnings for details
 import {
   DepositFormSubmitActions,
   DepositFormSubmitContext,
-} from "@js/invenio_rdm_records/src/deposit/api/DepositFormSubmitContext";
+} from "./Components";
 
 export const useDepositSubmit = () => {
   const { setSubmitContext } = useContext(DepositFormSubmitContext);

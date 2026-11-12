@@ -1,4 +1,24 @@
-### Versioning and upstream compatibility
+# CottageLabs Invenio Integrations | RDM
+
+This is the RDM flavour CottageLabs integration library.
+
+## Design
+Invenio modules/extensions, particularly those affecting the DepositForm, seem to quite often make assumptions that they will be the top user layer.
+This is fine if:
+- There are no customisations required
+- The implementation does not require MULTIPLE of these extensions, which may not play nicely together.
+
+If either of these are not the case, then an individual instance of invenio may need extensive and brittle custom code to perform as expected.
+In some cases, this code is forced to rely on internal implementation choices, not exposed via a public interface.
+That can (and likely will) lead to a situation where a patch or minor change for one of those customisations breaks the UI for a customer in an unexpected way.
+In the worst case scenario it might then require debugging and changing behaviour in multiple different ways across multiple different customer codebases.
+
+The proposed solution is these integration NPMs. They aim to centralise any brittle internals into a single place with a stable interface.
+Should an underlying dependency make implementation changes that break things, these libraries can reflect that as a breaking change instead and enforce versioning at build time.
+They can also attempt to keep behaviour of exported hooks/components consistent, allowing work to be done once and customisations to simply pull in updates.
+
+
+## Versioning and upstream compatibility
 
 Each integration is versioned independently using semantic versioning. The `invenioCompatibility` field in `package.json` declares which versions of the upstream Python packages it supports.
 

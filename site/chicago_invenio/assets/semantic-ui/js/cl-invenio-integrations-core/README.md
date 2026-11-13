@@ -30,6 +30,46 @@ Invenio is an open source community, which means that generally (and arguably, a
 
 That leads to this overflowing diagram of concerns.
 
+```mermaid
+flowchart TB
+    subgraph CHI["Chicago implementation"]
+        Chicago["ChicagoDepositBoxComponent"]
+        Community["Community selection validation"]
+    end
+
+    subgraph CUR["Invenio-Curations"]
+        Deposit["DepositBoxComponent"]
+        Status["CustomDepositStatusBox"]
+        Action["RequestOrPublishButton"]
+        API["Curation API requests"]
+        Poll["Polling and request state"]
+        DOM["DOM-based save and success checks"]
+    end
+
+    subgraph RDM["InvenioRDM frontend"]
+        Original["Original deposit status UI"]
+        Save["SaveButton"]
+        Submit["DepositFormSubmitContext"]
+        Redux["Redux deposit state"]
+        Share["ShareDraftButton"]
+    end
+
+    Chicago -->|"extends"| Deposit
+    Chicago --> Community
+    Chicago --> Status
+    Chicago --> Action
+    Chicago --> Save
+    Chicago --> Share
+
+    Deposit -.->|"replaces UI from"| Original
+    Deposit --> API
+    Deposit --> Poll
+    Deposit --> DOM
+    Deposit --> Redux
+    DOM -->|"clicks named button"| Save
+    Save --> Submit
+    Action -->|"callback props"| Deposit
+```
 
 <TO BE CONTINUED>
 
@@ -37,6 +77,63 @@ That leads to this overflowing diagram of concerns.
 
 @cottagelabs/invenio-integrations-* aims to temporarily fill that gap. The packages do not aim to create and share custom components (yet) or define behavioural logic where two integrations overlap, instead it aims to encapsulate the behaviours and logic for each individual module and extension into a single place, so that any given implementation can take the underlying ideas behind
 _any_ extension and use them independently OR alongside others.
+
+```mermaid
+flowchart TB
+    subgraph APP["Chicago — client-specific implementation"]
+        UI["ChicagoDepositBox"]
+        Rules["Community validation and UI rules"]
+        Layout["Custom layout and messages"]
+    end
+
+    subgraph CL["Cottage Labs integration packages"]
+        subgraph RDMI["invenio-integrations-rdm"]
+            Submit["useDepositSubmit"]
+            Changes["useDepositStateChange"]
+            RdmExports["Component and constant exports"]
+        end
+
+        subgraph CURI["invenio-integrations-curations"]
+            Request["useCurationRequest"]
+            Data["useCurationsData"]
+            Client["curationClient"]
+            CurExports["Component exports"]
+        end
+    end
+
+    subgraph UP["Upstream Invenio packages"]
+        subgraph RDM["InvenioRDM"]
+            Form["Formik / DepositFormSubmitContext"]
+            State["Redux deposit state"]
+            RdmComponents["ShareDraftButton / state constants"]
+        end
+
+        subgraph CUR["Invenio-Curations"]
+            Http["Curations HTTP APIs"]
+            CurComponents["CustomDepositStatusBox / RequestOrPublishButton"]
+        end
+    end
+
+    UI --> Rules
+    UI --> Layout
+
+    UI --> Submit
+    UI --> Changes
+    UI --> RdmExports
+
+    UI --> Request
+    UI --> Data
+    UI --> CurExports
+
+    Submit --> Form
+    Changes --> State
+    RdmExports -.-> RdmComponents
+
+    Request --> Client
+    Data --> Client
+    Client --> Http
+    CurExports -.-> CurComponents
+```
 
 ## The future
 

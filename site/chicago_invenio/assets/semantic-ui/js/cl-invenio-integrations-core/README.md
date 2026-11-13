@@ -1,4 +1,5 @@
-# Cottage Labs Invenio Integrations | Core
+Cottage Labs Invenio Integrations | Core
+========================================
 
 This is the core repository for all of Cottage Lab's attempts to centralise package logic, behaviour and imports for the Invenio frontend ecosystem. This currently consists of:
 
@@ -15,9 +16,7 @@ The dream is for Invenio's frontend to become an interconnected community of dev
 
 A development team could in theory jump in and start developing customisations directly, without _needing_ to contribute back to the project, but with strong guidelines would be able to help find and report, and then maybe fix, areas where the community modules don't quite fit with the standards set.
 
-This document is more eof a philosophical take on why this might be needed and how it might fit together. For specific design choices made right now see DESIGN.md
-
-<!-- TODO document not yet created -->
+This document is more eof a philosophical take on why this might be needed and how it might fit together. For specific design choices made right now see [DESIGN.md](DESIGN.md)
 
 # Invenio Context
 

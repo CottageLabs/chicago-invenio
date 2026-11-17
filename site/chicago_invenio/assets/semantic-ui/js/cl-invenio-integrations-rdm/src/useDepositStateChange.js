@@ -14,7 +14,7 @@ export const useDepositStateChange = (stateChangeConfig) => {
   useEffect(() => {
 
     if(
-      (actionState !== previousActionState) &&
+      (actionState !== previousActionState.current) &&
       stateChangeConfig[actionState] instanceof Function
     ) {
       try {

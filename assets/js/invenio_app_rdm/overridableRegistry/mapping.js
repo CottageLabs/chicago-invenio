@@ -18,6 +18,7 @@ import { DatesFieldNoEmptyValue } from "../../chicago_invenio/deposit/DatesField
 import { IdentifiersFieldWithHelpText } from "../../chicago_invenio/deposit/IdentifiersFieldWithHelpText";
 import { RelatedWorksFieldNoEmptyValue } from "../../chicago_invenio/deposit/RelatedWorksFieldNoEmptyValue";
 import { ReferencesFieldNoEmptyValue } from "../../chicago_invenio/deposit/ReferencesFieldNoEmptyValue";
+import { ChicagoSearchBarContainer } from "../../chicago_invenio/search";
 
 const ConditionalCustomFieldsWithRules = parametrize(ConditionalCustomFields, {
     sectionRules: {
@@ -41,6 +42,7 @@ const ConditionalCustomFieldsWithRules = parametrize(ConditionalCustomFields, {
 
 export const overriddenComponents = {
     ...curationComponentOverrides,
+    "InvenioAppRdm.Search.SearchApp.searchbarContainer": ChicagoSearchBarContainer,
     "InvenioAppRdm.Deposit.CardDepositStatusBox.container": ChicagoDepositBox,
     "InvenioAppRdm.Deposit.ResourceTypeField.container": ResourceTypeField,
     "InvenioAppRdm.Deposit.CustomFields.container": ConditionalCustomFieldsWithRules,

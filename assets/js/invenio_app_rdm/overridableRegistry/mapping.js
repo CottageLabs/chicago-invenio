@@ -19,6 +19,8 @@ import { IdentifiersFieldWithHelpText } from "../../chicago_invenio/deposit/Iden
 import { RelatedWorksFieldNoEmptyValue } from "../../chicago_invenio/deposit/RelatedWorksFieldNoEmptyValue";
 import { ReferencesFieldNoEmptyValue } from "../../chicago_invenio/deposit/ReferencesFieldNoEmptyValue";
 
+import { RDMHeaderSearchBarContainer } from "@cottagelabs/invenio-integrations-rdm";
+
 const ConditionalCustomFieldsWithRules = parametrize(ConditionalCustomFields, {
     sectionRules: {
         "Publishing information": {
@@ -41,6 +43,7 @@ const ConditionalCustomFieldsWithRules = parametrize(ConditionalCustomFields, {
 
 export const overriddenComponents = {
     ...curationComponentOverrides,
+    "InvenioAppRdm.Search.SearchApp.searchbarContainer": RDMHeaderSearchBarContainer,
     "InvenioAppRdm.Deposit.CardDepositStatusBox.container": ChicagoDepositBox,
     "InvenioAppRdm.Deposit.ResourceTypeField.container": ResourceTypeField,
     "InvenioAppRdm.Deposit.CustomFields.container": ConditionalCustomFieldsWithRules,

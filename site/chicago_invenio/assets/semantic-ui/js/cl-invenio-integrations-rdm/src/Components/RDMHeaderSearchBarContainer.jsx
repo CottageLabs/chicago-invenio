@@ -39,7 +39,11 @@ useLayoutEffect(() => {
     const display = standalone.style.getPropertyValue("display");
     const priority = standalone.style.getPropertyPriority("display");
 
-    // Transfer the original ID to the connected search to keep styling etc etc the same
+    // Transfer the original ID to the connected search to keep styling etc etc the same'
+    // Preserve the original ID for CSS and RDM's data-options lookup.
+    // This assumes upstream does not require the standalone element
+    // to retain its original ID after mounting...
+    // This should be FIXED upstream.
     standalone.id = hiddenId;
     connected.id = elementId;
 

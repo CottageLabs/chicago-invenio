@@ -13,7 +13,7 @@ This is currently pretranspiled by webpack aliasing the code that _already_ exis
 We are forced into an internal import of DepositFormSubmitContext as it is not available via ordinary export from the module.
 
 ## RDMHeaderSearchBarContainer
-Invenio RDM mounts a standalone non SearchKit search bar into `#header-search-bar`. This is available on all (non record search) pages and redirects to the search page with query `q=wibble`.
+Invenio RDM mounts a standalone non SearchKit search bar into `#header-search-bar`. This is available on all pages and redirects to the search page with query `q=wibble`.
 
 On SearchKit powered pages, a separate React application renders a Searchkit connected search bar into the same DOM element using a portal. This portal component clears the target node using `innerHTML=""`.
 
@@ -31,5 +31,5 @@ There should be an upstream discussion about how InvenioRDM, and potentially Inv
 
 One potential solution might be for RDM to initialise a Searchkit header search for the main page, not just search. Alternatively RDM could explicitly determine which implementation owns the header before mounting anything.
 
-In either of those solutions though, we think Invenio Search UI should enforce "better" design by removing the destructive `innerHTML=""` mutation and only rendering on clear targets.
+In either of those solutions though, we think Invenio Search UI should avoid destructive `innerHTML=""` mutations and document the expectation that portal targets must not already contain DOM managed by another React root.
 

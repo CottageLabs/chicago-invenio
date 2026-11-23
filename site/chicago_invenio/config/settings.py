@@ -522,6 +522,29 @@ RDM_COMMUNITY_REQUIRED_TO_PUBLISH = True
 COMMUNITIES_PERMISSION_POLICY = CustomCommunitiesPermissionPolicy
 COMMUNITY_CREATOR_ROLE = "community-curator"  # Customizable role name
 
+# External file storage (issue #78)
+# =================================
+# Files held in external storage (e.g. DataHub) are registered as remote files
+# (transfer type "R"), with a location and access method, and downloads redirect
+# to their URL. ExternalTransfer replaces the default RemoteTransfer, as only
+# one class can be registered per transfer type.
+RECORDS_RESOURCES_TRANSFERS = [
+    "invenio_records_resources.services.files.transfer.LocalTransfer",
+    "invenio_records_resources.services.files.transfer.FetchTransfer",
+    "chicago_invenio.config.external_transfer.ExternalTransfer",
+    "invenio_records_resources.services.files.transfer.MultipartTransfer",
+]
+# Hosts (netloc, including any port) that remote file URLs may point to,
+# comma-separated, e.g. "datahub.rcc.uchicago.edu"
+RECORDS_RESOURCES_FILES_ALLOWED_REMOTE_DOMAINS = [
+    domain.strip()
+    for domain in os.environ.get("CHI_EXTERNAL_FILES_ALLOWED_DOMAINS", "").split(",")
+    if domain.strip()
+]
+# Role that may register remote files on drafts, given to the external storage
+# system's service account. Administrators and system processes can too.
+CHICAGO_EXTERNAL_FILES_ROLE = "external-files-depositor"
+
 # It is not possible to sort by title because it's a text field and not a keyword
 # sorting by slug is a sufficient substitute
 

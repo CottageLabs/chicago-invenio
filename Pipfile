@@ -15,6 +15,7 @@ uwsgitop = ">=0.11"
 uwsgi-tools = ">=1.1.1"
 invenio-curations = "==0.6.2"
 setuptools = "<82"
+passlib = "==1.7.4"  # passlib 1.9.x (notypecheck fork) dropped str_to_uascii, used by invenio-accounts
 sentry-sdk = {extras = ["flask"], version = ">=1.0.0,<2.0.0"}
 
 [requires]

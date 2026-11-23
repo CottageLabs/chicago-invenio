@@ -23,21 +23,20 @@ export const ChicagoSearchBarContainer = ({
       return;
     }
 
-    // Attempt to unmount anything React has
+    // Nuke anything React has
     // mounted into the DOM ONCE, on render.
-    // In theory this should unmount the
+    // In theory this should remove the
     // theme.js -> SearchBar _without_ then
-    // unmounting itself on redraw
+    // removing itself on redraw
     // (like opening the filter drawer)
     //
-    // This is "more official" rather than
-    // destroying the DOM node directly with innerHTML
-    //
-    //
-    // If for any reason some non-React node was operating
-    // there, we could return to target.innerHTML = ""
-    // The fix is really the single-run useEffect
-    ReactDOM.unmountComponentAtNode(target);
+    // This is not ideal, ideally we'd want the
+    // React trees to not be fighting over the
+    // same DOM node at all, removing the need
+    // for any management between react components.
+    // That's out of scope here though, keep change
+    // as small as possible.
+    target.innerHTML = "";
 
     setPortalTarget(target);
   }, []);

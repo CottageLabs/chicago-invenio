@@ -111,19 +111,33 @@ APP_DEFAULT_SECURE_HEADERS = {
         "style-src": [
             "'self'",
             "https://www.lib.uchicago.edu",
-            "https://fonts.googleapis.com",
+            "https://fonts.googleapis.com",  # Roboto, imported by the CORE embed stylesheet
             "https://uchicago-brand-fonts.s3.us-east-2.amazonaws.com",
             "'unsafe-inline'",
-            "https://core.ac.uk"
+            "https://core.ac.uk",  # CORE recommender embed stylesheet
+            "'self'",
+        ],
+        "img-src": [
+            "'self'",
+            "data:",
+            "blob:",
+            "https://core.ac.uk",  # CORE recommender thumbnails and logo
+            "https://*.core.ac.uk",  # thumbnails redirect to fileserver-az.core.ac.uk
+            # Google Analytics 4 (per Google's CSP guide for GA4)
+            "https://*.googletagmanager.com",
+            "https://*.google-analytics.com",
         ],
         "font-src": [
             "'self'",
             "https://cdnjs.cloudflare.com",
+            "https://fonts.gstatic.com",  # Roboto font files for the CORE embed
             "data:"
         ],
         "connect-src":[
             "'self'",
             "https://*.google-analytics.com",
+            "https://*.analytics.google.com",
+            "https://*.googletagmanager.com",
             "https://api.core.ac.uk/"
         ]
     },

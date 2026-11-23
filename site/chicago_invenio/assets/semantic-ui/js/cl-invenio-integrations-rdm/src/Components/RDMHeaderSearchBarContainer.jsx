@@ -1,81 +1,66 @@
-import React, { useLayoutEffect, useState } from "react";
-import { createPortal } from "react-dom";
-import { SearchBar as ReactSearchKitSearchBar } from "react-searchkit";
+// RDMHeaderSearchBarContainer.jsx
 
 // A replacement workaround container to SearchBar
 // from Invenio Search UI. That implementation forces
-// innerHTML = "" on target node, causing havoc where
-// multiple React trees fight over the same node.
-// Considered using unmountComponentAtNode, but this is
-// React 16 specific and replaced by root.unmount
-// (which we can't use) in React 18. This instead mounts
-// the search onto a sibling node and hides the standalone
-// one.
+// innerHTML = "" on every draw, causing it to remove
+// _itself_ when redrawing. Considered using
+// unmountComponentAtNode, but this is React 16 specific
+// and replaced by root.unmount (which we can't use)
+// in React 18.
+//
+// A proper fix upstream should make it so one react component
+// (in the same OR different tree) doesn't need to handle
+// unmounting of a DOM node controlled by another component.
+// For starters the "standalone" search isn't in any way
+// overrideable right now, where the searchkit one is.
+import { useEffect, useState } from "react";
+import {
+  SearchBar as ReactSearchKitSearchBar,
+  buildUID,
+} from "react-searchkit";
+import ReactDOM from "react-dom";
+import Overridable from "react-overridable";
+
 export const RDMHeaderSearchBarContainer = ({
-  elementId = "header-search-bar",
-  ...searchBarProps
+  appName,
+  buildUID: uidBuilder = buildUID,
+  elementId = "header-search-bar" // Allow reuse should we need it later
 }) => {
   const [portalTarget, setPortalTarget] = useState(null);
 
-  // Using useLayoutEffect so this happens before paint
-useLayoutEffect(() => {
-    const standalone = document.getElementById(elementId);
+  useEffect(() => {
+    const target = document.getElementById(elementId);
 
-    if (!standalone || !standalone.parentNode) {
-      console.warn(`Missing search bar target: #${elementId}`);
+    if (!target) {
       return;
     }
 
-    const hiddenId = `${elementId}-standalone`;
+    // Nuke anything React has
+    // mounted into the DOM ONCE, on render.
+    // In theory this should remove the
+    // theme.js -> SearchBar _without_ then
+    // removing itself on redraw
+    // (like opening the filter drawer)
+    //
+    // This is not ideal, ideally we'd want the
+    // React trees to not be fighting over the
+    // same DOM node at all, removing the need
+    // for any management between react components.
+    // That's out of scope here though, keep change
+    // as small as possible.
+    target.innerHTML = "";
 
-    if (document.getElementById(hiddenId)) {
-      console.warn(`Duplicate search bar target: #${hiddenId}`);
-      return;
-    }
+    setPortalTarget(target);
+  }, []);
 
-    // Clone attributes and styling, but not React children.
-    const connected = standalone.cloneNode(false);
+  if (!portalTarget) {
+    return null;
+  }
 
-    const display = standalone.style.getPropertyValue("display");
-    const priority = standalone.style.getPropertyPriority("display");
-
-    // Transfer the original ID to the connected search to keep styling etc etc the same'
-    // Preserve the original ID for CSS and RDM's data-options lookup.
-    // This assumes upstream does not require the standalone element
-    // to retain its original ID after mounting...
-    // This should be FIXED upstream.
-    standalone.id = hiddenId;
-    connected.id = elementId;
-
-    connected.setAttribute("data-cl-searchkit-header", "");
-
-    standalone.parentNode.insertBefore(
-      connected,
-      standalone.nextSibling
-    );
-
-    standalone.style.setProperty("display", "none", "important");
-
-    setPortalTarget(connected);
-
-    return () => {
-      connected.remove();
-
-      // Restore the original standalone search id
-      standalone.id = elementId;
-
-      if (display) {
-        standalone.style.setProperty("display", display, priority);
-      } else {
-        standalone.style.removeProperty("display");
-      }
-    };
-  }, [elementId]);
-
-  return portalTarget
-    ? createPortal(
-        <ReactSearchKitSearchBar {...searchBarProps} />,
-        portalTarget
-      )
-    : null;
+  return ReactDOM.createPortal(
+    <Overridable id={uidBuilder("SearchApp.searchbar", "", appName)}>
+      <ReactSearchKitSearchBar />
+    </Overridable>,
+    portalTarget
+  );
 };

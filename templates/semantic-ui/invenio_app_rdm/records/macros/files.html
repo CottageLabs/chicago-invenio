@@ -90,7 +90,8 @@ To access its content, please download it and open it locally.') }}
         <th>{{_('Name')}}</th>
         <th>{{_('Size')}}</th>
         <th class>
-          {%- if config.RDM_ARCHIVE_DOWNLOAD_ENABLED %}
+          {#- remote files can't be included in the archive #}
+          {%- if config.RDM_ARCHIVE_DOWNLOAD_ENABLED and not files|has_remote_files %}
             {% set archive_download_url = record.links.archive_media if is_media else record.links.archive %}
             <a role="button" class="ui compact mini button right floated archive-link" href="{{ archive_download_url }}">
               <i class="file archive icon button" aria-hidden="true"></i> {{_("Download all")}}
@@ -120,12 +121,22 @@ To access its content, please download it and open it locally.') }}
         <tr>
           <td class="ten wide">
             <div>
-              <a href="{{ file_url_download }}">{{ file.key }}</a>
+              <a href="{{ file_url_download }}"{% if is_remote_file %} target="_blank" rel="noopener"{% endif %}>{{ file.key }}</a>
             </div>
-            {%- if not is_remote_file %}
             {%- if file.metadata.description %}
             <small class="ui font-tiny">{{ file.metadata.description }}</small><br/>
             {%- endif %}
+            {%- if is_remote_file and file.transfer.location %}
+            <small class="ui font-tiny external-file-location">
+              <i class="external alternate icon" aria-hidden="true"></i>
+              {%- if file.transfer.access_method == "globus" %}
+              {{ _("Stored in %(location)s, available via Globus", location=file.transfer.location) }}
+              {%- else %}
+              {{ _("Stored in %(location)s", location=file.transfer.location) }}
+              {%- endif %}
+            </small><br/>
+            {%- endif %}
+            {%- if not is_remote_file or file.checksum %}
             <small class="ui text-muted font-tiny">{{ file.checksum or _("Checksum not yet calculated.") }}
             <div class="ui icon inline-block" data-tooltip="{{_('This is the file fingerprint (checksum), which can be used to verify the file integrity.')}}">
               <i class="question circle checksum icon"></i>
@@ -133,7 +144,7 @@ To access its content, please download it and open it locally.') }}
             </small>
             {%- endif %}
           </td>
-          <td>{%- if is_remote_file %}{{_("N/A (external)")}}{%- else -%}{{ file.size|filesizeformat(binary=binary_sizes) }}{%- endif %}</td>
+          <td>{%- if file.size is not none -%}{{ file.size|filesizeformat(binary=binary_sizes) }}{%- else -%}{{_("N/A (external)")}}{%- endif %}</td>
           <td class="right aligned">
             <span>
               {% if with_preview and file_type|lower is previewable and not is_remote_file %}
@@ -141,9 +152,16 @@ To access its content, please download it and open it locally.') }}
                   <i class="eye icon" aria-hidden="true"></i>{{_("Preview")}}
                 </a>
               {% endif %}
+              {%- if is_remote_file %}
+              <a role="button" class="ui compact mini button" href="{{ file_url_download }}" target="_blank" rel="noopener">
+                <i class="external alternate icon" aria-hidden="true"></i>
+                {%- if file.transfer.location %}{{ _("Open in %(location)s", location=file.transfer.location) }}{% else %}{{ _("Open") }}{% endif %}
+              </a>
+              {%- else %}
               <a role="button" class="ui compact mini button" href="{{ file_url_download }}">
                 <i class="download icon" aria-hidden="true"></i>{{_('Download')}}
               </a>
+              {%- endif %}
             </span>
           </td>
         </tr>

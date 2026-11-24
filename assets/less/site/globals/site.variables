@@ -73,3 +73,14 @@
 /* Fonts */
 @pageFont: UChicagoSansSerif;
 @headerFont: @pageFont;
+
+/*-------------------
+      Site Spacing
+--------------------*/
+// Spacing scale: multiples of 0.25rem
+@space-unit: 0.25rem;
+
+@space-1: @space-unit;        // 0.25rem
+@space-2: (@space-unit * 2);  // 0.5rem
+@space-3: (@space-unit * 3);  // 0.75rem
+@space-4: (@space-unit * 4);  // 1rem

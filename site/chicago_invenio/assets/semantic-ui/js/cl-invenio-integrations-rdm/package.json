@@ -17,6 +17,9 @@
       }
     ]
   },
+  "dependencies": {
+    "@cottagelabs/invenio-integrations-core": "^1.0.0"
+  },
   "peerDependencies": {
     "react": "^16.14.0",
     "react-invenio-forms": "^4.0.0",

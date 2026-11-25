@@ -1,23 +1,11 @@
-import React, { createContext } from "react";
 import {
-  QueryClient,
-  QueryClientProvider,
-} from "@tanstack/react-query";
+  createIntegrationQueryProvider,
+} from "@cottagelabs/invenio-integrations-core/query";
 
-export const CurationsQueryContext = createContext(undefined);
-export const defaultQueryClient = new QueryClient();
-
-export const CurationsProvider = ({
-  children,
-  queryClient = defaultQueryClient,
-}) => {
-
-  return (
-    <QueryClientProvider
-      client={queryClient}
-      context={CurationsQueryContext}
-    >
-      {children}
-    </QueryClientProvider>
-  );
-};
+// centralised this logic so every integration can choose
+// to get the SAME behaviour and extensibility if they wish
+export const {
+  Provider: CurationsProvider,
+  QueryContext: CurationsQueryContext,
+  defaultQueryClient,
+} = createIntegrationQueryProvider();

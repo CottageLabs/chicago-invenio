@@ -56,6 +56,8 @@ theme = WebpackThemeBundle(
                     "js/cl-invenio-integrations-rdm/index.js",
             },
             dependencies={
+                "@cottagelabs/invenio-integrations-core":
+                    "file:./js/cl-invenio-integrations-core",
                 "@cottagelabs/invenio-integrations-rdm":
                     "file:./js/cl-invenio-integrations-rdm",
                 "@cottagelabs/invenio-integrations-curations":

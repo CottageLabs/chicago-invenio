@@ -1,0 +1,15 @@
+{
+  "name": "@cottagelabs/invenio-integrations-core",
+  "version": "1.0.0",
+  "private": true,
+  "main": "./index.js",
+  "peerDependencies": {
+    "react": "^16.14.0",
+    "@tanstack/react-query": "^4.44.0"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/react-query": {
+      "optional": true
+    }
+  }
+}

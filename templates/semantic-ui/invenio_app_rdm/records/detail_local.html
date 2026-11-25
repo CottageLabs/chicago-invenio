@@ -1,0 +1,35 @@
+{% extends "invenio_app_rdm/records/detail.html" %}
+
+{% block record_footer %}
+  {{ super() }}
+
+  <section class="core-recommendations rel-mt-3"
+     aria-labelledby="core-recommendations-heading">
+    <h2 id="core-recommendations-heading">
+      {{ _("Recommended") }}
+    </h2>
+
+    <div id="coreRecommenderOutput"></div>
+  </section>
+{% endblock record_footer %}
+
+{% block javascript %}
+  {{ super() }}
+  <script>
+    // What is this id? Is it a static item id?
+    // Is this is a site-specific API "key" then should it be private?
+    // If it's an item ID then shouldn't it be dynamic?
+    localStorage.setItem("idRecommender", "8800c7");
+    // What user input might be required here?
+    localStorage.setItem("userInput", JSON.stringify({}));
+  </script>
+
+  <script
+    id="recommender-embed"
+    async
+    src="https://core.ac.uk/recommender/embed.js"
+  >
+  </script>
+  <!-- Styles are included in the embed.js already and we're overriding them anyway-->
+  <!-- So we're ignoring recommender/embed-default-style.css-->
+{% endblock javascript %}

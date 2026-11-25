@@ -6,3 +6,7 @@
 @searchButtonColorTextColor: @darkGray;
 @searchButtonColor: @primaryColor;
 @searchButtonColorTextColor: @white;
+
+// If we decide to override button borderRadius,
+// we should move it to site.overrides and use it both
+// here AND in integrations/core-recommender.less

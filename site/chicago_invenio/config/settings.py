@@ -103,22 +103,42 @@ APP_DEFAULT_SECURE_HEADERS = {
         'script-src': [
             "'self'", "blob:", "'wasm-unsafe-eval'", "'unsafe-inline'",  # for WASM-based workers and inline scripts
             "cdnjs.cloudflare.com",
-            "https://www.googletagmanager.com"
+            "https://www.googletagmanager.com",
+            "https://core.ac.uk"
             # Multipart file uploads use a Web Worker running `hash-wasm` to compute content checksums
             # (e.g., MD5) of uploaded parts. This requires both 'blob:' and 'wasm-unsafe-eval' enabled in `script-src`.
         ],
         "style-src": [
             "'self'",
-            "'unsafe-inline'"
+            "https://www.lib.uchicago.edu",
+            "https://fonts.googleapis.com",  # Roboto, imported by the CORE embed stylesheet
+            "https://uchicago-brand-fonts.s3.us-east-2.amazonaws.com",
+            "'unsafe-inline'",
+            "https://core.ac.uk",  # CORE recommender embed stylesheet
+            "'self'",
+        ],
+        "img-src": [
+            "'self'",
+            "data:",
+            "blob:",
+            "https://core.ac.uk",  # CORE recommender thumbnails and logo
+            "https://*.core.ac.uk",  # thumbnails redirect to fileserver-az.core.ac.uk
+            # Google Analytics 4 (per Google's CSP guide for GA4)
+            "https://*.googletagmanager.com",
+            "https://*.google-analytics.com",
         ],
         "font-src": [
             "'self'",
             "https://cdnjs.cloudflare.com",
+            "https://fonts.gstatic.com",  # Roboto font files for the CORE embed
             "data:"
         ],
         "connect-src":[
             "'self'",
-            "https://*.google-analytics.com"
+            "https://*.google-analytics.com",
+            "https://*.analytics.google.com",
+            "https://*.googletagmanager.com",
+            "https://api.core.ac.uk/"
         ]
     },
     'content_security_policy_report_only': False,
@@ -549,3 +569,5 @@ GOOGLE_ANALYTICS_ID = "GTM-MLGTQVZ3"
 APP_RDM_PAGES = {
     "distribution-license": "/distribution-license",
 }
+
+APP_RDM_RECORD_LANDING_PAGE_TEMPLATE = "invenio_app_rdm/records/detail_local.html"

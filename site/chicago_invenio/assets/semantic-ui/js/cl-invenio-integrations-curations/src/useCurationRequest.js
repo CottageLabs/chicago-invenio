@@ -1,10 +1,13 @@
 // integrations/invenio_curations/useCurationRequest.js
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { CurationsQueryContext } from "./CurationsProvider";
 import { curationClient } from "./curationClient";
 
 export const useCurationRequest = (recordId) => {
-  const queryClient = useQueryClient();
+  const queryClient = useQueryClient({
+    context: CurationsQueryContext,
+  });
 
   const queryKey = ["curations", "latest-request", recordId];
 
@@ -15,10 +18,12 @@ export const useCurationRequest = (recordId) => {
     queryFn: async () => await curationClient.getLatestRequest(recordId),
     enabled: Boolean(recordId),
     refetchInterval: 10_000,
+    context: CurationsQueryContext,
   });
 
   const createMutation = useMutation({
     mutationFn: () => curationClient.createRequest(recordId),
+    context: CurationsQueryContext,
     onSuccess: (request) => {
       queryClient.setQueryData(queryKey, request);
     },
@@ -27,6 +32,7 @@ export const useCurationRequest = (recordId) => {
   const resubmitMutation = useMutation({
     mutationFn: (request) =>
       curationClient.resubmitRequest(request),
+    context: CurationsQueryContext,
     onSuccess: (request) => {
       queryClient.setQueryData(queryKey, request);
     },

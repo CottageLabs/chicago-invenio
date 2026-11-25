@@ -1,31 +1,35 @@
 {% extends "invenio_app_rdm/records/detail.html" %}
 
-{% block page_body %}
+{% block record_footer %}
   {{ super() }}
-  <div id="coreRecommenderOutput"></div>
-{% endblock page_body %}
+
+  <section class="core-recommendations rel-mt-3"
+     aria-labelledby="core-recommendations-heading">
+    <h2 id="core-recommendations-heading">
+      {{ _("Recommended") }}
+    </h2>
+
+    <div id="coreRecommenderOutput"></div>
+  </section>
+{% endblock record_footer %}
 
 {% block javascript %}
-    {{ super() }}
-    <script>
-  (function (d, s, idScript, idRec, userInput) {
-    var coreAddress = 'https://core.ac.uk/';
-    var js, fjs = d.getElementsByTagName(s)[0];
-    if (d.getElementById(idScript)) return;
-    js = d.createElement(s);
-    js.id = idScript;
-    js.src = coreAddress + 'recommender/embed.js';
-    fjs.parentNode.insertBefore(js, fjs);
+  {{ super() }}
+  <script>
+    // What is this id? Is it a static item id?
+    // Is this is a site-specific API "key" then should it be private?
+    // If it's an item ID then shouldn't it be dynamic?
+    localStorage.setItem("idRecommender", "8800c7");
+    // What user input might be required here?
+    localStorage.setItem("userInput", JSON.stringify({}));
+  </script>
 
-    localStorage.setItem('idRecommender', idRec);
-    localStorage.setItem('userInput', JSON.stringify(userInput));
-
-    var link = d.createElement('link');
-    link.setAttribute('rel', 'stylesheet');
-    link.setAttribute('type', 'text/css');
-    link.setAttribute('href', coreAddress + 'recommender/embed-default-style.css');
-    d.getElementsByTagName('head')[0].appendChild(link);
-  }(document, 'script', 'recommender-embed', '8800c7', {}));
-</script>
-
-{% endblock %}
+  <script
+    id="recommender-embed"
+    async
+    src="https://core.ac.uk/recommender/embed.js"
+  >
+  </script>
+  <!-- Styles are included in the embed.js already and we're overriding them anyway-->
+  <!-- So we're ignoring recommender/embed-default-style.css-->
+{% endblock javascript %}

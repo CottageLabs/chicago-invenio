@@ -144,3 +144,5 @@ div.four.wide.column > div.ui.mt-0.mb-0.rel-ml-1 > div.content.rel-mb-1 > div.ui
 div.twelve.wide.column.middle.aligned.left.floated > div.flex.align-items-center > img.computer.only.rel-mr-1 {
     display: none;
 }
+
+@import "../integrations/core-recommender.less";

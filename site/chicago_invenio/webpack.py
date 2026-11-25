@@ -52,8 +52,14 @@ theme = WebpackThemeBundle(
                 "chicago-communities-frontpage": "./js/chicago_invenio/communities/frontpage.js",
             },
             aliases={
-                "@cottagelabs/invenio-integrations-rdm$":
-                    "js/cl-invenio-integrations-rdm/index.js",
+                "@cottagelabs/invenio-integrations-core":
+                    "js/cl-invenio-integrations-core",
+
+                "@cottagelabs/invenio-integrations-rdm":
+                    "js/cl-invenio-integrations-rdm",
+
+                "@cottagelabs/invenio-integrations-curations":
+                    "js/cl-invenio-integrations-curations",
             },
             dependencies={
                 "@cottagelabs/invenio-integrations-core":

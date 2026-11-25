@@ -14,7 +14,6 @@ export const useCurationsData = () => {
 
   return {
     curationsData: query.data ?? null,
-    context: CurationsQueryContext,
     isLoading: query.isLoading,
     error: query.error,
   };

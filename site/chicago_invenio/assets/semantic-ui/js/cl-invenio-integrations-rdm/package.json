@@ -20,7 +20,6 @@
   "peerDependencies": {
     "react": "^16.14.0",
     "react-invenio-forms": "^4.0.0",
-    "@tanstack/react-query": "^4.44.0",
     "semantic-ui-react": "^2.1.0"
   }
 }

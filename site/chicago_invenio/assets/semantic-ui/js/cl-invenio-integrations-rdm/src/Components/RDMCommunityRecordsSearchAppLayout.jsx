@@ -1,0 +1,107 @@
+import React, { useState } from "react";
+import PropTypes from "prop-types";
+
+import {
+  SearchAppFacets,
+  SearchAppResultsPane,
+  SearchBar
+} from "@js/invenio_search_ui/components";
+// Use Invenio Search UI's SearchBar rather than react-searchkit's.
+// The former wraps the latter to support portalling into the page header.
+// This preserves upstream behaviour when no container override is registered.
+
+import Overridable from "react-overridable";
+
+import { i18next } from "@translations/invenio_app_rdm/i18next";
+import { buildUID, Count, Sort } from "react-searchkit";
+import { Button, Container, Grid } from "semantic-ui-react";
+import { GridResponsiveSidebarColumn } from "react-invenio-forms";
+
+// This override shouldn't be necessary... we should be able to override the SearchBar
+// container directly as we can in SearchApp.
+// We should open an upstream PR to get this into whatever next version possible.
+export const RDMCommunityRecordsSearchAppLayout = ({
+  config,
+  appName = ""
+}) => {
+  const [sidebarVisible, setSidebarVisible] = useState(false);
+
+  return (
+    <Container className="rel-pt-2">
+      <Grid>
+        <Grid.Column only="mobile tablet" mobile={2} tablet={1}>
+          <Button
+            basic
+            icon="sliders"
+            onClick={() => setSidebarVisible(true)}
+            aria-label={i18next.t("Filter results")}
+          />
+        </Grid.Column>
+
+        <Grid.Column mobile={14} tablet={14} computer={12} floated="right">
+          <Grid>
+            <Overridable
+              id={buildUID("SearchApp.searchbarContainer", "", appName)}
+              config={config}
+              appName={appName}
+            >
+              <Grid.Column width={16}>
+                <SearchBar
+                  appName={appName}
+                  buildUID={buildUID}
+                  config={config}
+                  // TODO this doesn't currently work as CommunityRecordsSearchBarElement
+                  //  doesn't pass placeholder onto the SearchBar
+                  placeholder={i18next.t("Search records in community...")}
+                />
+              </Grid.Column>
+            </Overridable>
+
+            <Grid.Column width={4} textAlign="left">
+              <Count
+                label={(cmp) => (
+                  <>
+                    {cmp} {i18next.t("results found")}
+                  </>
+                )}
+              />
+            </Grid.Column>
+            <Grid.Column width={12} textAlign="right">
+              <Sort
+                values={config.sortOptions}
+                label={(cmp) => (
+                  <>
+                    <label className="mr-10">{i18next.t("Sort by")}</label>
+                    {cmp}
+                  </>
+                )}
+              />
+            </Grid.Column>
+          </Grid>
+        </Grid.Column>
+
+        <Grid.Row>
+          <GridResponsiveSidebarColumn
+            width={4}
+            open={sidebarVisible}
+            onHideClick={() => setSidebarVisible(false)}
+            // eslint-disable-next-line react/no-children-prop
+            children={<SearchAppFacets aggs={config.aggs} appName={appName} buildUID={buildUID} />}
+          />
+          <Grid.Column mobile={16} tablet={16} computer={12}>
+            <SearchAppResultsPane
+              appName={appName}
+              buildUID={buildUID}
+              layoutOptions={config.layoutOptions}
+            />
+          </Grid.Column>
+        </Grid.Row>
+      </Grid>
+    </Container>
+  );
+};
+
+RDMCommunityRecordsSearchAppLayout.propTypes = {
+  config: PropTypes.object.isRequired,
+  appName: PropTypes.string,
+};

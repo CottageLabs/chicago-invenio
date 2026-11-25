@@ -17,3 +17,4 @@ export {
 } from "@js/invenio_rdm_records/src/deposit/api/DepositFormSubmitContext";
 
 export * from './RDMHeaderSearchBarContainer';
+export * from './RDMCommunityRecordsSearchAppLayout';

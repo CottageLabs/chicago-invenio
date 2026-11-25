@@ -21,17 +21,24 @@ import {
 import ReactDOM from "react-dom";
 import Overridable from "react-overridable";
 
+// This is an explicit OVERRIDE fixing a bug:
 export const RDMHeaderSearchBarContainer = ({
   appName,
   buildUID: uidBuilder = buildUID,
-  elementId = "header-search-bar" // Allow reuse should we need it later
+  children,
+  config,
+  elementId = "header-search-bar", // Allow reuse should we need it later
+  // Assume any remaining props are to be passed directly to the SearchBar from RSK
+  // However it's on to the Overridden SearchBar.Element to actually handle passing
+  // those to the final Search input, so this is only a partial fix.
+  ...searchBarProps
 }) => {
-  const [portalTarget, setPortalTarget] = useState(null);
-
+  const [portalTarget, setPortalTarget] = useState(undefined);
   useEffect(() => {
     const target = document.getElementById(elementId);
 
     if (!target) {
+      setPortalTarget(null);
       return;
     }
 
@@ -53,14 +60,16 @@ export const RDMHeaderSearchBarContainer = ({
     setPortalTarget(target);
   }, []);
 
-  if (!portalTarget) {
-    return null;
-  }
-
-  return ReactDOM.createPortal(
-    <Overridable id={uidBuilder("SearchApp.searchbar", "", appName)}>
-      <ReactSearchKitSearchBar />
-    </Overridable>,
-    portalTarget
+  const searchBar = (
+    <Overridable
+      id={uidBuilder("SearchApp.searchbar", "", appName)}
+      {...searchBarProps}
+    >
+      <ReactSearchKitSearchBar {...searchBarProps} />
+    </Overridable>
   );
+
+  return portalTarget
+    ? ReactDOM.createPortal(searchBar, portalTarget)
+    : searchBar;
 };

@@ -19,7 +19,7 @@ import { IdentifiersFieldWithHelpText } from "../../chicago_invenio/deposit/Iden
 import { RelatedWorksFieldNoEmptyValue } from "../../chicago_invenio/deposit/RelatedWorksFieldNoEmptyValue";
 import { ReferencesFieldNoEmptyValue } from "../../chicago_invenio/deposit/ReferencesFieldNoEmptyValue";
 
-import { RDMHeaderSearchBarContainer } from "@cottagelabs/invenio-integrations-rdm";
+import { RDMHeaderSearchBarContainer, RDMCommunityRecordsSearchAppLayout } from "@cottagelabs/invenio-integrations-rdm";
 
 const ConditionalCustomFieldsWithRules = parametrize(ConditionalCustomFields, {
     sectionRules: {
@@ -41,9 +41,21 @@ const ConditionalCustomFieldsWithRules = parametrize(ConditionalCustomFields, {
     }
 });
 
+const RDMCommunitySearchLayout = parametrize(
+  RDMCommunityRecordsSearchAppLayout,
+  {
+    appName: "InvenioCommunities.DetailsSearch",
+  }
+);
+
 export const overriddenComponents = {
     ...curationComponentOverrides,
+    // ----- SearchBar Disappears -----
     "InvenioAppRdm.Search.SearchApp.searchbarContainer": RDMHeaderSearchBarContainer,
+    "InvenioCommunities.DetailsSearch.SearchApp.searchbarContainer": RDMHeaderSearchBarContainer,
+    // Handle these two together so we win no matter what order upstream gets handled in
+    "InvenioCommunities.DetailsSearch.SearchApp.layout": RDMCommunitySearchLayout,
+    // ----- Rest -----
     "InvenioAppRdm.Deposit.CardDepositStatusBox.container": ChicagoDepositBox,
     "InvenioAppRdm.Deposit.ResourceTypeField.container": ResourceTypeField,
     "InvenioAppRdm.Deposit.CustomFields.container": ConditionalCustomFieldsWithRules,

@@ -19,6 +19,9 @@ import { IdentifiersFieldWithHelpText } from "../../chicago_invenio/deposit/Iden
 import { RelatedWorksFieldNoEmptyValue } from "../../chicago_invenio/deposit/RelatedWorksFieldNoEmptyValue";
 import { ReferencesFieldNoEmptyValue } from "../../chicago_invenio/deposit/ReferencesFieldNoEmptyValue";
 import { ChicagoSearchBarContainer } from "../../chicago_invenio/search";
+import {
+    ChicagoCommunityRecordsSearchAppLayout
+} from "../../chicago_invenio/communities/ChicagoCommunityRecordsSearchAppLayout";
 
 const ConditionalCustomFieldsWithRules = parametrize(ConditionalCustomFields, {
     sectionRules: {
@@ -40,9 +43,21 @@ const ConditionalCustomFieldsWithRules = parametrize(ConditionalCustomFields, {
     }
 });
 
+const ChicagoCommunitySearchLayout = parametrize(
+  ChicagoCommunityRecordsSearchAppLayout,
+  {
+    appName: "InvenioCommunities.DetailsSearch",
+  }
+);
+
 export const overriddenComponents = {
     ...curationComponentOverrides,
+    // ----- SearchBar Disappears -----
     "InvenioAppRdm.Search.SearchApp.searchbarContainer": ChicagoSearchBarContainer,
+    // Handle these two together so we win no matter what order upstream gets handled in
+    "InvenioCommunities.DetailsSearch.SearchApp.layout": ChicagoCommunitySearchLayout,
+    "InvenioCommunities.DetailsSearch.SearchApp.searchbarContainer": ChicagoSearchBarContainer,
+    // ----- Rest -----
     "InvenioAppRdm.Deposit.CardDepositStatusBox.container": ChicagoDepositBox,
     "InvenioAppRdm.Deposit.ResourceTypeField.container": ResourceTypeField,
     "InvenioAppRdm.Deposit.CustomFields.container": ConditionalCustomFieldsWithRules,

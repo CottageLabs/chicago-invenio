@@ -4,3 +4,4 @@ export { useCurationRequest } from "./useCurationRequest";
 export { useCurationsData } from "./useCurationsData";
 
 export * from "./Components";
+export * from "./CurationsProvider";

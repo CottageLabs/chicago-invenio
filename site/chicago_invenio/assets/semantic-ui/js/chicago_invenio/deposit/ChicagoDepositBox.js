@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { Card, Form, Grid, Message } from "semantic-ui-react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { PreviewButton, SaveButton } from "@js/invenio_rdm_records";
 
 // Integration specific logic
 import {
+  CurationsProvider,
   useCurationRequest,
   useCurationsData,
   CustomDepositStatusBox,
@@ -201,10 +201,8 @@ const ChicagoDepositBoxContent = ({
   );
 };
 
-const queryClient = new QueryClient();
-
 export const ChicagoDepositBox = (props) => (
-  <QueryClientProvider client={queryClient}>
+  <CurationsProvider>
     <ChicagoDepositBoxContent {...props} />
-  </QueryClientProvider>
+  </CurationsProvider>
 );

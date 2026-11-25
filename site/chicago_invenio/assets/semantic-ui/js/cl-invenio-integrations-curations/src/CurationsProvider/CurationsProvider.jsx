@@ -1,20 +1,20 @@
-import React, { createContext, useState } from "react";
+import React, { createContext } from "react";
 import {
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
 
 export const CurationsQueryContext = createContext(undefined);
+export const defaultQueryClient = new QueryClient();
 
 export const CurationsProvider = ({
   children,
-  queryClient,
+  queryClient = defaultQueryClient,
 }) => {
-  const [defaultClient] = useState(() => new QueryClient());
 
   return (
     <QueryClientProvider
-      client={queryClient ?? defaultClient}
+      client={queryClient}
       context={CurationsQueryContext}
     >
       {children}

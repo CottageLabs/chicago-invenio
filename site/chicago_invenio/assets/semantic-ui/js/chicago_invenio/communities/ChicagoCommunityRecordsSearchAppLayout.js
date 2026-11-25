@@ -1,17 +1,21 @@
+import React from "react";
+import PropTypes from "prop-types";
+
 import {
   SearchAppFacets,
   SearchAppResultsPane,
   SearchBar
 } from "@js/invenio_search_ui/components";
+// Use Invenio Search UI's SearchBar rather than react-searchkit's.
+// The former wraps the latter to support portalling into the page header.
+// This preserves upstream behaviour when no container override is registered.
 
 import Overridable from "react-overridable";
 
 import { i18next } from "@translations/invenio_app_rdm/i18next";
-import React from "react";
 import { buildUID, Count, Sort } from "react-searchkit";
 import { Button, Container, Grid } from "semantic-ui-react";
 import { GridResponsiveSidebarColumn } from "react-invenio-forms";
-import PropTypes from "prop-types";
 
 // This override shouldn't be necessary... we should be able to override the SearchBar
 // container directly as we can in SearchApp.
@@ -42,9 +46,11 @@ export const ChicagoCommunityRecordsSearchAppLayout = ({
             >
               <Grid.Column width={16}>
                 <SearchBar
-                  buildUID={buildUID}
                   appName={appName}
-                  // TODO this does not work, and has never worked
+                  buildUID={buildUID}
+                  config={config}
+                  // TODO this doesn't currently work as CommunityRecordsSearchBarElement
+                  //  doesn't pass placeholder onto the SearchBar
                   placeholder={i18next.t("Search records in community...")}
                 />
               </Grid.Column>

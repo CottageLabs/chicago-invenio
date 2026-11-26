@@ -7,10 +7,10 @@ import { PreviewButton, SaveButton } from "@js/invenio_rdm_records";
 // Integration specific logic
 import {
   CurationsProvider,
-  useCurationRequest,
+  useHandleCurationRequest,
   useCurationsData,
   CustomDepositStatusBox,
-  RequestOrPublishButton
+  RequestOrPublishButton,
 } from "@cottagelabs/invenio-integrations-curations";
 
 import {
@@ -21,6 +21,8 @@ import {
   DRAFT_SAVE_FAILED,
   ShareDraftButton
 } from "@cottagelabs/invenio-integrations-rdm";
+import {useCreateCurationRequest} from "../../cl-invenio-integrations-curations/src/api/useCreateCurationRequest";
+import {useResubmitCurationRequest} from "../../cl-invenio-integrations-curations/src/api/useResubmitCurationRequest";
 
 const ChicagoDepositBoxContent = ({
   record,
@@ -45,15 +47,17 @@ const ChicagoDepositBoxContent = ({
   const { saveDraft } = useDepositSubmit();
 
   const {
-    latestRequest,
-    isLoading,
-    error: curationError,
-    createRequest,
-    resubmitRequest,
-    refresh,
-  } = useCurationRequest(recordId);
+  latestRequest,
+  isLoading,
+  isSuccess,
+  error: curationError,
+  createRequest,
+  resubmitRequest,
+  refresh,
+} = useHandleCurationRequest(recordId);
 
   console.log("Latest Request: %o", latestRequest)
+
   console.log("Record: %o", record)
   console.log("RecordID: %o", recordId)
 
@@ -61,18 +65,25 @@ const ChicagoDepositBoxContent = ({
   const [savedSuccessfully, setSavedSuccessfully] = useState(false);
 
   useDepositStateChange({
-    [DRAFT_SAVE_STARTED]: () => {
-      setSavedSuccessfully(false);
-    },
-    [DRAFT_SAVE_SUCCEEDED]: () => {
-      setSavedSuccessfully(true);
-      refresh();
-    },
-    [DRAFT_SAVE_FAILED]: () => {
-      setSavedSuccessfully(false);
-      refresh();
-    },
-  });
+  [DRAFT_SAVE_STARTED]: () => {
+    setSavedSuccessfully(false);
+  },
+
+  [DRAFT_SAVE_SUCCEEDED]: () => {
+    setSavedSuccessfully(true);
+
+    refresh().catch((error) => {
+      console.error(
+        "Unable to refresh curation request",
+        error
+      );
+    });
+  },
+
+  [DRAFT_SAVE_FAILED]: () => {
+    setSavedSuccessfully(false);
+  },
+});
 
   const currentRecord = useMemo(() => ({
     ...record,

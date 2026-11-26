@@ -1,7 +1,6 @@
 // index.js
-export { curationClient } from "./curationClient";
-export { useCurationRequest } from "./useCurationRequest";
-export { useCurationsData } from "./useCurationsData";
+export * from "./api";
+export { useHandleCurationRequest } from "./useHandleCurationRequest";
 
 export * from "./Components";
 export * from "./CurationsProvider";

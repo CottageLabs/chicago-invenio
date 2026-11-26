@@ -1,11 +1,13 @@
 import { http } from "react-invenio-forms";
 
 export const curationClient = {
-  async getLatestRequest(recordId) {
+  async getLatestRequest(recordId, {
+    expand = true
+  } = {}) {
     console.log(`curationClient::getLatestRequest(${recordId})`)
     const response = await http.get("/api/curations/", {
       params: {
-        expand: 1,
+        ...(expand ? { expand: 1 } : {}),
         topic: `record:${recordId}`,
       },
     });
@@ -15,6 +17,24 @@ export const curationClient = {
     const hits = response.data.hits;
 
     return hits.total > 0 ? hits.hits[0] : null;
+  },
+
+  async getRequest(
+    requestId,
+    { expand = true } = {}
+  ) {
+    console.log(`curationClient::getRequest(${requestId})`)
+    const response = await http.get(
+      `/api/requests/${requestId}`,
+      {
+        params: {
+          ...(expand ? { expand: 1 } : {}),
+        },
+      }
+    );
+
+    console.log("Resp: %o", response)
+    return response.data;
   },
 
   async getCurationsData() {

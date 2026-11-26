@@ -1,7 +1,7 @@
 // integrations/invenio_curations/useCurationsData.js
 import {
   useQuery,
-} from "./CurationsProvider";
+} from "../CurationsProvider";
 import { curationClient } from "./curationClient";
 
 export const useCurationsData = () => {
